@@ -1,0 +1,19 @@
+## generic files to ignore
+*~
+*.lock
+*.DS_Store
+*.swp
+*.out
+
+
+# swift
+.build/
+.swiftpm/
+build/
+*.xcuserstate
+
+# photos of the bench setup
+IMG_*.png
+IMG_*.jpg
+IMG_*.jpeg
+IMG_*.HEIC
