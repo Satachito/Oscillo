@@ -1,7 +1,7 @@
 # PiLyzer firmware
 
 Turns a Raspberry Pi Pico 2 into the instrument the macOS application in this
-repository talks to: two analogue channels, eight logic channels, and a bulk USB
+repository talks to: three analogue channels, eight logic channels, and a bulk USB
 endpoint carrying the protocol in `docs/protocol.md`.
 
 ## What runs where
@@ -27,7 +27,7 @@ number, so the time axis on screen is right by construction.
 **Decimation is an average, not a skip.** Every slow sample is the mean of all
 the conversions underneath it. That is the anti-alias filter for slow sweeps, it
 hands back the bits the averaging earns, and it means one code path covers
-250 kSa/s and 4 Sa/s.
+165 kSa/s and 4 Sa/s.
 
 The logic side inverts the usual arrangement: a second state machine watches the
 trigger pin at full clock speed, and the *processor* finds the exact edge
@@ -38,7 +38,7 @@ sample even though nothing running on the processor could have seen it live.
 
 | | |
 | --- | --- |
-| Analogue record | 65 536 conversions, 128 KB |
+| Analogue record | 98 304 conversions, 192 KB |
 | Converter ring | 4 096 conversions, 8 KB, wrapped by the DMA |
 | Logic record | 131 072 samples, 128 KB |
 | Code | about 32 KB |
@@ -52,31 +52,42 @@ Change these in `board_config.h`; the host reads the limits out of
 | --- | --- |
 | CH1 | 26 (ADC0) |
 | CH2 | 27 (ADC1) |
+| CH3 | 28 (ADC2) |
 | Logic D0…D7 | 8…15, consecutive because PIO reads them in one instruction |
 | CH1 range switch | 16 |
 | CH2 range switch | 17 |
-| Adjustable calibration square wave | 28 |
+| CH3 range switch | 18 |
+| Adjustable calibration square wave | 20 |
 | Unused pins | 0…7 |
 | Status LED | the board's own |
 
-On a bare Pico 2 with nothing else attached, CH1 and CH2 read 0 V to 3.3 V
+On a bare Pico 2 with nothing else attached, CH1, CH2 and CH3 read 0 V to 3.3 V
 directly and **must not go outside that**. The front end in
 `hardware/pilyzer-afe` is what makes ±25 V safe.
 
-### Separate chord generator (firmware 1.4)
+### Three-channel acquisition (firmware 1.5)
 
-The instrument no longer initializes the fixed note outputs. GPIO0–7 remain
-unused, and J8 has been removed from the carrier schematic. The pin allocation
-introduced in firmware 1.3 is retained: logic GPIO8–15, range GPIO16/17, and
-adjustable calibration output GPIO28. `setCalibrationOutput` and the app's
-`Test output` control still operate GPIO28.
+CH3 uses GPIO28/ADC2 and GPIO18 for its range switch. The adjustable test output
+moves to GPIO20; `setCalibrationOutput` and the app's `Test output` still control
+it. Logic GPIO8–15 and the first two range controls remain unchanged.
 
-The C4 / E♭4 / F♯4 / A4 generator is a standalone program for a separate Pico 2
-in [`tools/pico2-chord`](../../tools/pico2-chord). It is not linked into the
-instrument firmware.
+The enabled mask selects only the requested ADC inputs, in ascending order.
+Any nonempty subset of CH1/CH2/CH3 is supported. At the fastest ADC clock the
+per-channel ceilings are 494,845 / 247,423 / 164,948 samples/s for 1 / 2 / 3
+channels — 48 MHz over the 97-cycle floor described above. The ADC multiplexes
+channels; adjacent conversions are separated by 2.02 µs at maximum rate, not
+simultaneous. Slower sweeps use decimation. Each
+channel still supports a 16,384-point record with trigger history and tail room.
 
-Firmware 1.2 used logic GPIO6–13, range GPIO14/15 and calibration GPIO2:
-update wiring before installing firmware 1.3 or later.
+`analogSample` returns one 16-bit word per advertised analogue channel (six
+bytes on firmware 1.5). Configuration and capability packet layouts are unchanged.
+
+Firmware 1.2 used logic GPIO6–13, ranges GPIO14/15 and test output GPIO2;
+firmware 1.3/1.4 used test output GPIO28. Update wiring before installing 1.5.
+
+The diminished-chord generator remains a standalone program for a separate
+Pico 2 in [`tools/pico2-chord`](../../tools/pico2-chord). GPIO0–7 are unused on
+the instrument, and the carrier has no J8.
 
 ## Building
 
@@ -159,8 +170,16 @@ board back into its bootloader over USB, so the cycle is
   picotool load -x firmware/pilyzer/build/pilyzer.uf2
 ```
 
+**The converter's fastest interval is 97 clocks, not 96.** A conversion takes
+96, but the pacing register holds the interval minus one and the converter only
+obeys it when that register is 96 or more. Asking for 96 writes 95, the pacing
+is abandoned, and it free-runs at about twice the rate — while the plan still
+reports the interval that was asked for. `swift run PiLyzer --timing` measures
+this: before the fix a 1 kHz square read back as 2 kHz at the fastest sweep and
+correctly at every slower one.
+
 **Checking the time axis.** Nothing above proves the sample interval is right —
-the samples alone cannot say how far apart they are. Put a jumper from GPIO28
+the samples alone cannot say how far apart they are. Put a jumper from GPIO20
 (the test square wave) to GPIO26 (CH1) and the scope should read a 1 kHz square
 wave with a 50% duty cycle. If the frequency reads correctly across several
 sweep speeds, the whole timing chain is right; if it is wrong by a constant

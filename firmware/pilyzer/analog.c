@@ -69,6 +69,7 @@ void analog_init(void)
     adc_init();
     adc_gpio_init(PIN_ADC_CH1);
     adc_gpio_init(PIN_ADC_CH2);
+    adc_gpio_init(PIN_ADC_CH3);
     raw_dma = dma_claim_unused_channel(true);
     run.state = STATE_IDLE;
 }
@@ -115,7 +116,12 @@ static void hardware_start(void)
     adc_set_round_robin(0);
     adc_select_input(plan.first_input);
     adc_set_round_robin(plan.channel_mask);
-    adc_hw->div = plan.cycles_q8 - 256u;
+    // Never let the pacing register fall below the threshold at which the
+    // converter gives up on pacing altogether; the timing the host was promised
+    // depends on this register being honoured.
+    uint32_t divisor = plan.cycles_q8 - 256u;
+    if (divisor < (ADC_MIN_PERIOD_CYCLES - 1u) << 8) divisor = (ADC_MIN_PERIOD_CYCLES - 1u) << 8;
+    adc_hw->div = divisor;
     adc_fifo_setup(true, true, 1, false, false);
 
     dma_channel_config cfg = dma_channel_get_default_config(raw_dma);
@@ -138,7 +144,8 @@ uint8_t analog_configure(const pilyzer_analog_config_t *config, pilyzer_plan_t *
 {
     if (!analog_idle()) return ST_BUSY;
 
-    uint8_t mask = config->channel_mask & 0x03;
+    uint8_t mask = config->channel_mask;
+    if (mask & ~((1u << ANALOG_CHANNELS) - 1u)) return ST_BAD_ARGUMENT;
     if (mask == 0) return ST_BAD_ARGUMENT;
     if (config->trigger_mode > TRIG_NORMAL) return ST_BAD_ARGUMENT;
     if (config->trigger_slope > SLOPE_FALLING) return ST_BAD_ARGUMENT;
@@ -148,8 +155,8 @@ uint8_t analog_configure(const pilyzer_analog_config_t *config, pilyzer_plan_t *
          config->trigger_lowpass_hz > TRIGGER_FILTER_MAX_HZ)) return ST_BAD_ARGUMENT;
 
     plan.channel_mask = mask;
-    plan.channels = (mask == 0x03) ? 2 : 1;
-    plan.first_input = (mask & 0x01) ? 0 : 1;
+    plan.channels = (uint8_t)__builtin_popcount(mask);
+    plan.first_input = (uint8_t)__builtin_ctz(mask);
     plan.capacity = ANALOG_BUFFER_CONVERSIONS / plan.channels;
 
     plan.record = config->record_samples;
@@ -160,11 +167,7 @@ uint8_t analog_configure(const pilyzer_analog_config_t *config, pilyzer_plan_t *
     // A channel that is switched off has no slot in the record, so a trigger
     // aimed at it falls back to the one that is on.
     uint8_t source = config->trigger_source;
-    if (plan.channels == 1) {
-        plan.source_index = 0;
-    } else {
-        plan.source_index = (source == 1) ? 1 : 0;
-    }
+    plan.source_index = source < plan.channels ? source : 0;
 
     plan.mode = config->trigger_mode;
     plan.slope = config->trigger_slope;
@@ -396,7 +399,7 @@ const uint16_t *analog_record(uint32_t offset, uint32_t *count, uint8_t *channel
     return &record_buffer[(run.record_start + offset) * plan.channels];
 }
 
-void analog_immediate(uint16_t averages, uint16_t *first, uint16_t *second)
+void analog_immediate(uint16_t averages, uint16_t *readings)
 {
     hardware_stop();
     adc_set_round_robin(0);
@@ -405,14 +408,14 @@ void analog_immediate(uint16_t averages, uint16_t *first, uint16_t *second)
     if (averages == 0) averages = 1;
     if (averages > 4096) averages = 4096;
 
-    uint32_t totals[2] = {0, 0};
+    uint32_t totals[ANALOG_CHANNELS] = {0};
     for (uint16_t i = 0; i < averages; i++) {
-        for (int c = 0; c < 2; c++) {
+        for (int c = 0; c < ANALOG_CHANNELS; c++) {
             adc_select_input(c);
             (void)adc_read();            // the first conversion after the mux moves is not trustworthy
             totals[c] += adc_read();
         }
     }
-    *first = (uint16_t)((uint64_t)totals[0] * 16u / averages);
-    *second = (uint16_t)((uint64_t)totals[1] * 16u / averages);
+    for (int c = 0; c < ANALOG_CHANNELS; c++)
+        readings[c] = (uint16_t)((uint64_t)totals[c] * 16u / averages);
 }

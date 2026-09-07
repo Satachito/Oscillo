@@ -126,7 +126,8 @@ static void set_led(bool on)
 
 static uint8_t range_pin(uint8_t channel)
 {
-    return channel == 0 ? PIN_RANGE_CH1 : PIN_RANGE_CH2;
+    static const uint8_t pins[ANALOG_CHANNELS] = {PIN_RANGE_CH1, PIN_RANGE_CH2, PIN_RANGE_CH3};
+    return pins[channel];
 }
 
 static uint32_t set_calibration_output(bool on, uint32_t frequency_hz)
@@ -290,8 +291,8 @@ static void handle(const pilyzer_header_t *header, const uint8_t *payload)
         if (!analog_idle()) { respond(opcode, sequence, ST_BUSY, NULL, 0, NULL, 0); return; }
         uint16_t averages = 1;
         if (length >= 2) memcpy(&averages, payload, sizeof averages);
-        uint16_t reading[2];
-        analog_immediate(averages, &reading[0], &reading[1]);
+        uint16_t reading[ANALOG_CHANNELS];
+        analog_immediate(averages, reading);
         respond(opcode, sequence, ST_OK, reading, sizeof reading, NULL, 0);
         return;
     }
@@ -434,10 +435,10 @@ int main(void)
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 #endif
-    gpio_init(PIN_RANGE_CH1);
-    gpio_set_dir(PIN_RANGE_CH1, GPIO_OUT);
-    gpio_init(PIN_RANGE_CH2);
-    gpio_set_dir(PIN_RANGE_CH2, GPIO_OUT);
+    for (uint8_t channel = 0; channel < ANALOG_CHANNELS; channel++) {
+        gpio_init(range_pin(channel));
+        gpio_set_dir(range_pin(channel), GPIO_OUT);
+    }
     set_calibration_output(true, 1000);
 
     analog_init();

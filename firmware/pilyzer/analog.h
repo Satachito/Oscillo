@@ -17,4 +17,5 @@ bool    analog_idle(void);
 // 16-bit words long. Valid until the next arm.
 const uint16_t *analog_record(uint32_t offset, uint32_t *count, uint8_t *channels);
 
-void analog_immediate(uint16_t averages, uint16_t *first, uint16_t *second);
+// Caller supplies ANALOG_CHANNELS words, ordered CH1, CH2, CH3.
+void analog_immediate(uint16_t averages, uint16_t *readings);

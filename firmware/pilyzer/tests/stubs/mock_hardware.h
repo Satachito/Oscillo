@@ -37,13 +37,16 @@ static inline void dma_channel_configure(int c, const dma_channel_config *cfg,
 static struct { uint32_t div, fifo; } mock_adc;
 #define adc_hw (&mock_adc)
 static inline void adc_init(void) {}
-static inline void adc_gpio_init(uint pin) {}
+static uint32_t mock_adc_pin_mask;
+static uint mock_adc_input;
+static uint16_t mock_adc_values[3];
+static inline void adc_gpio_init(uint pin) { mock_adc_pin_mask |= 1u << pin; }
 static inline void adc_run(bool on) {}
 static inline void adc_fifo_drain(void) {}
 static inline void adc_set_round_robin(uint mask) {}
-static inline void adc_select_input(uint input) {}
+static inline void adc_select_input(uint input) { mock_adc_input = input; }
 static inline void adc_fifo_setup(bool en, bool dreq, uint threshold, bool err, bool shift) {}
-static inline uint16_t adc_read(void) { return 0; }
+static inline uint16_t adc_read(void) { return mock_adc_values[mock_adc_input]; }
 
 #define clk_sys 0
 static inline uint32_t clock_get_hz(int clock) { return 150000000; }

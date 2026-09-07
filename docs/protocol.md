@@ -72,7 +72,7 @@ transfer.
 | `0x12` | `analogStatus` | — | `AcquisitionStatus` |
 | `0x13` | `analogRead` | `u32 offset, u32 count` | `u16[]` samples |
 | `0x14` | `analogAbort` | — | — |
-| `0x15` | `analogSample` | `u16 averages` | `u16 ch1, u16 ch2` |
+| `0x15` | `analogSample` | `u16 averages` | `u16[analogChannels]` (CH1, CH2, CH3 on firmware 1.5) |
 | `0x20` | `logicConfigure` | `LogicConfig` | `AcquisitionPlan` |
 | `0x21` | `logicArm` | — | — |
 | `0x22` | `logicStatus` | — | `AcquisitionStatus` |
@@ -116,6 +116,13 @@ does not know, so nothing else on the bus can be mistaken for an instrument.
 | 36 | `u32` | flags |
 | 40 | `u32[2]` | reserved |
 
+The shortest conversion period is not simply the converter's conversion time.
+On the RP2350 the pacing register holds the interval minus one and is only
+obeyed when it is 96 or more, so the shortest interval that is actually paced
+is 97 cycles — ask for 96 and the converter free-runs at about twice the rate
+while still reporting the interval it was given. A host should take this field
+as authoritative rather than computing it from the converter's datasheet.
+
 Flags: bit 0 the input ranges are switched under software control, bit 1 the
 board has a calibration output, bit 2 the logic inputs are buffered, bit 3
 the analogue trigger supports a low-pass filter (firmware 1.2 and later).
@@ -131,9 +138,9 @@ host code reads a raw sample and a 4096-fold average without a special case.
 
 | Offset | Type | Field |
 | ---: | --- | --- |
-| 0 | `u8` | channel mask — bit 0 channel 1, bit 1 channel 2 |
+| 0 | `u8` | channel mask — bit 0 CH1, bit 1 CH2, bit 2 CH3 (firmware 1.5+) |
 | 1 | `u8` | trigger mode — 0 free run, 1 auto, 2 normal |
-| 2 | `u8` | trigger source — channel index |
+| 2 | `u8` | trigger source — slot in the ascending enabled-channel list |
 | 3 | `u8` | trigger slope — 0 rising, 1 falling |
 | 4 | `u16` | trigger level, in the 16-bit sample space |
 | 6 | `u16` | trigger hysteresis, in the 16-bit sample space |
@@ -191,7 +198,7 @@ than the settling time is still supported: settling precedes the trigger search.
 | 12 | `u32` | granted record length |
 | 16 | `u32` | granted pre-trigger length |
 | 20 | `u8` | granted channel mask |
-| 21 | `u8` | conversions per sample — 2 when both analogue channels are on |
+| 21 | `u8` | conversions per sample — number of enabled analogue channels (1–3) |
 | 22 | `u16` | reserved |
 
 The sample period the host draws its time axis with is
@@ -218,8 +225,8 @@ nanoseconds.
 
 `analogRead` and `logicRead` address the record linearly from its first
 sample; the ring the firmware captured into is unwrapped on the way out, so the
-host never sees a seam. Analogue samples of two enabled channels are
-interleaved, channel 1 first. Logic samples are one byte each, bit *n* being
+host never sees a seam. Analogue samples are interleaved in ascending enabled-channel order: mask 5
+returns CH1, CH3, CH1, CH3, and mask 7 returns CH1, CH2, CH3 repeatedly. Logic samples are one byte each, bit *n* being
 input D*n*.
 
 The host reads in chunks — 8 KB is a good size — and the device answers each
@@ -251,10 +258,19 @@ PIO state machine rather than by the processor — at 150 MS/s nothing else can
 keep up. The processor then finds the exact edge in the captured data, so the
 trigger position is sample-accurate rather than interrupt-latency-accurate.
 
-## Physical pin allocation (firmware 1.3 and later)
+## Firmware 1.5 pin allocation and channel count
 
-The wire protocol is unchanged. Logic D0–D7 use GPIO8–15, and range controls
-use GPIO16/17. `setCalibrationOutput` controls GPIO28 (GPIO2 on firmware 1.2).
-Firmware 1.3 also emitted fixed complementary notes on GPIO0–7. Firmware 1.4
-removes that generator and leaves GPIO0–7 unused; the note generator now runs
-on a separate Pico 2 using `tools/pico2-chord`.
+CH1/CH2/CH3 use GPIO26/27/28. Logic D0–D7 use GPIO8–15, range controls use
+GPIO16/17/18, and `setCalibrationOutput` controls GPIO20. GPIO0–7 are unused.
+Firmware 1.3/1.4 used GPIO28 for test output, and 1.2 used GPIO2.
+
+The capability reply advertises three analogue channels. `analogSample` returns
+three little-endian u16 readings (CH1, CH2, CH3), one per advertised channel;
+older two-channel firmware returns two readings. The app uses the advertised
+count for controls, input masks and immediate replies. Wire version and packet
+layouts otherwise remain unchanged.
+
+Changing the enabled input mask recomputes the acquisition timing. Maximum
+per-channel rates are 500,000 / 250,000 / 166,666.7 samples/s for 1 / 2 / 3 inputs.
+The ADC samples enabled channels sequentially, not simultaneously. Lower rates
+requested by the timebase still apply; checkbox count changes the rate ceiling.
