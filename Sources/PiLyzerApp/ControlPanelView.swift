@@ -96,6 +96,19 @@ struct ControlPanelView: View {
                           range: levelRange, format: Format.voltage)
             LabeledSlider(title: "Noise", value: $model.settings.trigger.hysteresis,
                           range: 0...0.05, format: { Format.percent($0 * 100, digits: 1) })
+            Picker("Trigger LPF", selection: $model.settings.trigger.lowPassHz) {
+                ForEach(AnalogTriggerSettings.lowPassOptions, id: \.self) { frequency in
+                    Text(frequency == 0 ? "Off" : Format.frequency(Double(frequency)))
+                        .tag(frequency)
+                }
+            }
+            .help("Filters the trigger input only. The waveform stays unfiltered; the trigger marker follows the filtered crossing.")
+            if model.settings.trigger.lowPassHz > 0 {
+                Text(model.capabilities.hasTriggerLowPass
+                     ? "LPF affects trigger timing; the trace is unchanged."
+                     : "Trigger LPF requires firmware 1.2 or later.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             if model.settings.trigger.mode == .normal {
                 Text("Normal waits for the edge and never sweeps without one.")
                     .font(.caption).foregroundStyle(.secondary)

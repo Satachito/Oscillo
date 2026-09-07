@@ -309,6 +309,9 @@ public final class InstrumentEngine {
     private func acquireAnalog(_ instrument: Instrument, token: Int) throws -> ScopeFrame? {
         guard let connected else { throw InstrumentError.notConnected }
 
+        if settings.trigger.lowPassHz != 0 && !connected.capabilities.hasTriggerLowPass {
+            throw InstrumentError.triggerLowPassUnavailable
+        }
         let scales = voltageScales(connected)
         let configuration = settings.analogConfiguration(capabilities: connected.capabilities,
                                                          scales: scales)

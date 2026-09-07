@@ -98,10 +98,13 @@ public struct AnalogTriggerSettings: Codable, Equatable, Sendable {
     /// Noise rejection, as a fraction of the converter's span.
     public var hysteresis: Double
     public var autoTimeout: Double
+    public var lowPassHz: Int
+
+    public static let lowPassOptions = [0, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
 
     public init(mode: TriggerMode = .auto, source: Int = 0, slope: TriggerSlope = .rising,
                 levelVolts: Double = 0, position: Double = 0.1,
-                hysteresis: Double = 0.004, autoTimeout: Double = 0.1) {
+                hysteresis: Double = 0.004, autoTimeout: Double = 0.1, lowPassHz: Int = 0) {
         self.mode = mode
         self.source = source
         self.slope = slope
@@ -109,6 +112,24 @@ public struct AnalogTriggerSettings: Codable, Equatable, Sendable {
         self.position = position
         self.hysteresis = hysteresis
         self.autoTimeout = autoTimeout
+        self.lowPassHz = lowPassHz
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case mode, source, slope, levelVolts, position, hysteresis, autoTimeout, lowPassHz
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        mode = try values.decode(TriggerMode.self, forKey: .mode)
+        source = try values.decode(Int.self, forKey: .source)
+        slope = try values.decode(TriggerSlope.self, forKey: .slope)
+        levelVolts = try values.decode(Double.self, forKey: .levelVolts)
+        position = try values.decode(Double.self, forKey: .position)
+        hysteresis = try values.decode(Double.self, forKey: .hysteresis)
+        autoTimeout = try values.decode(Double.self, forKey: .autoTimeout)
+        // Adding LPF must not discard the user's existing panel and calibration.
+        lowPassHz = try values.decodeIfPresent(Int.self, forKey: .lowPassHz) ?? 0
     }
 }
 
@@ -263,7 +284,8 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
                                    triggerSource: slot, triggerSlope: trigger.slope,
                                    triggerLevel: level, triggerHysteresis: hysteresis,
                                    samplePeriod: period, recordSamples: record,
-                                   pretriggerSamples: pretrigger, autoTimeout: trigger.autoTimeout)
+                                   pretriggerSamples: pretrigger, autoTimeout: trigger.autoTimeout,
+                                   triggerLowPassHz: trigger.lowPassHz)
     }
 
     /// Sweep speeds in a 1–2–5 sequence, starting at the fastest the converter

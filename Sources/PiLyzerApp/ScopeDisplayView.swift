@@ -190,6 +190,10 @@ struct ReadoutRow: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 1) {
                 Text(model.planDescription).foregroundStyle(.secondary)
+                if model.settings.trigger.lowPassHz > 0 && model.capabilities.hasTriggerLowPass {
+                    Text("Trigger LPF · " + Format.frequency(Double(model.settings.trigger.lowPassHz)))
+                        .foregroundStyle(Theme.trigger)
+                }
                 Text(model.frame.triggered ? "Triggered" : "Not triggered")
                     .foregroundStyle(model.frame.triggered ? Theme.trigger : .secondary)
             }

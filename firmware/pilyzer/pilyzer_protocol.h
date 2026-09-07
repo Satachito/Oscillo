@@ -61,6 +61,7 @@ enum pilyzer_state {
 #define CAP_SOFTWARE_RANGE     (1u << 0)
 #define CAP_CALIBRATION_OUTPUT (1u << 1)
 #define CAP_BUFFERED_LOGIC     (1u << 2)
+#define CAP_TRIGGER_LOWPASS    (1u << 3)
 
 #define PILYZER_HEADER_SIZE 12
 
@@ -110,7 +111,7 @@ typedef struct __attribute__((packed)) {
     uint32_t record_samples;
     uint32_t pretrigger_samples;
     uint32_t auto_timeout_us;
-    uint32_t reserved;
+    uint32_t trigger_lowpass_hz;  // 0 = off; capability-gated extension
 } pilyzer_analog_config_t;
 
 typedef struct __attribute__((packed)) {

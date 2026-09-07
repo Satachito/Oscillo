@@ -117,7 +117,8 @@ does not know, so nothing else on the bus can be mistaken for an instrument.
 | 40 | `u32[2]` | reserved |
 
 Flags: bit 0 the input ranges are switched under software control, bit 1 the
-board has a calibration output, bit 2 the logic inputs are buffered.
+board has a calibration output, bit 2 the logic inputs are buffered, bit 3
+the analogue trigger supports a low-pass filter (firmware 1.2 and later).
 
 Analogue samples are unsigned 16-bit values, left-aligned from the converter's
 own resolution: a 12-bit code `c` arrives as `c << 4`. So a reading at the top
@@ -140,13 +141,32 @@ host code reads a raw sample and a 4096-fold average without a special case.
 | 16 | `u32` | record length, samples per channel |
 | 20 | `u32` | pre-trigger length, samples per channel |
 | 24 | `u32` | auto-trigger timeout, microseconds |
-| 28 | `u32` | reserved |
+| 28 | `u32` | trigger low-pass cutoff, Hz — 0 off, otherwise 100…100000; requires capability bit 3 |
 
 The device picks the conversion period and the decimation factor that come
 closest to the requested sample period without exceeding the converter's rate,
 and reports both in the plan. It always prefers the largest decimation factor
 that fits, so slow sweeps are box-car averaged rather than sub-sampled: that is
 both the anti-alias filter and the extra bits of resolution.
+
+The low-pass field reuses a formerly reserved zero word without changing the
+frame size or protocol version. Old hosts continue to send zero. A host must
+check capability bit 3 before requesting a nonzero cutoff; older firmware
+ignores that word and would otherwise report success without filtering.
+
+The trigger-only filter is one pole, with `alpha = 1 - exp(-2*pi*cutoff*period)`
+using the actual decimated sample period. This defines the time constant; at
+cutoffs near or above Nyquist, the digital response approaches bypass and is
+not an analogue reconstruction filter. Filter state retains fractional ADC
+codes. It runs through the pre-trigger history and waits five time constants
+before accepting an edge. Re-arming, or restarting after a buffer rollover,
+resets the filter and replays retained history to avoid using stale state.
+
+Samples returned by `analogRead` are unchanged. The reported trigger index is
+the sample at which the **filtered** signal crossed the level; it is not shifted
+back by an assumed delay. The phase delay depends on signal frequency, so the
+original trace need not cross the trigger level at that index. A record shorter
+than the settling time is still supported: settling precedes the trigger search.
 
 ### `LogicConfig` — 24 bytes
 

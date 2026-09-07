@@ -104,6 +104,19 @@ on a slow sweep is the mean of all the conversions underneath it, which is both
 the anti-alias filter and where the extra bits below the converter's twelve come
 from.
 
+### Triggering a noisy or stepped waveform
+
+**Trigger LPF** in the Scope panel filters only the signal used to find the
+trigger. The displayed/exported waveform keeps its original steps and noise.
+It defaults to Off. For a roughly 194 Hz waveform, 1 kHz is a starting point;
+compare Off, 500 Hz, 1 kHz and 2 kHz against the actual signal. Keep the level
+near the middle of the waveform, and use Normal mode to distinguish a real
+trigger from an automatic sweep.
+
+This setting requires firmware 1.2 or later. The trigger marker follows the
+filtered crossing, so the raw trace can cross the level earlier. The filter
+uses the actual sample interval, and is reset and allowed to settle at each arm.
+
 ### Calibration
 
 Every reading is a straight line from a converter code to a voltage, and the

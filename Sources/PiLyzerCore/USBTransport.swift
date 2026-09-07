@@ -2,6 +2,7 @@ import CPiLyzerUSB
 import Foundation
 
 public enum InstrumentError: Error, LocalizedError, Equatable {
+    case triggerLowPassUnavailable
     case notConnected
     case openFailed(Int32)
     case inUse
@@ -15,6 +16,8 @@ public enum InstrumentError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
+        case .triggerLowPassUnavailable:
+            return "Trigger LPF requires firmware 1.2 or later. Update the firmware or set Trigger LPF to Off."
         case .notConnected:
             return "No instrument is connected."
         case let .openFailed(code):

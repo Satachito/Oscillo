@@ -36,7 +36,7 @@ public final class SimulatedInstrument: Instrument {
     public var signalPresent = true
 
     public let identity = DeviceIdentity(protocolVersion: Wire.version,
-                                         firmwareVersion: 0x0100,
+                                         firmwareVersion: 0x0102,
                                          boardID: 1,
                                          name: "Demo signal")
     public let capabilities = DeviceCapabilities(
@@ -44,7 +44,7 @@ public final class SimulatedInstrument: Instrument {
         analogClockHz: 48_000_000, analogMinPeriodCycles: 96,
         analogMaxRecord: 16384, analogMaxPretrigger: 16383,
         logicClockHz: 150_000_000, logicMaxRecord: 65536, logicMaxPretrigger: 65535,
-        referenceVolts: 3.3, flags: 1 | 2)
+        referenceVolts: 3.3, flags: 1 | 2 | 8)
 
     private var ranges = [0, 0]
     private let epoch = Date()
@@ -101,6 +101,9 @@ public final class SimulatedInstrument: Instrument {
     // MARK: - Analogue
 
     public func configureAnalog(_ configuration: AnalogConfiguration) throws -> AcquisitionPlan {
+        guard configuration.triggerLowPassHz == 0 || (100...100_000).contains(configuration.triggerLowPassHz) else {
+            throw InstrumentError.rejected(.analogConfigure, .badArgument)
+        }
         analogConfiguration = configuration
         let channels = max(configuration.channels, 1)
         let floor = capabilities.minimumConversionPeriod
@@ -134,20 +137,23 @@ public final class SimulatedInstrument: Instrument {
         if analogConfiguration.triggerMode != .freeRun && signalPresent {
             let sourceSlot = min(Int(analogConfiguration.triggerSource), channels - 1)
             let sourceChannel = slots.indices.contains(sourceSlot) ? slots[sourceSlot] : 0
-            let level = scale(for: sourceChannel).volts(code: Double(analogConfiguration.triggerLevel))
+            let level = Int(analogConfiguration.triggerLevel)
+            let hysteresis = Int(analogConfiguration.triggerHysteresis)
             let rising = analogConfiguration.triggerSlope == .rising
-            var previous = voltage(sourceChannel, at: now)
-            for step in 1...(count * 3) {
+            var filter = TriggerFilter(cutoffHz: analogConfiguration.triggerLowPassHz, samplePeriod: period)
+            let searchLength = filter.remaining + count * 3
+            var armed = false
+            for step in 0..<searchLength {
                 let time = now + Double(step) * period
-                let value = voltage(sourceChannel, at: time)
-                let crossed = rising ? (previous < level && value >= level)
-                                     : (previous > level && value <= level)
-                if crossed {
+                let value = filter.sample(code(sourceChannel, at: time))
+                guard step >= analogPlan.pretriggerSamples, filter.remaining == 0 else { continue }
+                if !armed {
+                    armed = rising ? value < level - hysteresis : value > level + hysteresis
+                } else if rising ? value >= level : value <= level {
                     start = time - Double(analogPlan.pretriggerSamples) * period
                     analogTriggered = true
                     break
                 }
-                previous = value
             }
         }
         if !analogTriggered && analogConfiguration.triggerMode == .normal {

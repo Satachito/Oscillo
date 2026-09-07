@@ -12,6 +12,7 @@ endpoint carrying the protocol in `docs/protocol.md`.
 | `analog.c` | converter → DMA → decimation → trigger search |
 | `logic.c` | PIO capture, PIO trigger watch, exact edge search |
 | `logic_capture.pio` | the two state machine programs |
+| `trigger_filter.h` | optional trigger-only LPF, with fractional-code state |
 | `usb_descriptors.c` | one vendor-specific interface, so macOS loads no driver |
 | `pilyzer_protocol.h` | the wire structures, shared with the host by hand |
 
@@ -115,6 +116,12 @@ These compile the production `analog.c` and `logic.c` against small substitutes
 for the hardware calls. AddressSanitizer and UndefinedBehaviorSanitizer check
 full buffers, late trigger edges, and safe re-arming. They do not validate DMA
 or PIO timing on a physical board.
+
+Firmware 1.2 adds **Trigger LPF** (Off or a cutoff in Hz). It filters the
+comparator input while leaving the acquired samples intact. Tests also cover
+filter settling, buffer rollover, preserved raw waveforms and a 194 Hz,
+30-step signal with high-frequency ripple. The LPF requires the matching host
+application; old hosts keep it off via the zero reserved field.
 
 ```bash
 swift run PiLyzer --list       # is it on the bus, and is it an instrument?

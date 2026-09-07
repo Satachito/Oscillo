@@ -161,7 +161,10 @@ public final class USBInstrument: Instrument {
     // MARK: - Analogue
 
     public func configureAnalog(_ configuration: AnalogConfiguration) throws -> AcquisitionPlan {
-        try plan(from: try send(.analogConfigure, configuration.encoded()), opcode: .analogConfigure)
+        guard configuration.triggerLowPassHz == 0 || capabilities.hasTriggerLowPass else {
+            throw InstrumentError.triggerLowPassUnavailable
+        }
+        return try plan(from: try send(.analogConfigure, configuration.encoded()), opcode: .analogConfigure)
     }
 
     public func armAnalog() throws { _ = try send(.analogArm) }

@@ -18,6 +18,7 @@
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 #include "pico/time.h"
+#include "trigger_filter.h"
 
 #define ADC_DMA_TRANSFERS 0x0FFFFFFFu
 #define ADC_DMA_COUNT_MASK 0x0FFFFFFFu
@@ -26,6 +27,7 @@ static uint16_t raw_ring[ADC_RAW_SAMPLES] __attribute__((aligned(ADC_RAW_BYTES))
 static uint16_t record_buffer[ANALOG_BUFFER_CONVERSIONS];
 
 static int raw_dma = -1;
+static trigger_filter_t trigger_filter;
 
 static struct {
     bool     valid;
@@ -141,6 +143,9 @@ uint8_t analog_configure(const pilyzer_analog_config_t *config, pilyzer_plan_t *
     if (config->trigger_mode > TRIG_NORMAL) return ST_BAD_ARGUMENT;
     if (config->trigger_slope > SLOPE_FALLING) return ST_BAD_ARGUMENT;
     if (config->record_samples == 0) return ST_BAD_ARGUMENT;
+    if (config->trigger_lowpass_hz != 0 &&
+        (config->trigger_lowpass_hz < TRIGGER_FILTER_MIN_HZ ||
+         config->trigger_lowpass_hz > TRIGGER_FILTER_MAX_HZ)) return ST_BAD_ARGUMENT;
 
     plan.channel_mask = mask;
     plan.channels = (mask == 0x03) ? 2 : 1;
@@ -169,6 +174,9 @@ uint8_t analog_configure(const pilyzer_analog_config_t *config, pilyzer_plan_t *
     plan.high_water = plan.capacity - (plan.record - plan.pretrigger);
 
     solve_timing(config->sample_period_fs, plan.channels, &plan.decimation, &plan.cycles_q8);
+    double sample_period = (double)plan.cycles_q8 / 256.0 / ADC_CLOCK_HZ
+        * plan.channels * plan.decimation;
+    trigger_filter_configure(&trigger_filter, config->trigger_lowpass_hz, sample_period);
     plan.valid = true;
 
     out->clock_hz = ADC_CLOCK_HZ;
@@ -196,6 +204,7 @@ uint8_t analog_arm(void)
     run.trigger_index = 0;
     run.stop_at = 0;
     run.armed_at = get_absolute_time();
+    trigger_filter_reset(&trigger_filter);
     hardware_start();
     return ST_OK;
 }
@@ -230,9 +239,11 @@ static void restart_with_history(void)
                 (size_t)keep * plan.channels * sizeof(uint16_t));
     }
     run.written = keep * plan.channels;
-    run.scanned = keep;
+    // Replay retained history into a fresh filter after the sampling gap.
+    run.scanned = trigger_filter.alpha_q30 ? 0 : keep;
     run.armed = false;
-    run.state = (keep >= plan.pretrigger) ? STATE_WAITING : STATE_FILLING;
+    run.state = trigger_filter.alpha_q30 || keep < plan.pretrigger ? STATE_FILLING : STATE_WAITING;
+    trigger_filter_reset(&trigger_filter);
     hardware_start();
 }
 
@@ -282,12 +293,14 @@ static void scan_for_trigger(void)
     int32_t hysteresis = plan.hysteresis;
 
     while (run.scanned < available) {
+        int32_t value = trigger_filter_sample(&trigger_filter,
+            record_buffer[run.scanned * plan.channels + plan.source_index]);
         if (run.state == STATE_FILLING) {
             if (run.scanned < plan.pretrigger) { run.scanned++; continue; }
             run.state = STATE_WAITING;
         }
 
-        int32_t value = record_buffer[run.scanned * plan.channels + plan.source_index];
+        if (trigger_filter.remaining) { run.scanned++; continue; }
         if (plan.slope == SLOPE_RISING) {
             if (!run.armed) {
                 if (value < level - hysteresis) run.armed = true;

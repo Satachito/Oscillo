@@ -190,7 +190,7 @@ static void fill_capabilities(pilyzer_capabilities_t *capabilities)
     capabilities->logic_max_record = LOGIC_MAX_RECORD;
     capabilities->logic_max_pretrigger = LOGIC_MAX_RECORD - 1;
     capabilities->reference_microvolts = ADC_REFERENCE_MICROVOLTS;
-    capabilities->flags = CAP_CALIBRATION_OUTPUT |
+    capabilities->flags = CAP_CALIBRATION_OUTPUT | CAP_TRIGGER_LOWPASS |
                           (PILYZER_BOARD_ID != 0 ? CAP_SOFTWARE_RANGE : 0);
 }
 

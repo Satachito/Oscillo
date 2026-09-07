@@ -136,6 +136,7 @@ public struct DeviceCapabilities: Equatable, Sendable {
 
     public var hasSoftwareRanges: Bool { flags & 1 != 0 }
     public var hasCalibrationOutput: Bool { flags & 2 != 0 }
+    public var hasTriggerLowPass: Bool { flags & 8 != 0 }
 
     /// Samples arrive left-aligned in 16 bits, so this is the value a reading
     /// at the top of the converter's range comes back as.
@@ -209,12 +210,15 @@ public struct AnalogConfiguration: Equatable, Sendable {
     public var recordSamples: Int
     public var pretriggerSamples: Int
     public var autoTimeout: Double
+    /// Cutoff in Hz; zero bypasses the trigger-only filter.
+    public var triggerLowPassHz: Int
 
     public init(channelMask: UInt8 = 0b11, triggerMode: TriggerMode = .auto,
                 triggerSource: Int = 0, triggerSlope: TriggerSlope = .rising,
                 triggerLevel: UInt16 = 32768, triggerHysteresis: UInt16 = 256,
                 samplePeriod: Double = 1e-5, recordSamples: Int = 2000,
-                pretriggerSamples: Int = 200, autoTimeout: Double = 0.1) {
+                pretriggerSamples: Int = 200, autoTimeout: Double = 0.1,
+                triggerLowPassHz: Int = 0) {
         self.channelMask = channelMask
         self.triggerMode = triggerMode
         self.triggerSource = triggerSource
@@ -225,6 +229,7 @@ public struct AnalogConfiguration: Equatable, Sendable {
         self.recordSamples = recordSamples
         self.pretriggerSamples = pretriggerSamples
         self.autoTimeout = autoTimeout
+        self.triggerLowPassHz = triggerLowPassHz
     }
 
     public var channels: Int {
@@ -243,7 +248,7 @@ public struct AnalogConfiguration: Equatable, Sendable {
         writer.append(UInt32(clamping: recordSamples))
         writer.append(UInt32(clamping: pretriggerSamples))
         writer.append(UInt32(clamping: Int(max(autoTimeout, 0) * 1e6)))
-        writer.append(UInt32(0))
+        writer.append(UInt32(clamping: triggerLowPassHz))
         return writer.data
     }
 }

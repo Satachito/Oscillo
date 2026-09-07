@@ -72,11 +72,64 @@ static void full_buffer_never_writes_past_end(void)
     assert(run.raw_consumed == 0);
 }
 
+static void filtered_trigger_preserves_raw_record(void)
+{
+    for (int enabled = 0; enabled <= 1; enabled++) {
+        analog_abort();
+        pilyzer_analog_config_t config = {
+            .channel_mask = 3, .trigger_mode = TRIG_NORMAL,
+            .trigger_level = 32768, .trigger_hysteresis = 256,
+            .sample_period_fs = 4000000000ULL,
+            .record_samples = 1024, .pretrigger_samples = 200,
+            .trigger_lowpass_hz = enabled ? 1000 : 0,
+        };
+        pilyzer_plan_t actual;
+        assert(analog_configure(&config, &actual) == ST_OK);
+        assert(analog_arm() == ST_OK);
+        for (int i = 0; i < 2048; i++) {
+            record_buffer[i * 2] = i == 300 ? 65520 : (i >= 600 ? 35000 : 30000);
+            record_buffer[i * 2 + 1] = (uint16_t)i;
+        }
+        uint16_t original[4096];
+        memcpy(original, record_buffer, sizeof original);
+        run.written = 4096;
+        scan_for_trigger();
+        assert(run.state == STATE_POST);
+        uint32_t edge = run.record_start + run.trigger_index;
+        if (enabled) assert(edge > 600 && edge < 900);
+        else assert(edge == 300);
+        assert(memcmp(original, record_buffer, sizeof original) == 0);
+    }
+}
+
+static void rollover_replays_filter_history_without_triggering_in_it(void)
+{
+    analog_abort();
+    pilyzer_analog_config_t config = {
+        .channel_mask = 1, .trigger_mode = TRIG_NORMAL,
+        .trigger_level = 32768, .sample_period_fs = 4000000000ULL,
+        .record_samples = 1024, .pretrigger_samples = 512, .trigger_lowpass_hz = 1000,
+    };
+    pilyzer_plan_t actual;
+    assert(analog_configure(&config, &actual) == ST_OK);
+    assert(analog_arm() == ST_OK);
+    for (int i = 0; i < 2048; i++) record_buffer[i] = i < 1800 ? 30000 : 35000;
+    run.written = 2048;
+    restart_with_history();
+    assert(run.scanned == 0 && run.state == STATE_FILLING);
+    scan_for_trigger();
+    assert(run.state == STATE_FILLING); // Every replayed sample is pre-trigger history.
+    assert(run.scanned == 512 && !run.triggered);
+    assert(trigger_filter.remaining == 0);
+}
+
 int main(void)
 {
     analog_init();
     late_trigger_restarts();
     last_valid_trigger_completes();
     full_buffer_never_writes_past_end();
-    puts("Analog: 3 boundary regressions passed");
+    filtered_trigger_preserves_raw_record();
+    rollover_replays_filter_history_without_triggering_in_it();
+    puts("Analog: 5 regressions passed");
 }
