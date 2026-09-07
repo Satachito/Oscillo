@@ -108,7 +108,9 @@ from.
 
 **Trigger LPF** in the Scope panel filters only the signal used to find the
 trigger. The displayed/exported waveform keeps its original steps and noise.
-It defaults to Off. For a roughly 194 Hz waveform, 1 kHz is a starting point;
+It defaults to Off. An on/off switch retains the last cutoff, and a logarithmic
+slider covers 100 Hz to 100 kHz. The **1 kHz** shortcut enables that cutoff.
+For a roughly 194 Hz waveform, 1 kHz is a starting point;
 compare Off, 500 Hz, 1 kHz and 2 kHz against the actual signal. Keep the level
 near the middle of the waveform, and use Normal mode to distinguish a real
 trigger from an automatic sweep.

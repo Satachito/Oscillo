@@ -96,13 +96,8 @@ struct ControlPanelView: View {
                           range: levelRange, format: Format.voltage)
             LabeledSlider(title: "Noise", value: $model.settings.trigger.hysteresis,
                           range: 0...0.05, format: { Format.percent($0 * 100, digits: 1) })
-            Picker("Trigger LPF", selection: $model.settings.trigger.lowPassHz) {
-                ForEach(AnalogTriggerSettings.lowPassOptions, id: \.self) { frequency in
-                    Text(frequency == 0 ? "Off" : Format.frequency(Double(frequency)))
-                        .tag(frequency)
-                }
-            }
-            .help("Filters the trigger input only. The waveform stays unfiltered; the trigger marker follows the filtered crossing.")
+            TriggerLowPassControl(cutoffHz: $model.settings.trigger.lowPassHz)
+                .help("Filters the trigger input only. The waveform stays unfiltered; the trigger marker follows the filtered crossing.")
             if model.settings.trigger.lowPassHz > 0 {
                 Text(model.capabilities.hasTriggerLowPass
                      ? "LPF affects trigger timing; the trace is unchanged."
@@ -320,6 +315,55 @@ struct VerticalSection: View {
             .span(reference: model.capabilities.referenceVolts) * settings.probeAttenuation
         return AnalogChannelSettings.verticalSteps(span: span,
                                                    divisions: ScopeSettings.verticalDivisions)
+    }
+}
+
+/// A logarithmic frequency control gives the low end as much travel as the
+/// high end. Bypass has its own switch so zero is never mapped through log10.
+private struct TriggerLowPassControl: View {
+    @Binding var cutoffHz: Int
+    @State private var rememberedCutoff = 1000
+
+    private var enabled: Binding<Bool> {
+        Binding(get: { cutoffHz > 0 }, set: { on in
+            if cutoffHz > 0 { rememberedCutoff = cutoffHz }
+            cutoffHz = on ? rememberedCutoff : 0
+        })
+    }
+
+    private var logarithmicFrequency: Binding<Double> {
+        Binding(get: { log10(Double(max(cutoffHz > 0 ? cutoffHz : rememberedCutoff, 100))) },
+                set: { position in
+                    let frequency = Int(pow(10, position).rounded())
+                    rememberedCutoff = frequency
+                    cutoffHz = frequency
+                })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Toggle("Trigger LPF", isOn: enabled)
+                Spacer()
+                Text(cutoffHz > 0 ? "\(cutoffHz.formatted()) Hz" : "Off")
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            }
+            Slider(value: logarithmicFrequency, in: 2...5)
+                .disabled(cutoffHz == 0)
+                .accessibilityLabel("Trigger LPF cutoff")
+                .accessibilityValue(cutoffHz > 0 ? "\(cutoffHz) hertz" : "Off")
+            HStack {
+                Text("100 Hz")
+                Spacer()
+                Button("1 kHz") { cutoffHz = 1000 }
+                    .buttonStyle(.borderless)
+                Spacer()
+                Text("100 kHz")
+            }
+            .font(.caption2).foregroundStyle(.secondary)
+        }
+        .onAppear { if cutoffHz > 0 { rememberedCutoff = cutoffHz } }
+        .onChange(of: cutoffHz) { if $0 > 0 { rememberedCutoff = $0 } }
     }
 }
 

@@ -100,8 +100,6 @@ public struct AnalogTriggerSettings: Codable, Equatable, Sendable {
     public var autoTimeout: Double
     public var lowPassHz: Int
 
-    public static let lowPassOptions = [0, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-
     public init(mode: TriggerMode = .auto, source: Int = 0, slope: TriggerSlope = .rising,
                 levelVolts: Double = 0, position: Double = 0.1,
                 hysteresis: Double = 0.004, autoTimeout: Double = 0.1, lowPassHz: Int = 0) {
