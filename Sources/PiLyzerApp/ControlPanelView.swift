@@ -352,14 +352,28 @@ private struct TriggerLowPassControl: View {
                 .disabled(cutoffHz == 0)
                 .accessibilityLabel("Trigger LPF cutoff")
                 .accessibilityValue(cutoffHz > 0 ? "\(cutoffHz) hertz" : "Off")
-            HStack {
-                Text("100 Hz")
-                Spacer()
-                Button("1 kHz") { cutoffHz = 1000 }
-                    .buttonStyle(.borderless)
-                Spacer()
-                Text("100 kHz")
+            GeometryReader { geometry in
+                // Decades occupy equal thirds of the logarithmic slider's travel.
+                // Inset by the small slider thumb's radius to match its endpoints.
+                let inset: CGFloat = 8
+                let travel = max(geometry.size.width - 2 * inset, 0)
+                ZStack(alignment: .topLeading) {
+                    HStack {
+                        Text("100 Hz")
+                        Spacer()
+                        Text("100 kHz")
+                    }
+                    Button("1 kHz") { cutoffHz = 1000 }
+                        .buttonStyle(.borderless)
+                        .help("Set trigger LPF to 1 kHz")
+                        .fixedSize()
+                        .position(x: inset + travel / 3, y: geometry.size.height / 2)
+                    Text("10 kHz")
+                        .fixedSize()
+                        .position(x: inset + travel * 2 / 3, y: geometry.size.height / 2)
+                }
             }
+            .frame(height: 14)
             .font(.caption2).foregroundStyle(.secondary)
         }
         .onAppear { if cutoffHz > 0 { rememberedCutoff = cutoffHz } }
