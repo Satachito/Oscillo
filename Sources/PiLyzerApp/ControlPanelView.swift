@@ -63,6 +63,14 @@ struct ControlPanelView: View {
                 }
                 Toggle("X/Y", isOn: $model.settings.showsXY)
                     .disabled(model.settings.mode != .scope)
+                if model.settings.showsXY && model.settings.mode == .scope {
+                    Picker("X axis", selection: $model.settings.xyHorizontal) {
+                        ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
+                    }
+                    Picker("Y axis", selection: $model.settings.xyVertical) {
+                        ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
+                    }
+                }
             }
         }
     }
@@ -76,6 +84,8 @@ struct ControlPanelView: View {
             }
             LabeledSlider(title: "Position", value: $model.settings.trigger.position,
                           range: 0...0.95, format: { Format.percent($0 * 100, digits: 0) })
+            Text("\(model.enabledAnalogChannels.count) ch · max \(Format.sampleRate(model.maximumAnalogRate))/ch")
+                .font(.caption).foregroundStyle(.secondary)
             Text(model.planDescription)
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -87,7 +97,7 @@ struct ControlPanelView: View {
                 ForEach(TriggerMode.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             Picker("Source", selection: $model.settings.trigger.source) {
-                ForEach(0..<model.settings.channels.count, id: \.self) { Text("CH\($0 + 1)").tag($0) }
+                ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
             }
             Picker("Edge", selection: $model.settings.trigger.slope) {
                 ForEach(TriggerSlope.allCases, id: \.self) { Text($0.label).tag($0) }
@@ -119,7 +129,7 @@ struct ControlPanelView: View {
     }
 
     @ViewBuilder private var verticalSections: some View {
-        ForEach(0..<model.settings.channels.count, id: \.self) { channel in
+        ForEach(model.availableAnalogChannels, id: \.self) { channel in
             VerticalSection(model: model, channel: channel)
         }
     }
@@ -272,7 +282,13 @@ struct VerticalSection: View {
 
     var body: some View {
         Section("Channel \(channel + 1)") {
-            Toggle("Enabled", isOn: binding.isEnabled)
+            Toggle("Enabled", isOn: Binding(
+                get: { model.settings.channels[channel].isEnabled },
+                set: { enabled in
+                    model.settings.channels[channel].isEnabled = enabled
+                    model.normalizeAnalogSelection()
+                }))
+                .disabled(model.settings.channels[channel].isEnabled && model.enabledAnalogChannels.count == 1)
 
             if model.ranges.count > 1 {
                 Picker("Range", selection: binding.rangeIndex) {
@@ -297,7 +313,7 @@ struct VerticalSection: View {
 
             HStack(spacing: 6) {
                 Button("Zero here") { model.calibrateZero() }
-                    .help("Ground both inputs first: what they read now becomes zero.")
+                    .help("Ground all inputs first: what they read now becomes zero.")
                 Button("Reset") { model.resetCalibration() }
             }
             .disabled(!model.isConnected)

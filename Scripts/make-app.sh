@@ -21,7 +21,7 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <dict>
     <key>CFBundleName</key><string>PiLyzer</string>
     <key>CFBundleDisplayName</key><string>PiLyzer</string>
-    <key>CFBundleIdentifier</key><string>com.pilyzer.mac</string>
+    <key>CFBundleIdentifier</key><string>tokyo.828.pilyzer</string>
     <key>CFBundleExecutable</key><string>PiLyzer</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>

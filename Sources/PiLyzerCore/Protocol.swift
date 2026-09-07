@@ -233,7 +233,7 @@ public struct AnalogConfiguration: Equatable, Sendable {
     }
 
     public var channels: Int {
-        (channelMask & 0b01 != 0 ? 1 : 0) + (channelMask & 0b10 != 0 ? 1 : 0)
+        channelMask.nonzeroBitCount
     }
 
     public func encoded() -> Data {

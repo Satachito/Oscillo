@@ -16,6 +16,17 @@ struct PiLyzerApp: App {
             print(Diagnostics.selfTest())
             exit(0)
         }
+        if let index = CommandLine.arguments.firstIndex(of: "--timing") {
+            let listed = CommandLine.arguments.dropFirst(index + 1).compactMap(Int.init)
+            print(Diagnostics.timingCheck(frequencies: listed.isEmpty ? [100, 1_000, 10_000]
+                                                                     : Array(listed)))
+            exit(0)
+        }
+        if let index = CommandLine.arguments.firstIndex(of: "--testout") {
+            let argument = index + 1 < CommandLine.arguments.count ? CommandLine.arguments[index + 1] : "1000"
+            print(Diagnostics.setTestOutput(argument == "off" ? 0 : Int(argument) ?? 1000))
+            exit(0)
+        }
         if CommandLine.arguments.contains("--bootsel") {
             print(Diagnostics.rebootToBootloader())
             exit(0)

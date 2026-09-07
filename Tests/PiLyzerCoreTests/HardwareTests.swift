@@ -11,7 +11,17 @@ import Testing
 ///
 /// Serialized because there is one instrument and it is opened exclusively —
 /// run in parallel, all but one of these would only prove that.
-@Suite("Hardware", .serialized, .enabled(if: !USBTransport.attachedDevices().isEmpty))
+/// Attached is not the same as available: the instrument is opened
+/// exclusively, so if the application has it these tests cannot run. Skip
+/// rather than fail — a running front panel is not a broken build.
+private let instrumentIsFree: Bool = {
+    guard !USBTransport.attachedDevices().isEmpty else { return false }
+    guard let transport = try? USBTransport() else { return false }
+    transport.close()
+    return true
+}()
+
+@Suite("Hardware", .serialized, .enabled(if: instrumentIsFree))
 struct HardwareTests {
     private func open() throws -> USBInstrument {
         try USBInstrument()

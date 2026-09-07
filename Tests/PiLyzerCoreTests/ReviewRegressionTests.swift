@@ -107,6 +107,7 @@ struct ReviewRegressionTests {
         let ready = DispatchSemaphore(value: 0)
         engine.onStateChange = { if $0.isConnected { ready.signal() } }
         var settings = ScopeSettings(mode: .meter)
+        settings.ensureAnalogChannels(device.capabilities.analogChannels)
         settings.channels[0].probeAttenuation = 10
         settings.channels[0].setCalibration(ChannelCalibration(zero: 0.1, scale: 1.04), forRange: 0)
         settings.channels[0].setCalibration(ChannelCalibration(zero: 0.2, scale: 0.98), forRange: 1)

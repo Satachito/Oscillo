@@ -30,23 +30,24 @@ public final class SimulatedInstrument: Instrument {
     public var tones: [Tone] = [
         Tone(frequency: 1000, amplitude: 2.0, distortion: 0.01),
         Tone(frequency: 500, amplitude: 1.0, offset: 0.25, isSquare: true),
+        Tone(frequency: 194, amplitude: 1.5),
     ]
     public var noise = 0.0015
     /// When false, nothing ever crosses the trigger level in normal mode.
     public var signalPresent = true
 
     public let identity = DeviceIdentity(protocolVersion: Wire.version,
-                                         firmwareVersion: 0x0102,
+                                         firmwareVersion: 0x0105,
                                          boardID: 1,
                                          name: "Demo signal")
     public let capabilities = DeviceCapabilities(
-        analogChannels: 2, analogBits: 12, logicChannels: 8, analogRanges: 2,
+        analogChannels: 3, analogBits: 12, logicChannels: 8, analogRanges: 2,
         analogClockHz: 48_000_000, analogMinPeriodCycles: 96,
         analogMaxRecord: 16384, analogMaxPretrigger: 16383,
         logicClockHz: 150_000_000, logicMaxRecord: 65536, logicMaxPretrigger: 65535,
         referenceVolts: 3.3, flags: 1 | 2 | 8)
 
-    private var ranges = [0, 0]
+    private var ranges = [0, 0, 0]
     private let epoch = Date()
 
     private var analogPlan = AcquisitionPlan.empty
@@ -86,7 +87,7 @@ public final class SimulatedInstrument: Instrument {
 
     private func scale(for channel: Int) -> VoltageScale {
         let list = FrontEnd.ranges(forBoard: identity.boardID)
-        let index = min(max(ranges[min(channel, 1)], 0), list.count - 1)
+        let index = min(max(ranges[min(channel, ranges.count - 1)], 0), list.count - 1)
         return VoltageScale(reference: capabilities.referenceVolts,
                             fullScale: capabilities.analogFullScale,
                             range: list[index])
@@ -102,6 +103,10 @@ public final class SimulatedInstrument: Instrument {
 
     public func configureAnalog(_ configuration: AnalogConfiguration) throws -> AcquisitionPlan {
         guard configuration.triggerLowPassHz == 0 || (100...100_000).contains(configuration.triggerLowPassHz) else {
+            throw InstrumentError.rejected(.analogConfigure, .badArgument)
+        }
+        guard configuration.channelMask != 0,
+              configuration.channelMask & ~UInt8((1 << capabilities.analogChannels) - 1) == 0 else {
             throw InstrumentError.rejected(.analogConfigure, .badArgument)
         }
         analogConfiguration = configuration
@@ -204,7 +209,7 @@ public final class SimulatedInstrument: Instrument {
 
     public func sampleAnalog(averages: Int) throws -> [UInt16] {
         let now = Date().timeIntervalSince(epoch)
-        return [code(0, at: now), code(1, at: now)]
+        return (0..<capabilities.analogChannels).map { code($0, at: now) }
     }
 
     // MARK: - Logic

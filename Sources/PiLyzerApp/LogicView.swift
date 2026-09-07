@@ -108,6 +108,10 @@ struct LogicActivityRow: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
+        Footer { content }
+    }
+
+    private var content: some View {
         HStack(alignment: .top, spacing: 14) {
             ForEach(model.logicActivity) { activity in
                 VStack(alignment: .leading, spacing: 1) {
@@ -125,11 +129,6 @@ struct LogicActivityRow: View {
             Spacer()
             Text(model.planDescription).foregroundStyle(.secondary)
         }
-        .font(.system(size: 11, design: .monospaced))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial)
     }
 }
 
@@ -137,6 +136,10 @@ struct DecodedRow: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
+        Footer { content }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text("\(model.decoder.label) · \(model.decoded.count) items")
@@ -158,11 +161,6 @@ struct DecodedRow: View {
             }
             .frame(height: 26)
         }
-        .font(.system(size: 11, design: .monospaced))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial)
     }
 
     private func colour(for kind: DecodedItem.Kind) -> Color {
@@ -174,15 +172,15 @@ struct DecodedRow: View {
     }
 }
 
-/// The meter: both inputs read straight off the converter, with a rolling
+/// The meter: all inputs read straight off the converter, with a rolling
 /// chart of where they have been.
 struct MeterView: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 40) {
-                ForEach(0..<min(2, model.settings.channels.count), id: \.self) { channel in
+            HStack(spacing: 16) {
+                ForEach(model.availableAnalogChannels, id: \.self) { channel in
                     VStack(alignment: .leading, spacing: 4) {
                         Text("CH\(channel + 1)")
                             .font(.system(size: 12, design: .monospaced))
@@ -195,9 +193,9 @@ struct MeterView: View {
                             .foregroundStyle(Theme.channelColor(channel))
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
-                            .frame(width: 230, alignment: .trailing)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                     }
-                    .frame(width: 230, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 Spacer()
             }
@@ -210,15 +208,14 @@ struct MeterView: View {
             }
             .background(Theme.screen)
 
-            HStack {
-                Text(model.meter.map { "every \(Format.time($0.interval))" } ?? "—")
-                Spacer()
-                Text("\(model.meter?.history.first?.count ?? 0) points")
+            Footer {
+                HStack {
+                    Text(model.meter.map { "every \(Format.time($0.interval))" } ?? "—")
+                    Spacer()
+                    Text("\(model.meter?.history.first?.count ?? 0) points")
+                }
+                .foregroundStyle(.secondary)
             }
-            .font(.system(size: 11, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(.thinMaterial)
         }
     }
 

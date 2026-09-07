@@ -8,13 +8,19 @@ public struct ChannelTrace: Equatable, Sendable, Identifiable {
     /// the signal on screen is a flattened copy of the real one and no amount
     /// of calibration brings it back.
     public var clipped: Bool
+    /// What software AC coupling took out, in volts. Zero when it is off. The
+    /// samples are no longer absolute once this is non-zero, so anything drawn
+    /// against them — the trigger level, above all — has to be shifted by the
+    /// same amount.
+    public var removedMean: Double
 
     public var id: Int { index }
 
-    public init(index: Int, samples: [Double], clipped: Bool = false) {
+    public init(index: Int, samples: [Double], clipped: Bool = false, removedMean: Double = 0) {
         self.index = index
         self.samples = samples
         self.clipped = clipped
+        self.removedMean = removedMean
     }
 }
 

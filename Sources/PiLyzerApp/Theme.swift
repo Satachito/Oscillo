@@ -12,6 +12,7 @@ enum Theme {
     static let channel: [Color] = [
         Color(red: 1.00, green: 0.84, blue: 0.25),
         Color(red: 0.35, green: 0.85, blue: 1.00),
+        Color(red: 0.90, green: 0.55, blue: 1.00),
     ]
 
     static let logic: [Color] = [
@@ -95,4 +96,38 @@ func envelope(_ samples: [Double], width: Int) -> [(low: Double, high: Double)] 
         result.append((low, high))
     }
     return result
+}
+
+/// The strip under every screen.
+///
+/// All four screens put something different down here — readings, distortion
+/// figures, per-channel activity, decoded bytes — and each of those grows and
+/// shrinks as measurements come and go. The trace above must not move when
+/// they do, so the strip is sized by a hidden template of the tallest thing
+/// any screen shows rather than by whatever is in it at the moment. Using a
+/// template instead of a fixed number keeps it right if the font, the type
+/// size or the translation changes.
+struct Footer<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            template.hidden().accessibilityHidden(true)
+            content()
+        }
+        .font(.system(size: 11, design: .monospaced))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(.thinMaterial)
+    }
+
+    /// One channel's worth of readings: a heading and seven values, which is
+    /// the tallest footer in the application.
+    private var template: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("CH1").bold()
+            ForEach(0..<7, id: \.self) { _ in Text("Vpp") }
+        }
+    }
 }

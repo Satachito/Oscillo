@@ -135,6 +135,8 @@ public final class InstrumentEngine {
                 let device = try makeInstrument(source)
                 let ranges = FrontEnd.ranges(forBoard: device.identity.boardID)
                 instrument = device
+                settings.ensureAnalogChannels(device.capabilities.analogChannels)
+                resetMeter()
                 let description = ConnectedInstrument(identity: device.identity,
                                                       capabilities: device.capabilities,
                                                       source: source, ranges: ranges)
@@ -189,6 +191,7 @@ public final class InstrumentEngine {
                 || newSettings.calibrationOutputEnabled != settings.calibrationOutputEnabled
                 || newSettings.calibrationOutputFrequency != settings.calibrationOutputFrequency
             settings = newSettings
+            if let instrument { settings.ensureAnalogChannels(instrument.capabilities.analogChannels) }
             appliedAnalog = nil
             appliedLogic = nil
             if modeChanged { resetMeter() }
@@ -247,7 +250,7 @@ public final class InstrumentEngine {
         }
     }
 
-    /// One immediate reading of both inputs, in volts.
+    /// One immediate reading of all inputs, in volts.
     public func readNow(completion: @escaping ([Double]) -> Void) {
         queue.async { [self] in
             guard let instrument else { return }
@@ -355,12 +358,14 @@ public final class InstrumentEngine {
         var traces: [ChannelTrace] = []
         for (slot, channel) in channelSlots.enumerated() where slot < accumulator.count {
             var samples = accumulator[slot].map { $0 / divisor }
+            var removed = 0.0
             if channel < settings.channels.count, settings.channels[channel].removesMean, !samples.isEmpty {
-                let mean = samples.reduce(0, +) / Double(samples.count)
-                samples = samples.map { $0 - mean }
+                removed = samples.reduce(0, +) / Double(samples.count)
+                samples = samples.map { $0 - removed }
             }
             traces.append(ChannelTrace(index: channel, samples: samples,
-                                       clipped: channel < clipped.count && clipped[channel]))
+                                       clipped: channel < clipped.count && clipped[channel],
+                                       removedMean: removed))
         }
 
         return ScopeFrame(traces: traces, samplePeriod: analogPlan.samplePeriod,
@@ -485,7 +490,7 @@ public final class InstrumentEngine {
     }
 
     private func resetMeter() {
-        meterHistory = [[], []]
+        meterHistory = Array(repeating: [], count: instrument?.capabilities.analogChannels ?? 2)
         meterStart = Date()
     }
 

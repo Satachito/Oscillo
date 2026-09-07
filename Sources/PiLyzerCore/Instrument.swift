@@ -14,7 +14,7 @@ public protocol Instrument: AnyObject {
     func analogStatus() throws -> AcquisitionStatus
     func readAnalog(offset: Int, count: Int) throws -> [UInt16]
     func abortAnalog() throws
-    /// An immediate reading of both inputs, for the meter and for calibration.
+    /// An immediate reading of all inputs, for the meter and for calibration.
     func sampleAnalog(averages: Int) throws -> [UInt16]
 
     func configureLogic(_ configuration: LogicConfiguration) throws -> AcquisitionPlan
@@ -191,9 +191,11 @@ public final class USBInstrument: Instrument {
         var writer = ByteWriter()
         writer.append(UInt16(clamping: averages))
         let data = try send(.analogSample, writer.data, timeout: 2.0)
-        guard data.count >= 4 else { throw InstrumentError.shortReply(.analogSample, data.count) }
+        guard data.count >= capabilities.analogChannels * 2 else {
+            throw InstrumentError.shortReply(.analogSample, data.count)
+        }
         var reader = ByteReader(data)
-        return [reader.uint16(), reader.uint16()]
+        return (0..<capabilities.analogChannels).map { _ in reader.uint16() }
     }
 
     // MARK: - Logic

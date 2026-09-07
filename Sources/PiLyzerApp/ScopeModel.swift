@@ -86,7 +86,9 @@ final class ScopeModel: ObservableObject {
     }
 
     func connect() {
-        resetSpectrum()
+        clear()
+        plan = .empty
+        meter = nil
         Preferences.save(source: selectedSource)
         engine.connect(to: selectedSource, settings: settings)
     }
@@ -144,7 +146,7 @@ final class ScopeModel: ObservableObject {
         quality = nil
     }
 
-    /// Grounded-input calibration: whatever both channels read now becomes
+    /// Grounded-input calibration: whatever all channels read now becomes
     /// zero for the range each one is on.
     func calibrateZero() {
         let measuredRanges = settings.channels.map(\.rangeIndex)
@@ -189,6 +191,9 @@ final class ScopeModel: ObservableObject {
         case .disconnected: statusText = "Not connected"
         case .connecting: statusText = "Connecting…"
         case let .connected(instrument):
+            settings.ensureAnalogChannels(instrument.capabilities.analogChannels)
+            normalizeAnalogSelection()
+            settleTriggerLevel()
             statusText = instrument.summary
             if startsOnConnect { startsOnConnect = false; start() }
         case let .failed(reason): statusText = "Not connected"; errorText = reason
@@ -224,7 +229,7 @@ final class ScopeModel: ObservableObject {
 
     /// The spectrum follows the first channel that is switched on.
     var spectrumChannel: Int {
-        settings.channels.firstIndex { $0.isEnabled } ?? 0
+        enabledAnalogChannels.first ?? 0
     }
 
     private func rebuildDecoder() {
@@ -234,6 +239,31 @@ final class ScopeModel: ObservableObject {
 
     private func decodeLogic() {
         decoded = logicFrame.isEmpty ? [] : LogicAnalysis.decode(logicFrame, using: decoder)
+    }
+
+    /// A trigger level from a previous session can land outside what the
+    /// instrument now in front of us can reach — a level of 0 V is mid-range on
+    /// the front end but the very bottom of a bare Pico 2, where nothing ever
+    /// crosses it. That looks like a broken trigger rather than a stale
+    /// setting, so it is moved somewhere the signal can get to.
+    private func settleTriggerLevel() {
+        let source = min(max(settings.trigger.source, 0), max(settings.channels.count - 1, 0))
+        let usable = scale(for: source).usableTriggerLevel(settings.trigger.levelVolts)
+        if abs(usable - settings.trigger.levelVolts) > 1e-9 {
+            settings.trigger.levelVolts = usable
+        }
+    }
+
+    /// The X/Y axes, held to channels that are switched on. A plot against a
+    /// channel that is not being captured would simply be blank.
+    var xyHorizontalChannel: Int { resolveXY(settings.xyHorizontal, fallback: 0) }
+    var xyVerticalChannel: Int { resolveXY(settings.xyVertical, fallback: 1) }
+
+    private func resolveXY(_ wanted: Int, fallback: Int) -> Int {
+        let live = enabledAnalogChannels
+        if live.contains(wanted) { return wanted }
+        if live.contains(fallback) { return fallback }
+        return live.first ?? 0
     }
 
     // MARK: - Derived readouts
@@ -258,9 +288,32 @@ final class ScopeModel: ObservableObject {
         logicFrame.isEmpty ? [] : LogicAnalysis.activity(of: logicFrame)
     }
 
+    var availableAnalogChannels: [Int] {
+        Array(0..<min(settings.channels.count, capabilities.analogChannels))
+    }
+
+    var enabledAnalogChannels: [Int] {
+        let mask = settings.enabledMask(capabilities: capabilities)
+        return availableAnalogChannels.filter { mask & (1 << $0) != 0 }
+    }
+
+    func normalizeAnalogSelection() {
+        if !enabledAnalogChannels.contains(settings.trigger.source) {
+            settings.trigger.source = enabledAnalogChannels.first ?? 0
+        }
+        let choices = timebases
+        if !choices.contains(settings.secondsPerDivision), let value = choices.first(where: { $0 >= settings.secondsPerDivision }) ?? choices.last {
+            settings.secondsPerDivision = value
+        }
+    }
+
+    var maximumAnalogRate: Double {
+        1 / capabilities.minimumSamplePeriod(channels: max(enabledAnalogChannels.count, 1))
+    }
+
     var timebases: [Double] {
         ScopeSettings.timebases(capabilities: capabilities,
-                                channels: max(settings.enabledChannelCount, 1))
+                                channels: max(enabledAnalogChannels.count, 1))
     }
 
     var logicRates: [Double] {
@@ -294,13 +347,12 @@ final class ScopeModel: ObservableObject {
             return ("decoded.csv", Export.csv(decoded: decoded, frame: logicFrame))
         case .meter:
             guard let meter else { return ("meter.csv", "") }
-            var lines = ["time_s,channel1_V,channel2_V"]
-            let count = meter.history.first?.count ?? 0
+            var lines = [( ["time_s"] + meter.history.indices.map { "channel\($0 + 1)_V" } ).joined(separator: ",")]
+            let count = meter.history.map(\.count).min() ?? 0
             for index in 0..<count {
-                let time = Double(index) * meter.interval
-                let first = meter.history[0][index]
-                let second = meter.history.count > 1 && index < meter.history[1].count ? meter.history[1][index] : 0
-                lines.append(String(format: "%.6g,%.7g,%.7g", time, first, second))
+                let row = [String(format: "%.6g", Double(index) * meter.interval)]
+                    + meter.history.map { String(format: "%.7g", $0[index]) }
+                lines.append(row.joined(separator: ","))
             }
             return ("meter.csv", lines.joined(separator: "\n") + "\n")
         }

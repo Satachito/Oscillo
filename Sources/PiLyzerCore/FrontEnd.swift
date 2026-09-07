@@ -132,4 +132,31 @@ public struct VoltageScale: Equatable, Sendable {
     public var highestVolts: Double { volts(code: fullScale) }
     public var centreVolts: Double { (lowestVolts + highestVolts) / 2 }
     public var spanVolts: Double { highestVolts - lowestVolts }
+
+    /// The voltage the screen's centre line carries when a channel is not
+    /// shifted: the middle of what this channel can actually measure.
+    ///
+    /// A range that straddles zero puts zero there — snapped exactly, so the
+    /// centre line is zero volts and not the few millivolts of asymmetry that
+    /// ordinary resistors leave. A range that reaches only one side of zero
+    /// puts its own midpoint there instead, so a 0–3.3 V rail uses the whole
+    /// screen rather than the half above the middle.
+    public var screenCentreVolts: Double {
+        let centre = centreVolts
+        return abs(centre) < abs(spanVolts) / 1000 ? 0 : centre
+    }
+
+    /// True when zero volts is inside the range rather than at its edge.
+    public var straddlesZero: Bool { lowestVolts < 0 && highestVolts > 0 }
+
+    /// Keeps a trigger level somewhere the signal can actually reach. A level
+    /// sitting on the rail never fires, which looks exactly like a broken
+    /// trigger.
+    public func usableTriggerLevel(_ volts: Double) -> Double {
+        let margin = abs(spanVolts) * 0.02
+        let low = min(lowestVolts, highestVolts) + margin
+        let high = max(lowestVolts, highestVolts) - margin
+        guard low < high else { return screenCentreVolts }
+        return min(max(volts, low), high)
+    }
 }

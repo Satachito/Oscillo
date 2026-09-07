@@ -48,17 +48,25 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     /// The 1–2–5 choices offered for this range, from the whole span down to a
     /// hundredth of it.
     public static func verticalSteps(span: Double, divisions: Int) -> [Double] {
-        let coarsest = span / Double(divisions)
-        var steps: [Double] = []
-        var decade = 1e-4
-        while decade <= 100 {
-            for multiplier in [1.0, 2.0, 5.0] {
-                let value = decade * multiplier
-                if value <= coarsest * 1.001 && value >= coarsest / 100 { steps.append(value) }
+        // Zero volts sits on the centre line, so a signal that lives entirely
+        // on one side of it — a 0–3.3 V logic rail, say — only has half the
+        // screen to fit into. Stopping the ladder at span ÷ divisions assumed
+        // every signal straddles zero, and left no setting that showed a rail
+        // whole without dragging the trace down first. The coarsest step now
+        // fits the entire span inside two divisions.
+        guard span > 0, divisions > 0 else { return [] }
+        let ladder = { () -> [Double] in
+            var values: [Double] = []
+            var decade = 1e-5
+            while decade <= 1000 {
+                for multiplier in [1.0, 2.0, 5.0] { values.append(decade * multiplier) }
+                decade *= 10
             }
-            decade *= 10
-        }
-        return steps.reversed()
+            return values
+        }()
+        let coarsest = ladder.first { $0 >= span / 2 } ?? span
+        let finest = span / 400
+        return ladder.filter { $0 <= coarsest * 1.001 && $0 >= finest }.reversed()
     }
 
     public func range(from ranges: [InputRange]) -> InputRange {
@@ -192,6 +200,9 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
     public var logic: LogicSettings
     public var spectrum: SpectrumSettings
     public var showsXY: Bool
+    /// Which channel drives each axis of the X/Y plot.
+    public var xyHorizontal: Int
+    public var xyVertical: Int
     public var calibrationOutputEnabled: Bool
     public var calibrationOutputFrequency: Int
 
@@ -200,7 +211,8 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
                 secondsPerDivision: Double = 1e-3, recordLength: Int = 2048,
                 trigger: AnalogTriggerSettings = AnalogTriggerSettings(), averaging: Int = 1,
                 logic: LogicSettings = LogicSettings(), spectrum: SpectrumSettings = SpectrumSettings(),
-                showsXY: Bool = false, calibrationOutputEnabled: Bool = true,
+                showsXY: Bool = false, xyHorizontal: Int = 0, xyVertical: Int = 1,
+                calibrationOutputEnabled: Bool = true,
                 calibrationOutputFrequency: Int = 1000) {
         self.mode = mode
         self.channels = channels
@@ -211,6 +223,8 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         self.logic = logic
         self.spectrum = spectrum
         self.showsXY = showsXY
+        self.xyHorizontal = xyHorizontal
+        self.xyVertical = xyVertical
         self.calibrationOutputEnabled = calibrationOutputEnabled
         self.calibrationOutputFrequency = calibrationOutputFrequency
     }
@@ -224,6 +238,20 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         var mask: UInt8 = 0
         for (index, channel) in channels.enumerated() where channel.isEnabled { mask |= 1 << index }
         return mask == 0 ? 0b01 : mask
+    }
+
+    /// Keep saved calibration for hidden channels when connecting an older device.
+    public mutating func ensureAnalogChannels(_ count: Int) {
+        while channels.count < min(max(count, 0), 8) {
+            channels.append(AnalogChannelSettings())
+        }
+    }
+
+    public func enabledMask(capabilities: DeviceCapabilities) -> UInt8 {
+        let count = min(max(capabilities.analogChannels, 0), 8)
+        let supported = UInt8((1 << count) - 1)
+        let mask = enabledMask & supported
+        return mask == 0 ? 1 : mask
     }
 
     public var enabledChannelCount: Int {
@@ -250,8 +278,9 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
     /// smooth line the hardware never measured.
     public func analogConfiguration(capabilities: DeviceCapabilities,
                                     scales: [VoltageScale]) -> AnalogConfiguration {
-        let mask = enabledMask
-        let channelCount = enabledChannelCount
+        let mask = enabledMask(capabilities: capabilities)
+        let active = (0..<8).filter { mask & (1 << $0) != 0 }
+        let channelCount = active.count
         let floorPeriod = capabilities.minimumSamplePeriod(channels: channelCount)
         let screenTime = secondsPerDivision * Double(Self.horizontalDivisions)
 
@@ -266,14 +295,14 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         let source = min(max(trigger.source, 0), max(channels.count - 1, 0))
         // An unavailable trigger source falls back to the first enabled
         // physical channel, whose scale must be used for the voltage code.
-        let effectiveSource = mask & (1 << source) != 0 ? source : (mask & 1 != 0 ? 0 : 1)
+        let effectiveSource = active.contains(source) ? source : active[0]
         let scale = scales.indices.contains(effectiveSource) ? scales[effectiveSource] : scales.first
         let levelCode = scale.map { $0.code(forVolts: trigger.levelVolts) } ?? capabilities.analogFullScale / 2
         let level = UInt16(min(max(levelCode.rounded(), 0), capabilities.analogFullScale))
         let hysteresis = UInt16(min(max(trigger.hysteresis * capabilities.analogFullScale, 0), 4095))
 
         // The wire source is a slot in the interleaved acquisition record.
-        let slot = (mask == 0b11) ? effectiveSource : 0
+        let slot = active.firstIndex(of: effectiveSource) ?? 0
 
         let pretrigger = min(Int(Double(record) * min(max(trigger.position, 0), 0.95)),
                              capabilities.analogMaxPretrigger)

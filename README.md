@@ -1,6 +1,6 @@
 # PiLyzer
 
-A two-channel oscilloscope, spectrum analyser and eight-channel logic analyser
+A three-channel oscilloscope, spectrum analyser and eight-channel logic analyser
 built on a Raspberry Pi Pico 2, with a native macOS application to drive it.
 
 The RP2350 appears as a vendor-specific USB device, so the application claims it
@@ -10,7 +10,7 @@ directly through IOKit: no driver, no kext, no permission dialog, no Python.
 
 | | |
 | --- | --- |
-| Analogue | 2 channels, 12 bits, 250 kSa/s each (500 kSa/s with one channel) |
+| Analogue | 3 channels, 12 bits, 40 kHz; 495 / 247 / 165 kSa/s per channel with 1 / 2 / 3 enabled |
 | Vertical | ±25 V and ±5 V, switched from the application |
 | Record | up to 16 384 points a channel, with pre-trigger |
 | Spectrum | windowed FFT with averaging, THD, THD+N, SNR, SINAD and ENOB |
@@ -33,6 +33,8 @@ instrument does not appear in the list:
 ```bash
 swift run PiLyzer --list       # what is on the USB bus, and why it is not an instrument
 swift run PiLyzer --selftest   # walk the whole command set against a real board
+swift run PiLyzer --timing     # measure the time axis against the calibration output
+swift run PiLyzer --testout 1000   # drive that output, or "off"
 swift run PiLyzer --bootsel    # restart it in its bootloader to load new firmware
 ```
 
@@ -77,7 +79,7 @@ The firmware has its own build; see [firmware/pilyzer/README.md](firmware/pilyze
 | **Scope** | voltage against time, or X/Y; Vpp, mean, RMS, AC RMS, frequency, duty, rise time |
 | **Spectrum** | windowed FFT with peak markers, and the distortion figures |
 | **Logic** | eight traces, per-channel rate and duty, protocol decoding |
-| **Meter** | both inputs as numbers, with a rolling chart |
+| **Meter** | all inputs as numbers, with a rolling chart |
 
 ### The instrument tells the application what it can do
 
@@ -93,7 +95,7 @@ divided down, not a number the application hoped for.
 
 ### Fast sweeps show fewer points, not invented ones
 
-The converter runs at 250 kSa/s a channel. A sweep faster than the record length
+The converter runs at 165 kSa/s a channel with all three on. A sweep faster than the record length
 can be filled at that rate keeps the converter flat out and **shortens the
 record** instead of interpolating: at 50 µs/div you get 125 real samples across
 the screen rather than 2 000 imaginary ones. The panel always shows the rate and
@@ -124,7 +126,7 @@ uses the actual sample interval, and is reset and allowed to settle at each arm.
 Every reading is a straight line from a converter code to a voltage, and the
 resistors that set it are ordinary 1% parts. Two points fix them:
 
-1. **Zero.** Ground both inputs, then **Calibrate Zero** (⌘-menu, or the button
+1. **Zero.** Ground all inputs, then **Calibrate Zero** (⌘-menu, or the button
    on the channel). Whatever is read becomes zero for the range that channel is
    on.
 2. **Gain.** Apply a known voltage and tell the application what it is.
@@ -133,7 +135,7 @@ Calibration is stored per channel *and per range*, because the two ranges go
 through different amplifier gains.
 
 The front end's frequency compensation is a physical adjustment, not a software
-one: the firmware puts a square wave on GPIO28 (firmware 1.3+) for it, and
+one: the firmware puts a square wave on GPIO20 (firmware 1.5+) for it, and
 [the front end's documentation](hardware/pilyzer-afe/README.md) explains what to
 turn.
 
@@ -161,10 +163,14 @@ clients on one bulk endpoint would read each other's answers.
 
 ## Limits worth knowing before you trust a reading
 
-* **Bandwidth is about 100 kHz**, set by the anti-alias filter, because Nyquist
-  at 250 kSa/s is 125 kHz. This is an audio and low-frequency instrument.
-* **The fastest sweep is around 20 µs/div**, where a division holds five
-  samples. There is no equivalent-time sampling yet.
+* **Bandwidth is 40 kHz**, set by a two-pole Sallen-Key on each channel rather
+  than by the converter. The corner is sized for the three-channel case, where
+  Nyquist is 82 kHz, so one- and two-channel modes are limited by the filter
+  and not by the sample rate. Two poles reduce what folds back; they do not
+  abolish it. This is an audio and low-frequency instrument.
+* **The fastest sweep is 20 µs/div with one channel, 50 µs/div with two or
+  three**, where a division holds five samples. There is no equivalent-time
+  sampling yet.
 * **Nothing is isolated.** Everything shares the Mac's USB ground. Not for mains
   primary circuits, and not for anything floating at a dangerous potential.
 * **The logic inputs are 3.3 V only.** There is no buffer and no level shifter.
@@ -190,3 +196,11 @@ that records do not have to be small.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+Firmware 1.5 adds CH3 on GPIO28 and moves the test output to GPIO20 (TP6).
+Logic stays on GPIO8–15; range controls are GPIO16/17/18. The application uses
+the channel count reported by the device, so older two-channel firmware remains
+usable. Channel Enabled checkboxes control acquisition as well as display:
+1 / 2 / 3 enabled channels allow up to 495 / 247 / 165 kSa/s per channel.
+Slower timebases still use averaging/decimation; the actual rate and the current
+channel-count limit appear in the Horizontal section.

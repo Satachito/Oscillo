@@ -156,6 +156,10 @@ struct QualityRow: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
+        Footer { content }
+    }
+
+    private var content: some View {
         HStack(alignment: .top, spacing: 24) {
             if let quality = model.quality {
                 VStack(alignment: .leading, spacing: 1) {
@@ -186,11 +190,6 @@ struct QualityRow: View {
             Spacer()
             Text(model.planDescription).foregroundStyle(.secondary)
         }
-        .font(.system(size: 11, design: .monospaced))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial)
     }
 
     private func row(_ label: String, _ value: String) -> some View {

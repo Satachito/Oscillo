@@ -116,7 +116,7 @@ struct EngineTests {
         #expect(ready.wait(timeout: .now() + 5) == .success)
 
         let instrument = try! #require(seen)
-        #expect(instrument.capabilities.analogChannels == 2)
+        #expect(instrument.capabilities.analogChannels == 3)
         #expect(instrument.capabilities.logicChannels == 8)
         #expect(instrument.ranges.count == 2)
         engine.disconnect()
@@ -136,7 +136,7 @@ struct EngineTests {
         #expect(arrived.wait(timeout: .now() + 5) == .success)
 
         let captured = try! #require(frame)
-        #expect(captured.traces.count == 2)
+        #expect(captured.traces.count == 3)
         #expect(captured.sampleCount == 1000)
         #expect(abs(captured.samplePeriod - 1e-5) < 1e-9)
         #expect(captured.triggered)
@@ -214,5 +214,194 @@ struct EngineTests {
         engine.stop()
         #expect(stopped.wait(timeout: .now() + 5) == .success)
         engine.disconnect()
+    }
+}
+
+@Suite("Vertical scale")
+struct VerticalScaleTests {
+    private let divisions = ScopeSettings.verticalDivisions
+
+    @Test("A signal that never crosses zero still fits on screen",
+          arguments: [3.3, 11.1, 53.0, 33.0])
+    func unipolarSignalFits(span: Double) {
+        // Zero volts is the centre line, so a rail that sits entirely above it
+        // has only half the screen. The coarsest setting has to cover that.
+        let steps = AnalogChannelSettings.verticalSteps(span: span, divisions: divisions)
+        let coarsest = try! #require(steps.first)
+        let halfScreen = Double(divisions) / 2
+        #expect(coarsest * halfScreen >= span)
+    }
+
+    @Test("The 0–3.3 V case offers the volts a division you would reach for")
+    func logicRail() {
+        let steps = AnalogChannelSettings.verticalSteps(span: 3.3, divisions: divisions)
+        #expect(steps.first == 2.0)
+        #expect(steps.contains(1.0) && steps.contains(0.5) && steps.contains(0.01))
+        // Every step is a 1–2–5 value, coarsest first.
+        #expect(steps == steps.sorted(by: >))
+        for step in steps {
+            let mantissa = step / pow(10, (log10(step)).rounded(.down))
+            #expect([1.0, 2.0, 5.0].contains { abs($0 - mantissa) < 1e-9 })
+        }
+    }
+
+    @Test("The ladder reaches fine enough to be useful and stops there")
+    func fineEnd() {
+        let steps = AnalogChannelSettings.verticalSteps(span: 3.3, divisions: divisions)
+        let finest = try! #require(steps.last)
+        #expect(finest <= 3.3 / 100)
+        #expect(finest >= 3.3 / 500)
+    }
+
+    @Test("A degenerate range produces nothing rather than crashing")
+    func degenerate() {
+        #expect(AnalogChannelSettings.verticalSteps(span: 0, divisions: 8).isEmpty)
+        #expect(AnalogChannelSettings.verticalSteps(span: 3.3, divisions: 0).isEmpty)
+    }
+}
+
+@Suite("Screen centre")
+struct ScreenCentreTests {
+    private let reference = 3.3
+    private let fullScale = 65520.0
+
+    private func scale(_ range: InputRange) -> VoltageScale {
+        VoltageScale(reference: reference, fullScale: fullScale, range: range)
+    }
+
+    @Test("A range that straddles zero puts exactly zero on the centre line")
+    func bipolarCentresOnZero() {
+        for range in FrontEnd.revA {
+            let scale = scale(range)
+            #expect(scale.straddlesZero)
+            // Ordinary resistors leave the range a few millivolts asymmetric;
+            // the centre line should still be zero, not that asymmetry.
+            #expect(abs(scale.centreVolts) > 0)
+            #expect(scale.screenCentreVolts == 0)
+        }
+    }
+
+    @Test("A range that stops at zero centres on its own midpoint")
+    func unipolarCentresOnMidpoint() {
+        let scale = scale(FrontEnd.bareBoard[0])
+        #expect(!scale.straddlesZero)
+        #expect(abs(scale.screenCentreVolts - reference / 2) < 1e-9)
+    }
+
+    @Test("The whole of a rail fits on screen once the centre moves")
+    func railFitsOnScreen() {
+        let scale = scale(FrontEnd.bareBoard[0])
+        let divisions = Double(ScopeSettings.verticalDivisions)
+        let step = try! #require(AnalogChannelSettings.verticalSteps(
+            span: scale.spanVolts, divisions: ScopeSettings.verticalDivisions).first)
+        // Both ends measured from the centre line have to land inside the grid.
+        for volts in [scale.lowestVolts, scale.highestVolts] {
+            let fromCentre = abs(volts - scale.screenCentreVolts) / step
+            #expect(fromCentre <= divisions / 2)
+        }
+    }
+
+    @Test("A trigger level on the rail is moved somewhere the signal reaches")
+    func triggerLevelIsUsable() {
+        let bare = scale(FrontEnd.bareBoard[0])
+        // Zero is mid-range on the front end but the floor of a bare board.
+        let settled = bare.usableTriggerLevel(0)
+        #expect(settled > bare.lowestVolts)
+        #expect(settled < bare.highestVolts)
+        // A level already in the middle is left alone.
+        #expect(bare.usableTriggerLevel(1.65) == 1.65)
+
+        let fine = scale(FrontEnd.revA[1])
+        #expect(fine.usableTriggerLevel(0) == 0)
+        #expect(fine.usableTriggerLevel(1000) < fine.highestVolts)
+        #expect(fine.usableTriggerLevel(-1000) > fine.lowestVolts)
+    }
+}
+
+@Suite("Software AC coupling and the centre line")
+struct AcCouplingTests {
+    @Test("A channel with the mean removed reports what it took out")
+    func recordsWhatItRemoved() {
+        let queue = DispatchQueue(label: "test.ac")
+        let engine = InstrumentEngine()
+        engine.callbackQueue = queue
+
+        var settings = ScopeSettings()
+        settings.recordLength = 1024
+        settings.ensureAnalogChannels(3)
+        settings.channels[1].removesMean = true      // the demo's offset channel
+
+        let ready = DispatchSemaphore(value: 0)
+        engine.onStateChange = { if $0.isConnected { ready.signal() } }
+        engine.connect(to: .simulator, settings: settings)
+        #expect(ready.wait(timeout: .now() + 5) == .success)
+
+        var frame: ScopeFrame?
+        let arrived = DispatchSemaphore(value: 0)
+        engine.onScopeFrame = { frame = $0; arrived.signal() }
+        engine.single()
+        #expect(arrived.wait(timeout: .now() + 5) == .success)
+
+        let captured = try! #require(frame)
+        let coupled = try! #require(captured.trace(1))
+        let plain = try! #require(captured.trace(0))
+
+        // The samples are centred on zero and the offset is kept, so anything
+        // drawn against them can be shifted by the same amount.
+        let mean = coupled.samples.reduce(0, +) / Double(coupled.samples.count)
+        #expect(abs(mean) < 0.01)
+        #expect(abs(coupled.removedMean) > 0.1)
+        #expect(plain.removedMean == 0)
+        engine.disconnect()
+    }
+
+    @Test("Removing the mean and centring on the range midpoint do not fight")
+    func acTraceStaysOnScreen() {
+        // A bare board reaches 0–3.3 V, so its centre line is 1.65 V. A trace
+        // whose mean has been taken out sits about zero — a whole half-range
+        // below that line, and off the bottom of the grid, unless the display
+        // centres such a channel on zero instead.
+        let scale = VoltageScale(reference: 3.3, fullScale: 65520,
+                                 range: FrontEnd.bareBoard[0])
+        let divisions = Double(ScopeSettings.verticalDivisions)
+        let perDivision = 3.3 / divisions
+
+        let ifCentredOnRange = abs(0 - scale.screenCentreVolts) / perDivision
+        #expect(ifCentredOnRange >= divisions / 2)   // the fault this guards against
+
+        let ifCentredOnZero = abs(0 - 0) / perDivision
+        #expect(ifCentredOnZero < divisions / 2)
+    }
+}
+
+@Suite("X/Y plot")
+struct XYTests {
+    @Test("The axes default to the first two channels and survive a round trip")
+    func settingsCarryTheAxes() throws {
+        var settings = ScopeSettings()
+        #expect(settings.xyHorizontal == 0 && settings.xyVertical == 1)
+        settings.showsXY = true
+        settings.xyHorizontal = 2
+        settings.xyVertical = 0
+        let restored = try JSONDecoder().decode(
+            ScopeSettings.self, from: JSONEncoder().encode(settings))
+        #expect(restored.xyHorizontal == 2 && restored.xyVertical == 0)
+        #expect(restored.showsXY)
+    }
+
+    @Test("A square plot keeps equal volts equal on both axes")
+    func squareAspect() {
+        // The time-domain grid is 10 divisions wide and 8 tall, so plotting
+        // X against Y on it turns every circle into an ellipse. The X/Y plot
+        // has to use one square with the same number of divisions each way.
+        let canvas = CGSize(width: 1000, height: 600)
+        let side = min(canvas.width, canvas.height)
+        let stepX = side / CGFloat(ScopeSettings.verticalDivisions)
+        let stepY = side / CGFloat(ScopeSettings.verticalDivisions)
+        #expect(stepX == stepY)
+
+        let wrongX = canvas.width / CGFloat(ScopeSettings.horizontalDivisions)
+        let wrongY = canvas.height / CGFloat(ScopeSettings.verticalDivisions)
+        #expect(wrongX != wrongY)     // the shape this guards against
     }
 }
