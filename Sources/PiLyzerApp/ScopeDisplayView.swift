@@ -206,9 +206,17 @@ struct ReadoutRow: View {
     }
 
     private func row(_ label: String, _ value: String) -> some View {
-        HStack(spacing: 4) {
+        // Format separates the numeric reading and engineering unit with a space.
+        // Keep both columns fixed so changing digits or SI prefixes cannot move them.
+        let parts = value.split(separator: " ", maxSplits: 1)
+        let number = parts.first.map(String.init) ?? value
+        let unit = parts.count > 1 ? String(parts[1]) : ""
+        return HStack(spacing: 4) {
             Text(label).foregroundStyle(.secondary).frame(width: 46, alignment: .leading)
-            Text(value)
+            Text(number).frame(width: 60, alignment: .trailing)
+            Text(unit).frame(width: 24, alignment: .trailing)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label) \(value)")
     }
 }
