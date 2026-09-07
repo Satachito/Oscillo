@@ -133,7 +133,7 @@ Calibration is stored per channel *and per range*, because the two ranges go
 through different amplifier gains.
 
 The front end's frequency compensation is a physical adjustment, not a software
-one: the firmware puts a square wave on GPIO2 for it, and
+one: the firmware puts a square wave on GPIO28 (firmware 1.3+) for it, and
 [the front end's documentation](hardware/pilyzer-afe/README.md) explains what to
 turn.
 

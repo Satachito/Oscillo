@@ -76,6 +76,7 @@ static void empty_and_single_sample_searches(void)
 int main(void)
 {
     logic_init();
+    assert(mock_pio_gpio_mask == 0xff00); // Only GPIO8…15 are claimed by PIO.
     full_buffer_search_is_bounded();
     late_edge_rearms_instead_of_waiting_forever();
     absent_edge_is_not_a_trigger();

@@ -52,15 +52,36 @@ Change these in `board_config.h`; the host reads the limits out of
 | --- | --- |
 | CH1 | 26 (ADC0) |
 | CH2 | 27 (ADC1) |
-| Logic D0…D7 | 6…13, consecutive because PIO reads them in one instruction |
-| CH1 range switch | 14 |
-| CH2 range switch | 15 |
-| Test square wave | 2 |
+| Logic D0…D7 | 8…15, consecutive because PIO reads them in one instruction |
+| CH1 range switch | 16 |
+| CH2 range switch | 17 |
+| Adjustable calibration square wave | 28 |
+| C4 / E♭4 / F♯4 / A4 pairs | 0/1, 2/3, 4/5, 6/7 (even normal, odd inverted) |
 | Status LED | the board's own |
 
 On a bare Pico 2 with nothing else attached, CH1 and CH2 read 0 V to 3.3 V
 directly and **must not go outside that**. The front end in
 `hardware/pilyzer-afe` is what makes ±25 V safe.
+
+### Fixed chord outputs (firmware 1.3)
+
+`chord_output.c` starts four PWM slices at boot. The requested frequencies are
+261.626, 311.127, 369.994 and 440.000 Hz. Integer clock dividers and even counter
+periods give 50% duty without fractional-divider modulation. Channel B is the
+hardware inverse of channel A, so each pair has complementary levels with no
+software timing loop. At the nominal 150 MHz system clock, divider/period
+rounding yields 261.626690, 311.131023, 369.993981 and 440.001408 Hz; oscillator
+accuracy still applies.
+
+GPIO0–7 notes run continuously. The existing `setCalibrationOutput` command
+and application `Test output` control affect **only GPIO28**. GPIO28 uses
+slice 6, independent of chord slices 0–3. Stop/Single control acquisition only.
+UART stdio remains disabled so it cannot take GPIO0/1 away from the notes.
+
+The AFE's J8 connector maps pins 1/2→GPIO0/1, 3/6→GPIO2/3,
+4/5→GPIO4/5, 7/8→GPIO6/7; **J8 pin 9 is GND**. These are not Pico physical
+pin numbers. Firmware 1.2 used logic GPIO6–13, range GPIO14/15 and calibration
+GPIO2: update wiring before installing firmware 1.3.
 
 ## Building
 
@@ -144,7 +165,7 @@ board back into its bootloader over USB, so the cycle is
 ```
 
 **Checking the time axis.** Nothing above proves the sample interval is right —
-the samples alone cannot say how far apart they are. Put a jumper from GPIO2
+the samples alone cannot say how far apart they are. Put a jumper from GPIO28
 (the test square wave) to GPIO26 (CH1) and the scope should read a 1 kHz square
 wave with a 50% duty cycle. If the frequency reads correctly across several
 sweep speeds, the whole timing chain is right; if it is wrong by a constant

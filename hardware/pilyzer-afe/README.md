@@ -4,7 +4,7 @@ Two DC-coupled analogue channels and eight logic inputs for a Raspberry Pi
 Pico 2. Design status: **KiCad schematic captured and footprints assigned;
 prototype measurements and PCB layout remain.** Open
 [`kicad/pilyzer-afe.kicad_pro`](kicad/pilyzer-afe.kicad_pro) in KiCad 10.
-The three sheets cover the Pico/power/logic interface, CH1, and CH2.
+The four sheets cover the Pico/power/logic interface, CH1, CH2, and chord outputs.
 See [`kicad/README.md`](kicad/README.md) for checks, sources and capture corrections.
 
 This board is USB-ground referenced and **not isolated**. It must not be used
@@ -49,7 +49,7 @@ U1A OUT -- R5 1k -- RC1 -- R6 1k -- ADC
 
 U1A OUT -- R7 10k -- U1A (-) -- R8 2.67k -- U2A COM
 U2A NO -- VMID        U2A NC -- not connected
-GPIO14 LOW: COM-NC (gain 1); HIGH: COM-NO (gain 4.745)
+GPIO16 LOW: COM-NC (gain 1); HIGH: COM-NO (gain 4.745)
 ```
 
 * **R1 + R2** are the 1 MΩ input, split in two so each 0805 sees half the
@@ -128,7 +128,7 @@ re-run after changing any value.
 
 ## Adjusting the compensation
 
-The firmware puts a square wave on GPIO2 for exactly this. Feed it into a
+The firmware puts a square wave on GPIO28 for exactly this. Feed it into a
 channel, set the ±25 V range, and adjust TC1 until the corners are square — the
 same procedure as compensating a scope probe, and the same failure modes:
 overshoot means too much capacitance across the input resistor, a slumped
@@ -139,7 +139,7 @@ volts-per-division setting to see the corner.
 
 ## Ranges are switched, not jumpered
 
-The range switch is driven from GPIO14 and GPIO15, so the application always
+The range switch is driven from GPIO16 and GPIO17, so the application always
 knows which range a channel is on, can offer per-range calibration, and can
 change ranges without anyone touching the board.
 
@@ -166,7 +166,7 @@ after that has been measured with them fitted.
 
 ## Logic inputs
 
-Eight inputs on GPIO6…GPIO13, each through 330 Ω. **3.3 V logic only.** The
+Eight inputs on GPIO8…GPIO15, each through 330 Ω. **3.3 V logic only.** The
 series resistor limits the current into the RP2350's own clamp diodes to about
 5 mA at 5 V, which the chip survives, but a 5 V system will still be loaded and
 the levels are outside specification. There is no buffer and no level shifter on
@@ -184,12 +184,37 @@ They are marked DNP in the schematic and do nothing while unpopulated.
 | Analogue ground | AGND | 33 |
 | Converter reference | ADC_VREF | 35 |
 | Front-end supply | 3V3(OUT) | 36 |
-| CH1 range switch | GPIO14 | 19 |
-| CH2 range switch | GPIO15 | 20 |
-| Logic D0…D7 | GPIO6…GPIO13 | 9,10,11,12,14,15,16,17 |
-| Test output | GPIO2 | 4 |
+| CH1 range switch | GPIO16 | 21 |
+| CH2 range switch | GPIO17 | 22 |
+| Logic D0…D7 | GPIO8…GPIO15 | 11,12,14,15,16,17,19,20 |
+| Adjustable calibration output | GPIO28 | 34 |
+| Fixed complementary notes | GPIO0…GPIO7 | 1,2,4,5,6,7,9,10 |
 
 The op amp draws about 4 mA, so the whole board runs from 3V3(OUT).
+
+## Chord test connector J8 (firmware 1.3)
+
+J8 is a **1×9, 2.54 mm header** on sheet 4, `Chord test outputs`.
+Pins 1–8 are fixed square-wave signals; pin 9 is ground.
+
+| J8 pins, normal / inverted | GPIOs | Note | Nominal frequency |
+| --- | --- | --- | ---: |
+| 1 / 2 | 0 / 1 | C4 | 261.626 Hz |
+| 3 / 6 | 2 / 3 | E♭4 | 311.127 Hz |
+| 4 / 5 | 4 / 5 | F♯4 | 369.994 Hz |
+| 7 / 8 | 6 / 7 | A4 | 440.000 Hz |
+| 9 | GND | — | — |
+
+Each pair shares a PWM slice: even GPIO is channel A, odd GPIO is inverted
+channel B. They have equal compare levels and an even counter period, giving
+50% duty and complementary levels. The four pairs start together and continue
+independently of acquisition and the application's adjustable test output.
+J8 pin numbers are **connector numbers, not Pico physical pin numbers**.
+The adjustable calibration output moved from GPIO2 to GPIO28 / TP6 so its
+PWM slice does not interfere with any of the four notes.
+
+This pin allocation supersedes firmware 1.2: rewire the logic and range signals
+before using firmware 1.3. The software range gains are unchanged.
 
 ## Before fabrication
 

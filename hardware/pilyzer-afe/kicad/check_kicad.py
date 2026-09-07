@@ -64,7 +64,7 @@ for channel, offset, cn, ca, cb, comp in [(1, 0, 4, 6, 7, 1), (2, 8, 9, 10, 11, 
     net(prefix+'GAIN', r(8)+'.2', f'U2.{common}')
     net(prefix+'RC1', r(5)+'.2', r(6)+'.1', f'C{ca}.1')
     net(prefix+'ADC', r(6)+'.2', f'C{cb}.1', f'J7.{adc}')
-    net(f'RANGE_CH{channel}', f'J6.{18+channel}', f'U2.{control}')
+    net(f'RANGE_CH{channel}', f'J7.{21-channel}', f'U2.{control}')
     assert pin_net[('U2', str(normally_open))] == 'VMID'
     assert pin_net[('U2', str(normally_closed))].startswith('unconnected-')
     assert pin_net[(f'D{channel}', '1')] == 'GND'
@@ -73,21 +73,34 @@ for channel, offset, cn, ca, cb, comp in [(1, 0, 4, 6, 7, 1), (2, 8, 9, 10, 11, 
 net('VMID_DIV', 'R17.2', 'R18.1', 'C15.1', 'U1.12')
 net('VMID', 'U1.14', 'U1.13', 'U1.10', 'U2.2', 'U2.4', 'TP3.1')
 net('SPARE_OUT', 'U1.8', 'U1.9')
-net('TEST_GPIO2', 'J6.4', 'R35.1')
+net('CAL_GPIO28', 'J7.7', 'R35.1')
 net('TEST_OUT', 'R35.2', 'TP6.1')
-for i, socket_pin in enumerate([9, 10, 11, 12, 14, 15, 16, 17]):
+for i, socket_pin in enumerate([11, 12, 14, 15, 16, 17, 19, 20]):
     net(f'D{i}_IN', f'J5.{i+1}', f'R{19+i}.1')
-    net(f'D{i}_GPIO{i+6}', f'R{19+i}.2', f'R{27+i}.1', f'J6.{socket_pin}')
+    net(f'D{i}_GPIO{i+8}', f'R{19+i}.2', f'R{27+i}.1', f'J6.{socket_pin}')
 for node in ['J7.5', 'U1.4', 'U2.8', 'R3.1', 'R11.1', 'R17.1', 'C12.1', 'C13.1', 'C14.1', 'TP4.1']:
     assert pin_net[tuple(node.split('.'))] == '+3V3', node
-for node in ['U1.11', 'U2.3', 'J7.8', 'C15.2', 'R18.2']:
+for node in ['U1.11', 'U2.3', 'J7.8', 'C15.2', 'R18.2', 'J8.9']:
     assert pin_net[tuple(node.split('.'))] == 'GND', node
+
+# J8 connector numbering is deliberately different from Pico physical pins.
+for name, gpio, connector_pin, socket_pin in [
+    ('C4_P',0,1,1), ('C4_N',1,2,2), ('Eb4_P',2,3,4), ('Eb4_N',3,6,5),
+    ('Fs4_P',4,4,6), ('Fs4_N',5,5,7), ('A4_P',6,7,9), ('A4_N',7,8,10),
+]:
+    net(f'{name}_GPIO{gpio}', f'J8.{connector_pin}', f'J6.{socket_pin}')
+# Keep the independently specified schematic pin map in step with firmware.
+config = (HERE.parents[2] / 'firmware/pilyzer/board_config.h').read_text()
+for macro, value in [('PIN_CHORD_BASE',0), ('PIN_LOGIC_BASE',8),
+                     ('PIN_RANGE_CH1',16), ('PIN_RANGE_CH2',17), ('PIN_CALIBRATION_OUT',28)]:
+    found = re.search(r'^#define\s+'+macro+r'\s+(\d+)', config, re.MULTILINE)
+    assert found and int(found[1]) == value, macro
 
 # Check every saved BOM row and every electrically used pin against local pads.
 with (HERE / 'bom.csv').open() as file:
     bom = {row['Reference']: row for row in csv.DictReader(file)}
 parts = {part.attrib['ref']: part for part in root.find('components')}
-assert len(parts) == 68 and parts.keys() == bom.keys()
+assert len(parts) == 69 and parts.keys() == bom.keys()
 for ref, part in parts.items():
     row = bom[ref]
     assert part.findtext('value') == row['Value'], ref

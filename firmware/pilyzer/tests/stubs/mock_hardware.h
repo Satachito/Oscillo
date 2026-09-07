@@ -54,7 +54,8 @@ typedef struct { int unused; } pio_sm_config;
 #define PIO_FIFO_JOIN_RX 1
 static inline uint pio_add_program(void *pio, const void *program) { return 0; }
 static inline void pio_sm_claim(void *pio, uint sm) {}
-static inline void pio_gpio_init(void *pio, uint pin) {}
+static uint32_t mock_pio_gpio_mask;
+static inline void pio_gpio_init(void *pio, uint pin) { mock_pio_gpio_mask |= 1u << pin; }
 static inline void gpio_set_pulls(uint pin, bool up, bool down) {}
 static inline void pio_sm_set_consecutive_pindirs(void *pio, uint sm, uint pin, uint count, bool out) {}
 static inline void pio_sm_set_enabled(void *pio, uint sm, bool on) {}

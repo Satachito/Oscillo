@@ -11,12 +11,11 @@ set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
-add_executable(chord chord.cpp)
+add_executable(chord chord.cpp ../../firmware/pilyzer/chord_output.c)
 
 target_link_libraries(chord
     pico_stdlib
     hardware_pwm
-    hardware_dma
     hardware_clocks
 )
 

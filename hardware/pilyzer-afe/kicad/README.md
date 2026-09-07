@@ -9,11 +9,12 @@ no PCB layout or manufacturing files.
 - `pilyzer-afe.kicad_sch`: Pico 2 sockets, logic inputs, power, VMID and test output.
 - `channel-1.kicad_sch`, `channel-2.kicad_sch`: fixed input divider, gain stage,
   range switch, clamps and passive ADC filter.
+- `test-outputs.kicad_sch`: J8, the 9-pin complementary chord output header; pin 9 is GND.
 - `PiLyzer.kicad_sym`, `PiLyzer.pretty`, and both library tables: local symbols
-  and all 13 footprint types. No external library is needed for schematic or
+  and all 14 footprint types. No external library is needed for schematic or
   footprint editing. Optional 3D models use the standard KiCad model paths.
-- `bom.csv`: all 68 physical components, including the 10 DNP parts.
-- `previews/`: SVG exports of all three sheets.
+- `bom.csv`: all 69 physical components, including the 10 DNP parts.
+- `previews/`: SVG exports of all four sheets.
 - `erc.rpt`: KiCad 10.0.5 electrical-rule-check report.
 - `check_kicad.py`: checks the saved circuit via KiCad's exported netlist.
 
@@ -30,7 +31,7 @@ The saved schematic takes precedence over the earlier ASCII sketch.
    duplicated the packages; those designators are now unused. The optional
    connector TVS footprints remain D5/D6, marked DNP with no exact part selected.
 5. U2 COM connects to the 2.67 kΩ resistor, NO to VMID, and NC is deliberately
-   unconnected. GPIO14/15 LOW gives ±25 V; HIGH gives ±5 V, matching firmware
+   unconnected. GPIO16/17 LOW gives ±25 V; HIGH gives ±5 V, matching firmware
    switch positions 0/1. The TI DGS package uses the KiCad footprint
    `TSSOP-10_3x3mm_P0.5mm` (VSSOP-10, not a generic footprint selected by name).
 6. C15 bypasses the **divider midpoint before U1D**, avoiding a direct 1 µF
@@ -41,6 +42,17 @@ The saved schematic takes precedence over the earlier ASCII sketch.
 8. C12 decouples U1, C13 decouples U2, and both share Pico 3V3(OUT). Pico AGND
    and ground are one net. ADC_VREF is left unconnected on the carrier.
 9. R27–R34 are DNP. They suppress floating logic inputs only when populated.
+
+## Firmware 1.3 pin map
+
+Logic D0–D7 now use GPIO8–15. Range controls use GPIO16/17 (Pico pins 21/22,
+J7 pads 20/19). GPIO0–7 carry the four complementary note pairs on J8.
+The adjustable calibration output is GPIO28 (Pico pin 34, J7 pad 7).
+
+J8: pin 1 GPIO0 C4+, 2 GPIO1 C4−, 3 GPIO2 E♭4+, 6 GPIO3 E♭4−,
+4 GPIO4 F♯4+, 5 GPIO5 F♯4−, 7 GPIO6 A4+, 8 GPIO7 A4−, **9 GND**.
+See [the note table](../README.md#chord-test-connector-j8-firmware-13).
+The check script verifies these nets and checks the firmware macros agree.
 
 ## Validation
 
@@ -54,10 +66,10 @@ python3 ../check_transfer.py
 
 ERC: **0 errors, 0 warnings**, using the project's default ERC checks (the
 report lists the default ignored check categories; no individual violations
-were excluded). The separate netlist check verifies 39 exact net groups,
+were excluded). The separate netlist check verifies 47 exact net groups,
 supply rails, range polarity, Pico mapping, every BOM entry, all electrically
 used pin numbers against footprint pads, and the 10 DNP assignments.
-All three sheets were exported and visually checked.
+All four sheets were exported and visually checked.
 
 These checks establish schematic consistency; they do not measure analogue
 performance or certify the input-protection ratings in the design notes.

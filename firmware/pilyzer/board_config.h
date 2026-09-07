@@ -11,13 +11,15 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0102   // 1.2
+#define PILYZER_FIRMWARE_VERSION 0x0103   // 1.3: new pin map and complementary chord outputs
 
 // --- Pins ---------------------------------------------------------------
-#define PIN_CALIBRATION_OUT 2     // PWM test square wave
-#define PIN_LOGIC_BASE      6     // D0…D7 on GPIO6…GPIO13, consecutive for PIO
-#define PIN_RANGE_CH1       14    // analogue switch: 0 = low range, 1 = high
-#define PIN_RANGE_CH2       15
+#define PIN_CHORD_BASE      0     // GPIO0…7: C4, Eb4, F#4, A4; even normal, odd inverted
+#define CHORD_VOICES        4
+#define PIN_CALIBRATION_OUT 28    // adjustable square wave; slice 6, separate from chord slices 0…3
+#define PIN_LOGIC_BASE      8     // D0…D7 on GPIO8…GPIO15, consecutive for PIO
+#define PIN_RANGE_CH1       16    // switch position: 0 = ±25 V, 1 = ±5 V
+#define PIN_RANGE_CH2       17
 #define PIN_LED             PICO_DEFAULT_LED_PIN
 #define PIN_ADC_CH1         26    // ADC0
 #define PIN_ADC_CH2         27    // ADC1

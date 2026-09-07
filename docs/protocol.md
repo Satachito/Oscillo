@@ -250,3 +250,11 @@ The logic side works the same way, except that the edge is detected by a second
 PIO state machine rather than by the processor — at 150 MS/s nothing else can
 keep up. The processor then finds the exact edge in the captured data, so the
 trigger position is sample-accurate rather than interrupt-latency-accurate.
+
+## Firmware 1.3 physical pin allocation
+
+The wire protocol is unchanged. Logic D0–D7 use GPIO8–15, and range controls
+use GPIO16/17. `setCalibrationOutput` controls GPIO28 (GPIO2 on firmware 1.2).
+GPIO0/1, 2/3, 4/5 and 6/7 independently emit fixed C4, E♭4, F♯4 and A4 square
+waves; even GPIO is normal phase and odd GPIO is its hardware inverse. These
+fixed notes are not altered by `setCalibrationOutput` or acquisition commands.
