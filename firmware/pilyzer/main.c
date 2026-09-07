@@ -10,7 +10,6 @@
 
 #include "analog.h"
 #include "board_config.h"
-#include "chord_output.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
@@ -440,7 +439,6 @@ int main(void)
     gpio_init(PIN_RANGE_CH2);
     gpio_set_dir(PIN_RANGE_CH2, GPIO_OUT);
     set_calibration_output(true, 1000);
-    chord_output_init();
 
     analog_init();
     logic_init();

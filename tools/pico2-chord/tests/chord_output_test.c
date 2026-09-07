@@ -6,7 +6,7 @@
 
 int main(void)
 {
-    // Calibration and an unrelated enabled slice must survive chord startup.
+    // Two unrelated enabled slices must survive chord startup.
     mock_pwm.en = (1u << 6) | (1u << 7);
     mock_pwm.slice[6] = (mock_pwm_slice){.config={.divider=3,.top=49999},.a=25000};
     mock_pwm_slice calibration = mock_pwm.slice[6];
@@ -14,7 +14,7 @@ int main(void)
     assert(mock_pwm.en == 0xcf);
     assert(mock_pwm_pin_mask == 0xff);
     assert(memcmp(&calibration, &mock_pwm.slice[6], sizeof calibration)==0);
-    assert(pwm_gpio_to_slice_num(PIN_CALIBRATION_OUT) == 6);
+    assert(pwm_gpio_to_slice_num(28) == 6);
 
     const double expected[] = {261.6255653, 311.1269837, 369.9944227, 440.0};
     for (uint i=0; i<4; ++i) {
@@ -34,5 +34,5 @@ int main(void)
         assert(highs_a==highs_b);
         printf("Chord GPIO%u/%u: %.6f Hz, 50%% complementary\n",2*i,2*i+1,frequency);
     }
-    puts("Chord: 4 note pairs, pin mux and calibration isolation passed");
+    puts("Chord: 4 note pairs, pin mux and PWM slice isolation passed");
 }

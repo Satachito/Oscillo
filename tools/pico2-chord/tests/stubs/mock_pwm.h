@@ -1,5 +1,9 @@
 #pragma once
-#include "mock_hardware.h"
+#include <stdbool.h>
+#include <stdint.h>
+typedef unsigned int uint;
+#define clk_sys 0
+static inline uint32_t clock_get_hz(int clock) { return 150000000; }
 #define GPIO_FUNC_PWM 4
 
 typedef struct { uint32_t divider; uint16_t top; bool invert_a, invert_b; } pwm_config;

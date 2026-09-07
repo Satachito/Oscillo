@@ -12,8 +12,7 @@
     "Connector_TestPoint": "Connector:TestPoint",
     "Connector_Generic_Conn_01x20": "Connector_Generic:Conn_01x20",
     "Connector_Generic_Conn_01x10": "Connector_Generic:Conn_01x10",
-    "power_PWR_FLAG": "power:PWR_FLAG",
-    "Connector_Generic_Conn_01x09": "Connector_Generic:Conn_01x09"
+    "power_PWR_FLAG": "power:PWR_FLAG"
   },
   "footprints": {
     "R_0805_2012Metric": "Resistor_SMD:R_0805_2012Metric",
@@ -28,7 +27,6 @@
     "TestPoint_Plated_Hole_D2.0mm": "TestPoint:TestPoint_Plated_Hole_D2.0mm",
     "PinSocket_1x20_P2.54mm_Vertical": "Connector_PinSocket_2.54mm:PinSocket_1x20_P2.54mm_Vertical",
     "PinHeader_1x10_P2.54mm_Vertical": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
-    "C_0805_2012Metric": "Capacitor_SMD:C_0805_2012Metric",
-    "PinHeader_1x09_P2.54mm_Vertical": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical"
+    "C_0805_2012Metric": "Capacitor_SMD:C_0805_2012Metric"
   }
 }

@@ -1,5 +1,6 @@
 #include "chord_output.h"
-#include "board_config.h"
+#define PIN_CHORD_BASE 0
+#define CHORD_VOICES 4
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
@@ -8,8 +9,6 @@
 static const uint32_t note_millihz[CHORD_VOICES] = {261626, 311127, 369994, 440000};
 
 _Static_assert(PIN_CHORD_BASE == 0 && CHORD_VOICES == 4, "GPIO0…7 use PWM slices 0…3");
-_Static_assert(PIN_LOGIC_BASE == 8, "logic inputs must follow the chord outputs");
-_Static_assert(PIN_CALIBRATION_OUT == 28, "calibration output must use a separate PWM slice");
 
 void chord_output_init(void)
 {
@@ -41,6 +40,6 @@ void chord_output_init(void)
         gpio_set_function(pin + 1, GPIO_FUNC_PWM);
         enabled_mask |= 1u << slice;
     }
-    // Start the four counters together without stopping the calibration PWM.
+    // Start the four counters together without stopping other enabled PWM slices.
     pwm_set_mask_enabled(pwm_hw->en | enabled_mask);
 }

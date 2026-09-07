@@ -251,10 +251,10 @@ PIO state machine rather than by the processor — at 150 MS/s nothing else can
 keep up. The processor then finds the exact edge in the captured data, so the
 trigger position is sample-accurate rather than interrupt-latency-accurate.
 
-## Firmware 1.3 physical pin allocation
+## Physical pin allocation (firmware 1.3 and later)
 
 The wire protocol is unchanged. Logic D0–D7 use GPIO8–15, and range controls
 use GPIO16/17. `setCalibrationOutput` controls GPIO28 (GPIO2 on firmware 1.2).
-GPIO0/1, 2/3, 4/5 and 6/7 independently emit fixed C4, E♭4, F♯4 and A4 square
-waves; even GPIO is normal phase and odd GPIO is its hardware inverse. These
-fixed notes are not altered by `setCalibrationOutput` or acquisition commands.
+Firmware 1.3 also emitted fixed complementary notes on GPIO0–7. Firmware 1.4
+removes that generator and leaves GPIO0–7 unused; the note generator now runs
+on a separate Pico 2 using `tools/pico2-chord`.

@@ -9,12 +9,11 @@ no PCB layout or manufacturing files.
 - `pilyzer-afe.kicad_sch`: Pico 2 sockets, logic inputs, power, VMID and test output.
 - `channel-1.kicad_sch`, `channel-2.kicad_sch`: fixed input divider, gain stage,
   range switch, clamps and passive ADC filter.
-- `test-outputs.kicad_sch`: J8, the 9-pin complementary chord output header; pin 9 is GND.
 - `PiLyzer.kicad_sym`, `PiLyzer.pretty`, and both library tables: local symbols
-  and all 14 footprint types. No external library is needed for schematic or
+  and all 13 footprint types. No external library is needed for schematic or
   footprint editing. Optional 3D models use the standard KiCad model paths.
-- `bom.csv`: all 69 physical components, including the 10 DNP parts.
-- `previews/`: SVG exports of all four sheets.
+- `bom.csv`: all 68 physical components, including the 10 DNP parts.
+- `previews/`: SVG exports of all three sheets.
 - `erc.rpt`: KiCad 10.0.5 electrical-rule-check report.
 - `check_kicad.py`: checks the saved circuit via KiCad's exported netlist.
 
@@ -43,16 +42,15 @@ The saved schematic takes precedence over the earlier ASCII sketch.
    and ground are one net. ADC_VREF is left unconnected on the carrier.
 9. R27–R34 are DNP. They suppress floating logic inputs only when populated.
 
-## Firmware 1.3 pin map
+## Firmware pin map (1.3 and later)
 
-Logic D0–D7 now use GPIO8–15. Range controls use GPIO16/17 (Pico pins 21/22,
-J7 pads 20/19). GPIO0–7 carry the four complementary note pairs on J8.
-The adjustable calibration output is GPIO28 (Pico pin 34, J7 pad 7).
+Logic D0–D7 use GPIO8–15. Range controls use GPIO16/17 (Pico pins 21/22,
+J7 pads 20/19). The adjustable calibration output is GPIO28 (Pico pin 34,
+J7 pad 7). These assignments remain unchanged in firmware 1.4.
 
-J8: pin 1 GPIO0 C4+, 2 GPIO1 C4−, 3 GPIO2 E♭4+, 6 GPIO3 E♭4−,
-4 GPIO4 F♯4+, 5 GPIO5 F♯4−, 7 GPIO6 A4+, 8 GPIO7 A4−, **9 GND**.
-See [the note table](../README.md#chord-test-connector-j8-firmware-13).
-The check script verifies these nets and checks the firmware macros agree.
+The chord generator is now on a separate Pico 2. J8 and its sheet have been
+removed; GPIO0–7 on J6 are explicitly unconnected. The check script verifies
+these unused pins as well as the active pin map against the firmware macros.
 
 ## Validation
 
@@ -66,10 +64,10 @@ python3 ../check_transfer.py
 
 ERC: **0 errors, 0 warnings**, using the project's default ERC checks (the
 report lists the default ignored check categories; no individual violations
-were excluded). The separate netlist check verifies 47 exact net groups,
+were excluded). The separate netlist check verifies 39 exact net groups,
 supply rails, range polarity, Pico mapping, every BOM entry, all electrically
 used pin numbers against footprint pads, and the 10 DNP assignments.
-All four sheets were exported and visually checked.
+All three sheets were exported and visually checked.
 
 These checks establish schematic consistency; they do not measure analogue
 performance or certify the input-protection ratings in the design notes.

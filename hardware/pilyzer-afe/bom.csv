@@ -25,4 +25,3 @@ J3 J4,1x2 header,,PinHeader_1x02_P2.54mm_Vertical,2,"Analogue inputs, flying lea
 J5,1x10 header,,PinHeader_1x10_P2.54mm_Vertical,1,"Logic D0-D7 plus two grounds"
 J6 J7,1x20 socket,,PinSocket_1x20_P2.54mm_Vertical,2,"Pico 2"
 TP1-TP6,Test point,,TestPoint_Plated_Hole_D2.0mm,6,"CH1 node, CH2 node, VMID, 3V3, AGND, test output"
-J8,1x9 header,,PinHeader_1x09_P2.54mm_Vertical,1,"Chord outputs; pins 1-8 signals and pin 9 GND"

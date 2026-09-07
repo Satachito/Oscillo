@@ -4,7 +4,7 @@ Two DC-coupled analogue channels and eight logic inputs for a Raspberry Pi
 Pico 2. Design status: **KiCad schematic captured and footprints assigned;
 prototype measurements and PCB layout remain.** Open
 [`kicad/pilyzer-afe.kicad_pro`](kicad/pilyzer-afe.kicad_pro) in KiCad 10.
-The four sheets cover the Pico/power/logic interface, CH1, CH2, and chord outputs.
+The three sheets cover the Pico/power/logic interface, CH1, and CH2.
 See [`kicad/README.md`](kicad/README.md) for checks, sources and capture corrections.
 
 This board is USB-ground referenced and **not isolated**. It must not be used
@@ -188,33 +188,20 @@ They are marked DNP in the schematic and do nothing while unpopulated.
 | CH2 range switch | GPIO17 | 22 |
 | Logic D0…D7 | GPIO8…GPIO15 | 11,12,14,15,16,17,19,20 |
 | Adjustable calibration output | GPIO28 | 34 |
-| Fixed complementary notes | GPIO0…GPIO7 | 1,2,4,5,6,7,9,10 |
+| Unused | GPIO0…GPIO7 | 1,2,4,5,6,7,9,10 |
 
 The op amp draws about 4 mA, so the whole board runs from 3V3(OUT).
 
-## Chord test connector J8 (firmware 1.3)
+## Separate chord generator
 
-J8 is a **1×9, 2.54 mm header** on sheet 4, `Chord test outputs`.
-Pins 1–8 are fixed square-wave signals; pin 9 is ground.
-
-| J8 pins, normal / inverted | GPIOs | Note | Nominal frequency |
-| --- | --- | --- | ---: |
-| 1 / 2 | 0 / 1 | C4 | 261.626 Hz |
-| 3 / 6 | 2 / 3 | E♭4 | 311.127 Hz |
-| 4 / 5 | 4 / 5 | F♯4 | 369.994 Hz |
-| 7 / 8 | 6 / 7 | A4 | 440.000 Hz |
-| 9 | GND | — | — |
-
-Each pair shares a PWM slice: even GPIO is channel A, odd GPIO is inverted
-channel B. They have equal compare levels and an even counter period, giving
-50% duty and complementary levels. The four pairs start together and continue
-independently of acquisition and the application's adjustable test output.
-J8 pin numbers are **connector numbers, not Pico physical pin numbers**.
-The adjustable calibration output moved from GPIO2 to GPIO28 / TP6 so its
-PWM slice does not interfere with any of the four notes.
+The diminished-chord generator runs on a separate Pico 2. The carrier has no
+J8 or note-output circuitry; GPIO0–7 are marked unconnected on J6.
+Logic GPIO8–15, range GPIO16/17 and calibration GPIO28 / TP6 retain their
+firmware 1.3 pin assignments. Firmware 1.4 removes the integrated note generator.
+See [`tools/pico2-chord`](../../tools/pico2-chord) for the standalone program.
 
 This pin allocation supersedes firmware 1.2: rewire the logic and range signals
-before using firmware 1.3. The software range gains are unchanged.
+before using firmware 1.3 or later. The software range gains are unchanged.
 
 ## Before fabrication
 

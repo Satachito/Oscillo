@@ -1,7 +1,6 @@
-// Standalone version of the instrument's four complementary note outputs.
-// Uses the same implementation so pin order, frequency and polarity stay equal.
+// Four complementary note outputs on a dedicated Pico 2.
 #include <cstdio>
-#include "../../firmware/pilyzer/chord_output.h"
+#include "chord_output.h"
 #include "hardware/clocks.h"
 #include "hardware/pwm.h"
 #include "pico/stdlib.h"

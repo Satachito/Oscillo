@@ -16,7 +16,6 @@ set(PILYZER_BOARD_ID 0 CACHE STRING "0 = bare Pico 2, 1 = PiLyzer analogue front
 add_executable(pilyzer
     main.c
     analog.c
-    chord_output.c
     logic.c
     usb_descriptors.c
 )
