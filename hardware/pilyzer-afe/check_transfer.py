@@ -1,10 +1,11 @@
-"""Prints the input-to-converter transfer of the PiLyzer rev A front end.
+"""Prints the input-to-converter transfer and the anti-alias response.
 
 Run this after changing any resistor value: the constants it prints are the
 ones the application compiles into `FrontEnd.revA`, and the corner figures say
 how much of the range a 1% part can eat.
 """
 
+import math
 from itertools import product
 
 R_SERIES = 998_000.0        # R1 + R2
@@ -53,3 +54,40 @@ for name, gain, limit in RANGES:
             for a, b, c in product((0.99, 1.01), repeat=3)
         ]
         print(f"  {vin:+6.1f} V -> {min(values):.4f} .. {max(values):.4f} V")
+
+# --- Anti-alias filter ---------------------------------------------------
+# One unity-gain Sallen-Key section per channel, between the gain stage and the
+# converter. Equal resistors, so
+#     fc = 1 / (2*pi*R*sqrt(C1*C2))      Q = 0.5*sqrt(C1/C2)
+# C1 is the feedback capacitor and C2 returns to VMID, which is AC ground and
+# keeps the mid-rail bias intact through the filter.
+FILTER_R = 2_670.0
+FILTER_C1 = 2.2e-9
+FILTER_C2 = 1.0e-9
+
+# Per-channel sample rates: the converter's 97-cycle floor divided by however
+# many channels are enabled. Nyquist is half of each.
+ADC_CLOCK = 48e6
+ADC_MIN_CYCLES = 97
+
+
+def filter_response_db(frequency, r=FILTER_R, c1=FILTER_C1, c2=FILTER_C2):
+    corner = 1 / (2 * math.pi * r * math.sqrt(c1 * c2))
+    q = 0.5 * math.sqrt(c1 / c2)
+    u = frequency / corner
+    return 10 * math.log10(1 / ((1 - u * u) ** 2 + (u / q) ** 2))
+
+
+corner = 1 / (2 * math.pi * FILTER_R * math.sqrt(FILTER_C1 * FILTER_C2))
+q = 0.5 * math.sqrt(FILTER_C1 / FILTER_C2)
+print(f"\nAnti-alias filter: fc {corner/1e3:.1f} kHz, Q {q:.3f} "
+      f"(R {FILTER_R/1e3:g}k, C1 {FILTER_C1*1e9:g}n, C2 {FILTER_C2*1e9:g}n)")
+for frequency in (1e3, 20e3, corner, 100e3):
+    print(f"  {frequency/1e3:7.1f} kHz -> {filter_response_db(frequency):+6.1f} dB")
+
+print("  at Nyquist, per channel count")
+for channels in (1, 2, 3):
+    rate = ADC_CLOCK / ADC_MIN_CYCLES / channels
+    nyquist = rate / 2
+    print(f"  {channels} ch: {rate/1e3:6.1f} kSa/s, Nyquist {nyquist/1e3:6.1f} kHz "
+          f"-> {filter_response_db(nyquist):+6.1f} dB")
