@@ -4,15 +4,17 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 BUNDLE="build/PiLyzer.app"
-VERSION="3.0"
+VERSION="${VERSION:-3.1.0}"
+BUILD_ARGS=(-c release --product PiLyzer)
+if [[ "${UNIVERSAL:-0}" == 1 ]]; then BUILD_ARGS+=(--arch arm64 --arch x86_64); fi
 
 echo "==> Building release binary"
-swift build -c release --product PiLyzer
+swift build "${BUILD_ARGS[@]}"
 
 echo "==> Assembling $BUNDLE"
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
-cp "$(swift build -c release --product PiLyzer --show-bin-path)/PiLyzer" "$BUNDLE/Contents/MacOS/PiLyzer"
+cp "$(swift build "${BUILD_ARGS[@]}" --show-bin-path)/PiLyzer" "$BUNDLE/Contents/MacOS/PiLyzer"
 
 cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

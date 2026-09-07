@@ -1,37 +1,29 @@
-## generic files to ignore
+# OS/editor files
+.DS_Store
 *~
 *.lock
-*.DS_Store
 *.swp
 *.out
-
-
-# swift
+# Local builds and caches
 .build/
 .swiftpm/
 build/
+node_modules/
+dist/
 *.xcuserstate
-
-# photos of the bench setup
+**/firmware/**/build-*/
+**/firmware/toolchain-pkg/
+tmp/
+.claude/
+# Bench photos stay local
 IMG_*.png
 IMG_*.jpg
 IMG_*.jpeg
 IMG_*.HEIC
-.DS_Store
-.build/
-build/
-# Firmware build trees and the vendored Arm toolchain, none of which belong
-# in the repository.
-firmware/**/build/
-firmware/**/build-*/
-firmware/toolchain-pkg/
-tools/**/build/
-tmp/
-
-# KiCad local UI state, locks and automatic backups
+# KiCad local state and backups
 *.kicad_prl
 ~*.lck
 *-backups/
 *.kicad_sch-bak
 *.kicad_pcb-bak
-hardware/**/.history/
+**/.history/

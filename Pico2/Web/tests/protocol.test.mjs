@@ -1,0 +1,102 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { makeSettings, Acquisition, DemoInstrument } from '../src/acquisition.mjs';
+import { BulkTransport } from '../src/usb.mjs';
+import { measure, spectrum, csv, decodeUART } from '../src/signal.mjs';
+const caps = demoCaps;
+for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, scale and 97-cycle rate floor`, () => {
+  const settings = makeSettings(); settings.timebase = 50e-6; settings.source = 2;
+  settings.channels.forEach((c, i) => c.enabled = !!(mask & (1 << i)));
+  const actual = analogRequest(settings, caps, 1), active = activeChannels(settings, caps), v = view(actual.payload);
+  assert.equal(actual.mask, mask); assert.equal(actual.payload[0], mask);
+  assert.equal(actual.payload[2], Math.max(0, active.indexOf(2)));
+  assert.ok(Math.abs(actual.period - active.length * 97 / 48000000) < 1e-12);
+  assert.equal(v.getBigUint64(8, true), BigInt(Math.round(actual.period * 1e15)));
+  assert.equal(v.getUint32(16, true), actual.count);
+  assert.ok(actual.pretrigger < actual.count);
+});
+test('older two-channel device and unipolar scale remain supported', () => {
+  const settings = makeSettings(); settings.source = 2; settings.level = 1.65;
+  const actual = analogRequest(settings, { ...caps, channels: 2, minCycles: 96 }, 0);
+  assert.equal(actual.mask, 3); assert.equal(actual.source, 0);
+  assert.ok(Math.abs(view(actual.payload).getUint16(4, true) - 32760) < 1);
+  assert.equal(scaleFor(settings, caps, 0, 0).centre, 1.65);
+  settings.channels[0].probe = 10; settings.channels[0].zero[0] = .1;
+  const scale = scaleFor(settings, caps, 0, 0); assert.ok(Math.abs(scale.volts(scale.code(5)) - 5) < .001);
+});
+test('trigger LPF support and no-channel requests are validated', () => {
+  const s = makeSettings(); s.lpf = 1000;
+  assert.throws(() => analogRequest(s, { ...caps, flags: 0 }, 1), /LPF/);
+  s.channels.forEach(c => c.enabled = false);
+  assert.throws(() => analogRequest(s, caps, 1), /Enable/);
+});
+test('three-channel payload splitting preserves sparse input order', () => {
+  const bytes = new Uint8Array(18), v = view(bytes);
+  [100, 200, 300, 101, 201, 301, 102, 202, 302].forEach((n, i) => v.setUint16(i * 2, n, true));
+  assert.deepEqual(splitAnalog(bytes, 3).map(c => Array.from(c)), [[100, 101, 102], [200, 201, 202], [300, 301, 302]]);
+  assert.throws(() => splitAnalog(bytes.slice(1), 3), /Incomplete/);
+  assert.equal(view(readRequest(10, 1365)).getUint32(4, true), 1365);
+});
+test('identity and response sequence are checked before accepting data', () => {
+  const data = new Uint8Array(32), v = view(data); v.setUint32(0, 0x5a594c50, true); v.setUint16(4, 1, true); v.setUint16(6, 0x105, true);
+  assert.equal(identity(data).firmware, '1.5'); data[0] = 0;
+  assert.throws(() => identity(data), /does not speak/);
+  const req = request(OP.identify, 24); req[0] = 0x5a;
+  assert.equal(responseHeader(req, OP.identify, 24).length, 0);
+  assert.throws(() => responseHeader(req, OP.identify, 25), /sequence/);
+});
+function reply(op, sequence, payload, status = 0) { const bytes = request(op, sequence, payload); bytes[0] = 0x5a; bytes[2] = status; return bytes; }
+class FakeDevice {
+  opened = true; packets = []; calls = [];
+  async transferOut(endpoint, bytes) {
+    assert.equal(this.packets.length, 0, 'requests must not overlap');
+    const op = bytes[1], seq = view(bytes).getUint16(4, true); this.calls.push(op);
+    const payload = op === OP.analogRead ? Uint8Array.from({ length: 8190 }, (_, i) => i % 256) : new Uint8Array([17, 23]);
+    const answer = reply(op, seq, payload, op === 99 ? 3 : 0);
+    this.packets = [new Uint8Array(), answer.slice(0, 5), answer.slice(5, 12), answer.slice(12, 76), answer.slice(76)].filter((p, i) => i === 0 || p.length);
+    return { status: 'ok', bytesWritten: bytes.length };
+  }
+  async transferIn() { await new Promise(r => setTimeout(r, 1)); const p = this.packets.shift(); return { status: 'ok', data: view(p) }; }
+  async close() { this.opened = false; }
+}
+test('bulk stream handles fragmented headers, full-size payloads, ZLP and concurrent callers', async () => {
+  const device = new FakeDevice(), transport = new BulkTransport(device, 2, 1);
+  const [large, small] = await Promise.all([transport.exchange(OP.analogRead), transport.exchange(OP.identify)]);
+  assert.equal(large.length, 8190); assert.equal(large[8189], 8189 % 256); assert.deepEqual([...small], [17, 23]);
+  assert.deepEqual(device.calls, [OP.analogRead, OP.identify]);
+});
+test('a rejected command leaves framing intact; bad framing closes the device', async () => {
+  const device = new FakeDevice(), transport = new BulkTransport(device, 2, 1);
+  await assert.rejects(transport.exchange(99), /Invalid setting/);
+  assert.equal(device.opened, true); await transport.exchange(OP.identify);
+  device.transferIn = async () => ({ status: 'ok', data: view(new Uint8Array(12)) });
+  await assert.rejects(transport.exchange(OP.identify), /sequence/); assert.equal(device.opened, false);
+});
+test('measurements and FFT agree with a known sine wave', () => {
+  const rate = 32768, samples = Float64Array.from({ length: 4096 }, (_, i) => 2 * Math.sin(2 * Math.PI * 1000 * i / rate));
+  const m = measure(samples, 1 / rate), f = spectrum(samples, 1 / rate);
+  assert.ok(Math.abs(m.rms - Math.SQRT2) < .001); assert.ok(Math.abs(m.frequency - 1000) < .01);
+  assert.equal(f.peak.frequency, 1000); assert.ok(Math.abs(f.peak.rms - Math.SQRT2) < .002);
+});
+test('CSV contains physical CH3 label and time relative to trigger', () => {
+  const text = csv({ kind: 'scope', traces: [{ index: 2, samples: new Float64Array([1, 2]) }], period: .001, count: 2, triggerIndex: 1 });
+  assert.match(text, /^time_s,CH3_V\n/); assert.match(text, /-0.001/);
+});
+test('UART decode samples bit centres and catches framing errors', () => {
+  const bits = [1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1]; // A5, LSB first
+  const samples = Uint8Array.from(bits.flatMap(bit => Array(16).fill(bit ? 16 : 0)));
+  const decoded = decodeUART(samples, 1 / (115200 * 16));
+  assert.equal(decoded.result[0].value, 0xa5); assert.equal(decoded.result[0].error, false);
+});
+test('normal trigger waiting can be stopped without a frame', async () => {
+  const frames = [], engine = new Acquisition(frame => frames.push(frame), () => {});
+  engine.attach(new DemoInstrument()); const settings = makeSettings(); settings.trigger = 2; settings.level = 50;
+  engine.start(settings); await new Promise(r => setTimeout(r, 25)); await engine.stop();
+  assert.equal(frames.length, 0); assert.equal(engine.running, false);
+});
+test('single capture returns all enabled channels once', async () => {
+  const frames = [], engine = new Acquisition(frame => frames.push(frame), () => {});
+  engine.attach(new DemoInstrument()); const settings = makeSettings(); settings.trigger = 0;
+  await engine.start(settings, true); assert.equal(frames.length, 1); assert.equal(frames[0].traces.length, 3); assert.equal(engine.running, false);
+});

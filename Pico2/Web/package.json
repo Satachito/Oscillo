@@ -1,0 +1,12 @@
+{
+  "name": "pilyzer-web",
+  "version": "3.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node build.mjs",
+    "dev": "node serve.mjs"
+  },
+  "engines": { "node": ">=22" }
+}

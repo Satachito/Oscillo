@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f2f3ed" />
+  <meta name="description" content="PiLyzer — a three-channel oscilloscope, spectrum and logic analyser for Pico 2. Connect directly with WebUSB or explore the built-in demo." />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="stylesheet" href="./style.css" />
+  <title>PiLyzer · Web Oscilloscope</title>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="PiLyzer home"><img src="./favicon.svg" alt=""/><span>PiLyzer<span class="edition">WEB</span></span></a>
+    <div class="connection"><span id="connection-dot" class="dot"></span><span id="device-name">No instrument connected</span></div>
+    <div class="connect-actions"><button id="demo" class="button quiet">Try demo</button><button id="connect" class="button primary">Connect USB <span aria-hidden="true">↗</span></button><button id="disconnect" class="button" hidden>Disconnect</button></div>
+  </header>
+  <main>
+    <section class="workspace" aria-label="Instrument display">
+      <div class="workspace-head"><div><p class="eyebrow">YOUR BENCH, IN THE BROWSER</p><h1 id="mode-title">Oscilloscope</h1></div><nav class="modes" aria-label="Instrument mode"><button data-mode="scope" class="selected" aria-pressed="true">Scope</button><button data-mode="spectrum" aria-pressed="false">Spectrum</button><button data-mode="logic" aria-pressed="false">Logic</button><button data-mode="meter" aria-pressed="false">Meter</button></nav></div>
+      <div id="error" class="notice error" role="alert" hidden></div>
+      <div id="browser-note" class="notice" hidden>USB connection needs desktop Chrome or Edge. Demo works in this browser.</div>
+      <section class="display" aria-label="Waveform">
+        <div class="display-top"><div id="legend" class="legend"><span class="trace-label ch1">CH1</span><span class="trace-label ch2">CH2</span><span class="trace-label ch3">CH3</span></div><div class="display-state"><span id="run-dot" class="dot"></span><span id="status" role="status" aria-live="polite">Ready</span></div></div>
+        <div class="canvas-wrap"><canvas id="plot" aria-label="Waveform plot"></canvas><div id="empty-state" class="empty-state"><div class="wave-icon" aria-hidden="true">∿</div><h2>A closer look at your signal.</h2><p>Connect your PiLyzer Pico 2, or explore<br/>three channels with the built-in demo.</p><button id="empty-demo" class="button luminous">Start a demo <span aria-hidden="true">→</span></button></div><div id="meter-values" class="meter-values" hidden></div></div>
+        <div class="display-bottom"><span id="timing">— Sa/s · — points</span><span id="trigger-summary">Trigger: Auto · CH1</span></div>
+      </section>
+      <div id="measurements" class="measurements"><div class="measurement-placeholder">Measurements appear with your first capture.</div></div>
+      <section id="decode-panel" class="decode-panel" hidden><div class="decode-heading"><h2>UART decode</h2><span id="decode-advice"></span></div><div id="decoded"></div></section>
+      <div class="workspace-foot"><span><span class="privacy-dot"></span> Signals stay on your computer.</span><div><a href="https://github.com/Satachito/Oscillo/releases" target="_blank" rel="noopener">macOS app ↗</a><a href="https://github.com/Satachito/Oscillo/tree/main/Pico2" target="_blank" rel="noopener">Docs & firmware ↗</a></div></div>
+    </section>
+    <aside class="controls" aria-label="Instrument controls">
+      <section class="control-section acquisition"><div class="section-title"><h2>Acquisition</h2><span id="source-badge" class="tag">OFFLINE</span></div><div class="transport"><button id="run" class="button primary" disabled>▶ Run</button><button id="single" class="button" disabled>Single</button><button id="clear" class="button quiet">Clear</button></div><button id="export" class="export-button" disabled>↓ Export capture <span>CSV</span></button></section>
+      <section class="control-section" id="horizontal-controls"><h2>Horizontal</h2><label class="field">Time / div<select id="timebase"></select></label><label class="field">Record length<select id="record"><option value="512">512 points</option><option value="1024">1,024 points</option><option value="2048" selected>2,048 points</option><option value="4096">4,096 points</option><option value="8192">8,192 points</option><option value="16384">16,384 points</option></select></label><div class="rate-card"><span id="active-count">3 channels enabled</span><strong id="max-rate">165 kSa/s <small>/ channel max</small></strong></div><label class="check-row"><input id="xy" type="checkbox"/>X/Y · first two enabled channels</label></section>
+      <section class="control-section" id="trigger-controls"><h2>Trigger</h2><div class="field-pair"><label>Mode<select id="trigger"><option value="1">Auto</option><option value="2">Normal</option><option value="0">Free run</option></select></label><label>Source<select id="source"></select></label></div><div class="field-pair"><label>Edge<select id="slope"><option value="0">Rising ↗</option><option value="1">Falling ↘</option></select></label><label>Level <span class="unit">V</span><input id="level" type="number" step="0.05" value="0"/></label></div><label class="slider-label">Position<output id="position-label">15%</output><input id="position" type="range" min="0" max="0.9" step="0.01" value="0.15"/></label><div id="analog-trigger-extra"><label class="field">Hysteresis<select id="hysteresis"><option value="0.001">0.1%</option><option value="0.004" selected>0.4%</option><option value="0.01">1%</option><option value="0.02">2%</option></select></label><label class="field">Trigger LPF<select id="lpf"><option value="0">Off</option><option value="100">100 Hz</option><option value="300">300 Hz</option><option value="1000">1 kHz</option><option value="3000">3 kHz</option><option value="10000">10 kHz</option><option value="100000">100 kHz</option></select></label><p class="hint">LPF changes trigger timing only. Captured waveforms stay unfiltered.</p></div></section>
+      <section class="control-section" id="channel-controls"><div class="section-title"><h2>Channels</h2><span class="tag">ANALOG</span></div><div id="channels"></div></section>
+      <section class="control-section" id="logic-controls" hidden><h2>Logic inputs</h2><label class="field">Sample rate<select id="logic-rate"><option value="100000">100 kSa/s</option><option value="1000000" selected>1 MSa/s</option><option value="10000000">10 MSa/s</option><option value="50000000">50 MSa/s</option><option value="150000000">150 MSa/s</option></select></label><label class="field">Record length<select id="logic-record"><option value="1024">1,024 points</option><option value="4096" selected>4,096 points</option><option value="16384">16,384 points</option><option value="65536">65,536 points</option></select></label><div id="logic-lines" class="logic-lines"></div><label class="check-row"><input id="uart" type="checkbox"/>Decode UART · 8N1</label><div class="field-pair"><label>UART line<select id="uart-line"></select></label><label>Baud<select id="uart-baud"><option>9600</option><option>57600</option><option selected>115200</option><option>230400</option><option>921600</option></select></label></div></section>
+      <section class="control-section" id="test-controls"><h2>Test output</h2><label class="check-row"><input id="test-enabled" type="checkbox" checked/>Calibration square wave</label><label class="field">Frequency<select id="test-frequency"><option value="100">100 Hz</option><option value="1000" selected>1 kHz</option><option value="10000">10 kHz</option><option value="100000">100 kHz</option></select></label><p id="test-pin" class="hint">GPIO20 → TP6 · firmware 1.5<br/>Wire TP6 to an input to measure it.</p></section>
+      <footer class="controls-foot">PiLyzer Web <span>v3.1</span></footer>
+    </aside>
+  </main>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>
