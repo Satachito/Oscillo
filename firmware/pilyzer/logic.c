@@ -196,16 +196,20 @@ void logic_abort(void)
 // Walks back from where the flag was noticed to the edge that raised it. The
 // search is bounded by the buffer, so a slow poll costs a longer walk, never a
 // wrong answer.
-static uint32_t exact_trigger(uint32_t hint, uint32_t available)
+static bool exact_trigger(uint32_t hint, uint32_t available, uint32_t *edge)
 {
-    if (hint > available) hint = available;
+    if (available < 2) return false;
+    if (hint >= available) hint = available - 1;
     uint8_t mask = 1u << plan.channel;
     for (uint32_t i = hint; i >= 1; i--) {
         bool before = (buffer[i - 1] & mask) != 0;
         bool after = (buffer[i] & mask) != 0;
-        if (plan.slope == SLOPE_RISING ? (!before && after) : (before && !after)) return i;
+        if (plan.slope == SLOPE_RISING ? (!before && after) : (before && !after)) {
+            *edge = i;
+            return true;
+        }
     }
-    return hint;
+    return false;
 }
 
 static void complete(uint32_t start, uint32_t trigger_index, bool triggered)
@@ -238,8 +242,18 @@ void logic_poll(void)
 
     if (run.state == STATE_POST) {
         if (available >= run.stop_at) {
-            uint32_t edge = exact_trigger(run.trigger_hint, available);
+            uint32_t edge;
+            if (!exact_trigger(run.trigger_hint, available, &edge)) {
+                restart_with_history();
+                return;
+            }
             uint32_t start = (edge >= plan.pretrigger) ? edge - plan.pretrigger : 0;
+            // A late flag can arrive after the DMA has filled the buffer.
+            // There will never be more tail data in that buffer: re-arm.
+            if (start + plan.record > LOGIC_BUFFER_BYTES) {
+                restart_with_history();
+                return;
+            }
             // The edge is usually a little behind where the flag was noticed,
             // so the tail of the record may still be arriving. Waiting is
             // right here; trimming the record to what has arrived would move

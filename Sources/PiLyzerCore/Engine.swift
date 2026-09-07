@@ -71,6 +71,8 @@ public final class InstrumentEngine {
 
     private var instrument: Instrument?
     private var connected: ConnectedInstrument?
+    private enum AcquisitionMode { case stopped, continuous, single }
+    private var acquisitionMode: AcquisitionMode = .stopped
     private var settings = ScopeSettings()
     private var appliedAnalog: AnalogConfiguration?
     private var appliedLogic: LogicConfiguration?
@@ -78,8 +80,20 @@ public final class InstrumentEngine {
     private var logicPlan = AcquisitionPlan.empty
     private var meterHistory: [[Double]] = [[], []]
     private var meterStart = Date()
+    private let makeInstrument: (DeviceSource) throws -> Instrument
 
-    public init() {}
+    public init() {
+        makeInstrument = { source in
+            switch source {
+            case .simulator: return SimulatedInstrument()
+            case let .usb(location): return try USBInstrument(locationID: location)
+            }
+        }
+    }
+
+    init(makeInstrument: @escaping (DeviceSource) throws -> Instrument) {
+        self.makeInstrument = makeInstrument
+    }
     deinit { instrument?.close() }
 
     // MARK: - Sources
@@ -108,6 +122,8 @@ public final class InstrumentEngine {
         _ = nextGeneration()
         report(state: .connecting)
         queue.async { [self] in
+            acquisitionMode = .stopped
+            report(running: false)
             instrument?.close()
             instrument = nil
             connected = nil
@@ -116,11 +132,7 @@ public final class InstrumentEngine {
             settings = newSettings
 
             do {
-                let device: Instrument
-                switch source {
-                case .simulator: device = SimulatedInstrument()
-                case let .usb(location): device = try USBInstrument(locationID: location)
-                }
+                let device = try makeInstrument(source)
                 let ranges = FrontEnd.ranges(forBoard: device.identity.boardID)
                 instrument = device
                 let description = ConnectedInstrument(identity: device.identity,
@@ -140,6 +152,7 @@ public final class InstrumentEngine {
     public func disconnect() {
         _ = nextGeneration()
         queue.async { [self] in
+            acquisitionMode = .stopped
             try? instrument?.abortAnalog()
             try? instrument?.abortLogic()
             instrument?.close()
@@ -167,31 +180,29 @@ public final class InstrumentEngine {
     // MARK: - Control
 
     public func update(settings newSettings: ScopeSettings) {
+        // Invalidate the poll from the caller: the acquisition queue may be
+        // waiting indefinitely for an edge under the previous settings.
+        let token = nextGeneration()
         queue.async { [self] in
             let modeChanged = newSettings.mode != settings.mode
             let panelChanged = newSettings.channels.map(\.rangeIndex) != settings.channels.map(\.rangeIndex)
                 || newSettings.calibrationOutputEnabled != settings.calibrationOutputEnabled
                 || newSettings.calibrationOutputFrequency != settings.calibrationOutputFrequency
             settings = newSettings
+            appliedAnalog = nil
+            appliedLogic = nil
             if modeChanged { resetMeter() }
             if panelChanged, let instrument { applyPanel(to: instrument) }
+            if acquisitionMode != .stopped, isCurrent(token) { step(token: token) }
         }
     }
 
-    public func start() {
-        guard instrument != nil || connected != nil else { return }
-        let token = nextGeneration()
-        queue.async { [self] in
-            guard instrument != nil, isCurrent(token) else { return }
-            resetMeter()
-            report(running: true)
-            step(token: token)
-        }
-    }
+    public func start() { begin(.continuous) }
 
     public func stop() {
         _ = nextGeneration()
         queue.async { [self] in
+            acquisitionMode = .stopped
             try? instrument?.abortAnalog()
             try? instrument?.abortLogic()
             report(running: false)
@@ -199,32 +210,18 @@ public final class InstrumentEngine {
         }
     }
 
-    public func single() {
+    public func single() { begin(.single) }
+
+    private func begin(_ mode: AcquisitionMode) {
         let token = nextGeneration()
         queue.async { [self] in
-            guard let instrument, isCurrent(token) else { return }
-            do {
-                switch settings.mode {
-                case .scope, .spectrum:
-                    if let frame = try acquireAnalog(instrument, token: token) {
-                        report(frame: frame)
-                        report(status: frame.triggered ? "Single sweep" : "Single sweep, no trigger")
-                    } else {
-                        report(status: "No trigger")
-                    }
-                case .logic:
-                    if let frame = try acquireLogic(instrument, token: token) {
-                        report(logic: frame)
-                        report(status: "Single capture")
-                    } else {
-                        report(status: "No trigger")
-                    }
-                case .meter:
-                    try acquireMeter(instrument)
-                }
-            } catch {
-                handle(error)
-            }
+            guard instrument != nil else { return }
+            acquisitionMode = mode
+            resetMeter()
+            report(running: true)
+            // Keep the requested mode even if an immediately following
+            // settings update superseded this token; that update resumes it.
+            if isCurrent(token) { step(token: token) }
         }
     }
 
@@ -237,11 +234,10 @@ public final class InstrumentEngine {
                 let readings = try instrument.sampleAnalog(averages: samples)
                 let volts = readings.enumerated().map { index, code -> Double in
                     guard index < settings.channels.count else { return 0 }
-                    var scale = settings.channels[index].scale(reference: connected.capabilities.referenceVolts,
+                    let scale = settings.channels[index].scale(reference: connected.capabilities.referenceVolts,
                                                                fullScale: connected.capabilities.analogFullScale,
                                                                ranges: connected.ranges)
-                    scale.calibration = ChannelCalibration(zero: 0, scale: scale.calibration.scale)
-                    return scale.volts(code)
+                    return scale.uncalibratedVolts(code: Double(code))
                 }
                 callbackQueue.async { completion(volts) }
                 report(status: "Zero: " + volts.map { Format.voltage($0) }.joined(separator: ", "))
@@ -263,7 +259,7 @@ public final class InstrumentEngine {
     // MARK: - Acquisition
 
     private func step(token: Int) {
-        guard isCurrent(token), let instrument else { return }
+        guard isCurrent(token), acquisitionMode != .stopped, let instrument else { return }
         let started = Date()
         var delay = Self.minimumFramePeriod
 
@@ -271,28 +267,41 @@ public final class InstrumentEngine {
             switch settings.mode {
             case .scope, .spectrum:
                 if let frame = try acquireAnalog(instrument, token: token) {
-                    report(frame: frame)
-                    report(status: frame.triggered ? "Triggered" : "Auto")
-                } else {
-                    report(status: "Waiting for trigger…")
+                    guard isCurrent(token) else { return }
+                    report(frame: frame, token: token)
+                    let text = acquisitionMode == .single
+                        ? (frame.triggered ? "Single sweep" : "Single sweep, no trigger")
+                        : (frame.triggered ? "Triggered" : "Auto")
+                    report(status: text)
+                } else if isCurrent(token) {
+                    report(status: acquisitionMode == .single ? "No trigger" : "Waiting for trigger…")
                 }
             case .logic:
                 if let frame = try acquireLogic(instrument, token: token) {
-                    report(logic: frame)
-                    report(status: frame.triggered ? "Triggered" : "Auto")
-                } else {
-                    report(status: "Waiting for trigger…")
+                    guard isCurrent(token) else { return }
+                    report(logic: frame, token: token)
+                    let text = acquisitionMode == .single
+                        ? "Single capture" : (frame.triggered ? "Triggered" : "Auto")
+                    report(status: text)
+                } else if isCurrent(token) {
+                    report(status: acquisitionMode == .single ? "No trigger" : "Waiting for trigger…")
                 }
             case .meter:
-                try acquireMeter(instrument)
+                try acquireMeter(instrument, token: token)
                 delay = 0.05
             }
         } catch {
+            guard isCurrent(token) else { return }
             handle(error)
             return
         }
 
         guard isCurrent(token) else { return }
+        if acquisitionMode == .single {
+            acquisitionMode = .stopped
+            report(running: false)
+            return
+        }
         let elapsed = Date().timeIntervalSince(started)
         queue.asyncAfter(deadline: .now() + max(delay - elapsed, 0.001)) { [self] in step(token: token) }
     }
@@ -307,7 +316,10 @@ public final class InstrumentEngine {
             analogPlan = try instrument.configureAnalog(configuration)
             appliedAnalog = configuration
             let plan = analogPlan
-            callbackQueue.async { [onPlan] in onPlan?(plan) }
+            callbackQueue.async { [weak self, onPlan] in
+                guard self?.isCurrent(token) == true else { return }
+                onPlan?(plan)
+            }
         }
 
         let averaging = min(max(settings.averaging, 1), 100)
@@ -382,7 +394,10 @@ public final class InstrumentEngine {
             logicPlan = try instrument.configureLogic(configuration)
             appliedLogic = configuration
             let plan = logicPlan
-            callbackQueue.async { [onPlan] in onPlan?(plan) }
+            callbackQueue.async { [weak self, onPlan] in
+                guard self?.isCurrent(token) == true else { return }
+                onPlan?(plan)
+            }
         }
 
         try instrument.armLogic()
@@ -421,7 +436,7 @@ public final class InstrumentEngine {
         }
     }
 
-    private func acquireMeter(_ instrument: Instrument) throws {
+    private func acquireMeter(_ instrument: Instrument, token: Int) throws {
         let volts = try currentVolts(instrument)
         for (index, value) in volts.enumerated() where index < meterHistory.count {
             meterHistory[index].append(value)
@@ -434,7 +449,10 @@ public final class InstrumentEngine {
         let interval = count > 1 ? span / Double(count - 1) : 0.05
         let reading = MeterReading(volts: volts, history: meterHistory,
                                    interval: interval, timestamp: Date())
-        callbackQueue.async { [onMeterReading] in onMeterReading?(reading) }
+        callbackQueue.async { [weak self, onMeterReading] in
+            guard self?.isCurrent(token) == true else { return }
+            onMeterReading?(reading)
+        }
     }
 
     private func currentVolts(_ instrument: Instrument) throws -> [Double] {
@@ -471,6 +489,7 @@ public final class InstrumentEngine {
     // MARK: - Reporting
 
     private func handle(_ error: Error) {
+        acquisitionMode = .stopped
         _ = nextGeneration()
         report(running: false)
         report(error: Self.describe(error))
@@ -490,11 +509,17 @@ public final class InstrumentEngine {
     private func report(state: ConnectionState) {
         callbackQueue.async { [onStateChange] in onStateChange?(state) }
     }
-    private func report(frame: ScopeFrame) {
-        callbackQueue.async { [onScopeFrame] in onScopeFrame?(frame) }
+    private func report(frame: ScopeFrame, token: Int) {
+        callbackQueue.async { [weak self, onScopeFrame] in
+            guard self?.isCurrent(token) == true else { return }
+            onScopeFrame?(frame)
+        }
     }
-    private func report(logic frame: LogicFrame) {
-        callbackQueue.async { [onLogicFrame] in onLogicFrame?(frame) }
+    private func report(logic frame: LogicFrame, token: Int) {
+        callbackQueue.async { [weak self, onLogicFrame] in
+            guard self?.isCurrent(token) == true else { return }
+            onLogicFrame?(frame)
+        }
     }
     private func report(running: Bool) {
         callbackQueue.async { [onRunningChange] in onRunningChange?(running) }

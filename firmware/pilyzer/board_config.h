@@ -11,7 +11,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0100   // 1.0
+#define PILYZER_FIRMWARE_VERSION 0x0101   // 1.1
 
 // --- Pins ---------------------------------------------------------------
 #define PIN_CALIBRATION_OUT 2     // PWM test square wave

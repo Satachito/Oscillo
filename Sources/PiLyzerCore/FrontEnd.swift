@@ -111,8 +111,13 @@ public struct VoltageScale: Equatable, Sendable {
     public func volts(_ sample: UInt16) -> Double { volts(code: Double(sample)) }
 
     public func volts(code: Double) -> Double {
-        let converter = code / fullScale * reference
-        return calibration.apply((converter - range.offset) / range.gain) * probe
+        calibration.apply(uncalibratedVolts(code: code)) * probe
+    }
+
+    /// Input volts before calibration and probe multiplication. A grounded
+    /// reading in this space replaces ChannelCalibration.zero directly.
+    public func uncalibratedVolts(code: Double) -> Double {
+        (code / fullScale * reference - range.offset) / range.gain
     }
 
     /// The reading a given input voltage would produce, which is how the

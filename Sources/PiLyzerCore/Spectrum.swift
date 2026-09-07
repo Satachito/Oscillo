@@ -244,19 +244,22 @@ public enum SpectrumAnalyzer {
                         windowUsed: window)
     }
 
-    /// Averages spectra bin by bin, in power.
+    /// Averages the latest contiguous set of compatible spectra, in power.
     public static func average(_ spectra: [Spectrum]) -> Spectrum {
-        guard let first = spectra.first else { return .empty }
-        guard spectra.count > 1 else { return first }
-        let count = first.amplitudes.count
+        guard let latest = spectra.last else { return .empty }
+        guard spectra.count > 1 else { return latest }
+        let count = latest.amplitudes.count
         var power = [Double](repeating: 0, count: count)
         var used = 0
-        for spectrum in spectra where spectrum.amplitudes.count == count {
+        for spectrum in spectra.reversed() {
+            guard spectrum.amplitudes.count == count,
+                  spectrum.sampleRate == latest.sampleRate,
+                  spectrum.binWidth == latest.binWidth,
+                  spectrum.windowUsed == latest.windowUsed else { break }
             for index in 0..<count { power[index] += spectrum.amplitudes[index] * spectrum.amplitudes[index] }
             used += 1
         }
-        guard used > 0 else { return first }
-        var result = first
+        var result = latest
         result.amplitudes = power.map { ($0 / Double(used)).squareRoot() }
         return result
     }

@@ -251,6 +251,7 @@ static void drain_converter(void)
     uint32_t index = run.raw_consumed & (ADC_RAW_SAMPLES - 1);
     uint32_t consumed = 0;
     while (consumed < pending) {
+        if (run.written + plan.channels > ANALOG_BUFFER_CONVERSIONS) break;
         run.accumulator[run.phase] += raw_ring[index];
         index = (index + 1) & (ADC_RAW_SAMPLES - 1);
         consumed++;
@@ -274,6 +275,9 @@ static void drain_converter(void)
 static void scan_for_trigger(void)
 {
     uint32_t available = run.written / plan.channels;
+    // A drain can cross high_water in one batch. Only accept edges with
+    // enough buffer remaining for the entire post-trigger tail.
+    if (available > plan.high_water + 1) available = plan.high_water + 1;
     int32_t level = plan.level;
     int32_t hysteresis = plan.hysteresis;
 

@@ -104,6 +104,18 @@ Pico 2 offers one range of 0–3.3 V and a rev A board offers ±25 V and ±5 V.
 
 ## Bringing a board up
 
+The acquisition boundary regressions also run on the host, without the Pico
+SDK or an attached board:
+
+```bash
+./firmware/pilyzer/tests/run.sh  # from the repository root; requires Clang
+```
+
+These compile the production `analog.c` and `logic.c` against small substitutes
+for the hardware calls. AddressSanitizer and UndefinedBehaviorSanitizer check
+full buffers, late trigger edges, and safe re-arming. They do not validate DMA
+or PIO timing on a physical board.
+
 ```bash
 swift run PiLyzer --list       # is it on the bus, and is it an instrument?
 swift run PiLyzer --selftest   # walk the whole command set and report

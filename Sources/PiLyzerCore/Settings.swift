@@ -74,6 +74,12 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         calibration[index] = value
     }
 
+    public mutating func calibrateZero(to uncalibratedVolts: Double, forRange index: Int) {
+        var correction = calibration(forRange: index)
+        correction.zero = uncalibratedVolts
+        setCalibration(correction, forRange: index)
+    }
+
     public func scale(reference: Double, fullScale: Double, ranges: [InputRange]) -> VoltageScale {
         let index = min(max(rangeIndex, 0), ranges.count - 1)
         return VoltageScale(reference: reference, fullScale: fullScale,
@@ -206,6 +212,17 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         return (0..<channels.count).reduce(0) { $0 + ((mask & (1 << $1)) != 0 ? 1 : 0) }
     }
 
+    /// Spectra can share an averaging history only while their input and
+    /// acquisition conditions agree. Display units and markers do not matter.
+    public func hasSameSpectrumInput(as other: ScopeSettings) -> Bool {
+        mode == other.mode && channels == other.channels
+            && secondsPerDivision == other.secondsPerDivision
+            && recordLength == other.recordLength && trigger == other.trigger
+            && averaging == other.averaging && spectrum.window == other.spectrum.window
+            && calibrationOutputEnabled == other.calibrationOutputEnabled
+            && calibrationOutputFrequency == other.calibrationOutputFrequency
+    }
+
     /// Turns the front panel into the request the instrument understands.
     ///
     /// The sample rate is pinned at the converter's fastest whenever the sweep
@@ -228,15 +245,15 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         }
 
         let source = min(max(trigger.source, 0), max(channels.count - 1, 0))
-        let scale = scales.indices.contains(source) ? scales[source] : scales.first
+        // An unavailable trigger source falls back to the first enabled
+        // physical channel, whose scale must be used for the voltage code.
+        let effectiveSource = mask & (1 << source) != 0 ? source : (mask & 1 != 0 ? 0 : 1)
+        let scale = scales.indices.contains(effectiveSource) ? scales[effectiveSource] : scales.first
         let levelCode = scale.map { $0.code(forVolts: trigger.levelVolts) } ?? capabilities.analogFullScale / 2
         let level = UInt16(min(max(levelCode.rounded(), 0), capabilities.analogFullScale))
         let hysteresis = UInt16(min(max(trigger.hysteresis * capabilities.analogFullScale, 0), 4095))
 
-        // A trigger aimed at a channel that is switched off has nothing to
-        // watch, so it moves to the first one that is on.
-        var effectiveSource = source
-        if mask & (1 << source) == 0 { effectiveSource = mask & 1 != 0 ? 0 : 1 }
+        // The wire source is a slot in the interleaved acquisition record.
         let slot = (mask == 0b11) ? effectiveSource : 0
 
         let pretrigger = min(Int(Double(record) * min(max(trigger.position, 0), 0.95)),

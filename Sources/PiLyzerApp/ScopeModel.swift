@@ -10,6 +10,7 @@ final class ScopeModel: ObservableObject {
     @Published var settings: ScopeSettings {
         didSet {
             guard settings != oldValue else { return }
+            if !settings.hasSameSpectrumInput(as: oldValue) { resetSpectrum() }
             engine.update(settings: settings)
             Preferences.save(settings)
         }
@@ -85,6 +86,7 @@ final class ScopeModel: ObservableObject {
     }
 
     func connect() {
+        resetSpectrum()
         Preferences.save(source: selectedSource)
         engine.connect(to: selectedSource, settings: settings)
     }
@@ -132,22 +134,25 @@ final class ScopeModel: ObservableObject {
     func clear() {
         frame = ScopeFrame()
         logicFrame = LogicFrame()
+        resetSpectrum()
+        decoded = []
+    }
+
+    private func resetSpectrum() {
         spectrum = .empty
         spectrumHistory.removeAll()
         quality = nil
-        decoded = []
     }
 
     /// Grounded-input calibration: whatever both channels read now becomes
     /// zero for the range each one is on.
     func calibrateZero() {
+        let measuredRanges = settings.channels.map(\.rangeIndex)
         engine.calibrateZero { [weak self] volts in
             guard let self else { return }
             for (index, value) in volts.enumerated() where index < self.settings.channels.count {
-                let range = self.settings.channels[index].rangeIndex
-                var calibration = self.settings.channels[index].calibration(forRange: range)
-                calibration.zero += value
-                self.settings.channels[index].setCalibration(calibration, forRange: range)
+                let range = measuredRanges[index]
+                self.settings.channels[index].calibrateZero(to: value, forRange: range)
             }
             self.statusText = "Zero calibrated"
         }
