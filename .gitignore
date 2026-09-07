@@ -27,3 +27,11 @@ firmware/**/build-*/
 firmware/toolchain-pkg/
 tools/**/build/
 tmp/
+
+# KiCad local UI state, locks and automatic backups
+*.kicad_prl
+~*.lck
+*-backups/
+*.kicad_sch-bak
+*.kicad_pcb-bak
+hardware/**/.history/

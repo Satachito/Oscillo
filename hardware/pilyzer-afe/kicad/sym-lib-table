@@ -1,0 +1,1 @@
+(sym_lib_table (version 7) (lib (name "PiLyzer") (type "KiCad") (uri "${KIPRJMOD}/PiLyzer.kicad_sym") (options "") (descr "Project-local symbols derived from KiCad 10.0.5")))

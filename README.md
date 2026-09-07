@@ -145,7 +145,7 @@ turn.
 | `Sources/PiLyzerCore` | protocol, transport, instrument, engine, FFT, decoders |
 | `Sources/PiLyzerApp` | SwiftUI front panel and the four screens |
 | `firmware/pilyzer` | RP2350 firmware |
-| `hardware/pilyzer-afe` | analogue front end: circuit, values, BOM |
+| `hardware/pilyzer-afe` | analogue front end: KiCad schematic, footprints, values, BOM |
 | `docs/protocol.md` | the contract between the firmware and the application |
 
 `PiLyzerCore` has no interface dependencies. The real instrument and the demo

@@ -1,9 +1,11 @@
 # PiLyzer analogue front end, rev A
 
 Two DC-coupled analogue channels and eight logic inputs for a Raspberry Pi
-Pico 2. Design status: **circuit and values fixed, ready to breadboard.** The
-schematic capture, PCB layout and Gerbers are not done — see *Before
-fabrication* at the end.
+Pico 2. Design status: **KiCad schematic captured and footprints assigned;
+prototype measurements and PCB layout remain.** Open
+[`kicad/pilyzer-afe.kicad_pro`](kicad/pilyzer-afe.kicad_pro) in KiCad 10.
+The three sheets cover the Pico/power/logic interface, CH1, and CH2.
+See [`kicad/README.md`](kicad/README.md) for checks, sources and capture corrections.
 
 This board is USB-ground referenced and **not isolated**. It must not be used
 on mains primary circuits, on anything floating at a dangerous potential, or on
@@ -32,20 +34,22 @@ changes with the range — which is what lets one frequency compensation serve
 both ranges instead of needing a different trimmer for each.
 
 ```text
-                   C1 6.8p
-                ┌────┤├────┐
-                │          │
- IN ──┬── R1 ───┴─ R2 ─────┴──┬── node ──┬───────► +  ┌────────┐
-      │  499k       499k      │          │         │  │TLV9064 │──┬── R5 1k ──┬── R6 1k ──┬── ADC
-      │                       │        C4 82p      └──┤        │  │           │           │
-     D1 clamp            R3 125k                      └────────┘  │          C6 1n       C7 1n
-     to 3V3/AGND          to 3V3                        ▲    │    │           │           │
-                          R4 143k                       │    └────┴─ R7 10k ──┘          AGND
-                          to AGND                       │                 │
-                                                        │            ┌────┴─────┐
-                                                     (inverting)     │ R8 2.49k │
-                                                        └────────────┤  + SW    ├── VMID
-                                                                     └──────────┘
+IN -- R1 499k -- R2 499k -- NODE --> U1A (+)
+ |__________________________|
+       C1 6.8p || TC1
+
+NODE -- R3 125k -- 3V3     NODE -- R4 143k -- GND
+NODE -- C4 82p -- GND      NODE -- BAV199 rail clamps -- GND / 3V3
+
+U1A OUT -- R5 1k -- RC1 -- R6 1k -- ADC
+                   |               |
+                  C6 1n           C7 1n
+                   |               |
+                  GND             GND
+
+U1A OUT -- R7 10k -- U1A (-) -- R8 2.67k -- U2A COM
+U2A NO -- VMID        U2A NC -- not connected
+GPIO14 LOW: COM-NC (gain 1); HIGH: COM-NO (gain 4.745)
 ```
 
 * **R1 + R2** are the 1 MΩ input, split in two so each 0805 sees half the
@@ -57,7 +61,7 @@ both ranges instead of needing a different trimmer for each.
 * **C1 and C4** compensate the divider. Without them the ranges roll off at a
   few tens of kHz, differently from each other, and a square wave comes back
   with the wrong shape.
-* **The op amp** is a follower when the switch is open, and a ×5 amplifier
+* **The op amp** is a follower when the switch is open, and a ×4.745 amplifier
   referenced to VMID when it is closed. R7 carries no current with R8
   disconnected, so the open position is exactly unity — there is nothing to
   calibrate about it.
@@ -68,7 +72,9 @@ both ranges instead of needing a different trimmer for each.
   resistor in one. R6 also stops the op amp from seeing the converter's
   sampling capacitor directly.
 
-VMID is 3V3 halved by two 10 kΩ resistors and buffered by the fourth amplifier.
+VMID is 3V3 halved by two 10 kΩ resistors and buffered by U1D. C15 (1 µF)
+is across the lower divider resistor, before the buffer. U1C is an unused
+follower with its noninverting input tied to VMID.
 
 ## Why the bias comes from 3V3 and must keep coming from 3V3
 
@@ -166,8 +172,8 @@ series resistor limits the current into the RP2350's own clamp diodes to about
 the levels are outside specification. There is no buffer and no level shifter on
 this board; feeding it 5 V logic is a rev B question, not a "probably fine".
 
-Unpopulated 100 kΩ pulldowns keep unused inputs from floating and filling the
-display with noise.
+Optional 100 kΩ pulldowns can be populated to keep unused inputs from floating.
+They are marked DNP in the schematic and do nothing while unpopulated.
 
 ## Connections to the Pico 2
 
@@ -195,9 +201,9 @@ The op amp draws about 4 mA, so the whole board runs from 3V3(OUT).
    a Sallen-Key.
 3. Check the clamp diodes' leakage at temperature on the ±5 V range, where a
    nanoamp through 62 kΩ is already visible.
-4. Capture the schematic, assign footprints, run ERC.
+4. Review the captured schematic and assigned footprints against the actual parts
+   to be ordered. KiCad ERC currently passes; rerun it after edits.
 5. Lay out, keeping the divider node small — it is the compensation.
 6. DRC, Gerber review, BOM and CPL.
 
-The previous jumper-switched design is still in `hardware/pico2-afe`, and is
-superseded by this one.
+The current schematic is in `hardware/pilyzer-afe/kicad`.
