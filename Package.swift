@@ -2,25 +2,34 @@
 import PackageDescription
 
 let package = Package(
-    name: "DPScope",
+    name: "PiLyzer",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "DPScope", targets: ["DPScopeApp"]),
-        .library(name: "DPScopeCore", targets: ["DPScopeCore"]),
+        .executable(name: "PiLyzer", targets: ["PiLyzerApp"]),
+        .library(name: "PiLyzerCore", targets: ["PiLyzerCore"]),
     ],
     targets: [
+        // IOKit's USB device interfaces, wrapped so Swift sees an ordinary handle.
         .target(
-            name: "DPScopeCore",
+            name: "CPiLyzerUSB",
+            linkerSettings: [
+                .linkedFramework("IOKit"),
+                .linkedFramework("CoreFoundation"),
+            ]
+        ),
+        .target(
+            name: "PiLyzerCore",
+            dependencies: ["CPiLyzerUSB"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(
-            name: "DPScopeApp",
-            dependencies: ["DPScopeCore"],
+            name: "PiLyzerApp",
+            dependencies: ["PiLyzerCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "DPScopeCoreTests",
-            dependencies: ["DPScopeCore"],
+            name: "PiLyzerCoreTests",
+            dependencies: ["PiLyzerCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

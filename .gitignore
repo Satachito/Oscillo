@@ -17,3 +17,13 @@ IMG_*.png
 IMG_*.jpg
 IMG_*.jpeg
 IMG_*.HEIC
+.DS_Store
+.build/
+build/
+# Firmware build trees and the vendored Arm toolchain, none of which belong
+# in the repository.
+firmware/**/build/
+firmware/**/build-*/
+firmware/toolchain-pkg/
+tools/**/build/
+tmp/

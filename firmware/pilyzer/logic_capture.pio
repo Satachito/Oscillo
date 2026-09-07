@@ -1,0 +1,27 @@
+; Logic capture for the PiLyzer.
+;
+; One state machine samples the eight inputs once per clock and pushes them
+; four at a time, so the DMA moves whole words and a byte in memory is one
+; sample. A second state machine watches the trigger pin at full speed and
+; raises a flag: at 150 MS/s nothing running on the processor could see an edge
+; in time, but the processor does not need to — it finds the exact edge in the
+; captured data afterwards, so the trigger lands on a sample, not on an
+; interrupt latency.
+
+.program logic_capture
+.wrap_target
+    in pins, 8
+.wrap
+
+.program logic_trigger
+public rise:
+    wait 0 pin 0
+    wait 1 pin 0
+    jmp fire
+public fall:
+    wait 1 pin 0
+    wait 0 pin 0
+fire:
+    irq nowait 4
+stall:
+    jmp stall
