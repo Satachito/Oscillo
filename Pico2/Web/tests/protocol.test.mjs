@@ -100,3 +100,29 @@ test('single capture returns all enabled channels once', async () => {
   engine.attach(new DemoInstrument()); const settings = makeSettings(); settings.trigger = 0;
   await engine.start(settings, true); assert.equal(frames.length, 1); assert.equal(frames[0].traces.length, 3); assert.equal(engine.running, false);
 });
+
+test('USB connect clears a previous host reply before identifying and claims advertised endpoints', async () => {
+  const { USBInstrument } = await import('../src/usb.mjs');
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const events = [], alternate = { interfaceClass: 255, alternateSetting: 0, endpoints: [{ direction: 'in', type: 'bulk', endpointNumber: 2 }, { direction: 'out', type: 'bulk', endpointNumber: 1 }] };
+  const device = new FakeDevice();
+  device.packets = [reply(OP.analogStatus, 987, new Uint8Array(16))];
+  device.configuration = { interfaces: [{ interfaceNumber: 0, alternate, alternates: [alternate] }] };
+  device.open = async () => { events.push('open'); device.opened = true; };
+  device.reset = async () => { events.push('reset'); device.packets = []; };
+  device.claimInterface = async n => { assert.equal(n, 0); events.push('claim'); };
+  device.transferOut = async (endpoint, bytes) => {
+    assert.equal(endpoint, 1); assert.equal(device.packets.length, 0, 'previous session must be cleared');
+    const op = bytes[1], payload = new Uint8Array(op === OP.identify ? 32 : 48), v = view(payload);
+    if (op === OP.identify) { v.setUint32(0, 0x5a594c50, true); v.setUint16(4, 1, true); v.setUint16(6, 0x105, true); }
+    else { payload.set([3, 12, 8, 2]); [48000000, 97, 16384, 16383, 150000000, 65536, 65535, 3300000, 15].forEach((n, i) => v.setUint32(4 + i * 4, n, true)); }
+    device.packets.push(reply(op, view(bytes).getUint16(4, true), payload));
+    return { status: 'ok', bytesWritten: bytes.length };
+  };
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { usb: { requestDevice: async () => device } } });
+  try {
+    const instrument = await USBInstrument.connect();
+    assert.equal(instrument.identity.firmware, '1.5'); assert.equal(instrument.caps.channels, 3);
+    assert.deepEqual(events, ['open', 'reset', 'claim']); await instrument.close();
+  } finally { if (previous) Object.defineProperty(globalThis, 'navigator', previous); else delete globalThis.navigator; }
+});

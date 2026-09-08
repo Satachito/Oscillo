@@ -56,6 +56,9 @@ export class USBInstrument {
     const device = await navigator.usb.requestDevice({ filters: [USB_IDS] });
     try {
       await device.open();
+      // A previous host can leave an unread reply in the bulk endpoint.
+      // Reset the USB session before IDENTIFY so the firmware clears its queues.
+      await device.reset();
       if (!device.configuration) await device.selectConfiguration(1);
       const iface = device.configuration.interfaces.find(i => i.alternates.some(a => a.interfaceClass === 255));
       if (!iface) throw new Error('No PiLyzer vendor interface found');

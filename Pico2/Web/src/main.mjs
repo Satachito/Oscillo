@@ -22,6 +22,10 @@ function updateButtons() {
   $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : 'USB' : 'OFFLINE';
   $('device-name').textContent = instrument ? `${instrument.identity.name} · firmware ${instrument.identity.firmware}` : 'No instrument connected';
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
+  $('empty-demo').disabled = connecting || acquisition.running;
+  $('empty-demo').textContent = instrument ? 'Single capture' : 'Start a demo →';
+  $('empty-state').querySelector('h2').textContent = instrument ? 'Ready for your signal.' : 'A closer look at your signal.';
+  $('empty-state').querySelector('p').textContent = instrument ? 'Press Run for continuous capture, or Single for one record.' : 'Connect your PiLyzer Pico 2, or explore three channels with the built-in demo.';
 }
 function option(value, label) { const el = document.createElement('option'); el.value = value; el.textContent = label; return el; }
 function options(id, values, selected) { $(id).replaceChildren(...values.map(([value, label]) => option(value, label))); $(id).value = selected; }
@@ -131,6 +135,7 @@ async function changed() {
   } catch (e) { showError(e.message); }
 }
 async function connect(demo) {
+  if (instrument || connecting) return;
   connecting = true; showError(); updateButtons();
   try {
     instrument = demo ? new DemoInstrument() : await USBInstrument.connect(); acquisition.attach(instrument); frame = null;
@@ -147,7 +152,8 @@ async function connect(demo) {
   } catch (e) { if (e.name !== 'NotFoundError') showError(e.message); instrument = null; acquisition.attach(null); }
   finally { connecting = false; updateButtons(); }
 }
-$('connect').onclick = () => connect(false); $('demo').onclick = $('empty-demo').onclick = () => connect(true);
+$('connect').onclick = () => connect(false); $('demo').onclick = () => connect(true);
+$('empty-demo').onclick = () => instrument ? acquisition.start(settings, true) : connect(true);
 $('disconnect').onclick = async () => {
   try { await acquisition.stop(); await instrument?.close(); } catch (e) { showError(e.message); }
   finally { instrument = null; acquisition.attach(null); frame = null; synchronize(); $('status').textContent = 'Disconnected'; }

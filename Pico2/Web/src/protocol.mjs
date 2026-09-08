@@ -13,7 +13,7 @@ export function request(opcode, sequence, payload = new Uint8Array()) {
 export function responseHeader(bytes, opcode, sequence) {
   if (bytes.length < 12) throw new Error('Short response header');
   const v = view(bytes), length = v.getUint32(8, true);
-  if (bytes[0] !== 0x5a || bytes[1] !== opcode || v.getUint16(4, true) !== sequence) throw new Error('USB response is out of sequence. Reconnect the instrument.');
+  if (bytes[0] !== 0x5a || bytes[1] !== opcode || v.getUint16(4, true) !== sequence) throw new Error(`USB response is out of sequence (expected ${opcode}/${sequence}, header ${Array.from(bytes.slice(0, 12), b => b.toString(16).padStart(2, '0')).join(' ')}). Reconnect the instrument.`);
   if (length > MAX_PAYLOAD) throw new Error('Invalid USB response length');
   return { length, status: bytes[2] };
 }
