@@ -19,6 +19,7 @@ an independent Swift package; run its build commands from its own directory.
 (cd PCBScope && ./Scripts/make-app.sh)
 ```
 
-PiLyzer Web talks directly to the instrument using WebUSB in Chrome or Edge
-on a desktop computer. Demo mode also works without an instrument. Captured
-samples remain in the browser; CSV export saves them locally.
+PiLyzer Web talks directly to the instrument using WebUSB in Chrome or Edge on
+a desktop computer — macOS, Windows and Linux alike, with nothing to install on
+any of them from firmware 1.6. Demo mode also works without an instrument.
+Captured samples remain in the browser; CSV export saves them locally.

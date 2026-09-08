@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")"
+# A macOS shell whose PATH finds the Command Line Tools clang while
+# xcode-select points at Xcode leaves the compiler with no system headers.
+if [ "$(uname)" = Darwin ] && [ -z "${SDKROOT:-}" ]; then
+    SDKROOT=$(xcrun --show-sdk-path) && export SDKROOT
+fi
 test_build_dir=$(mktemp -d "${TMPDIR:-/tmp}/pilyzer-firmware-tests.XXXXXX")
 trap 'rm -rf "$test_build_dir"' EXIT
 for module in analog logic trigger_filter; do

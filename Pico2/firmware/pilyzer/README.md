@@ -85,6 +85,24 @@ bytes on firmware 1.5). Configuration and capability packet layouts are unchange
 Firmware 1.2 used logic GPIO6–13, ranges GPIO14/15 and test output GPIO2;
 firmware 1.3/1.4 used test output GPIO28. Update wiring before installing 1.5.
 
+### Driverless on Windows too (firmware 1.6)
+
+A vendor-specific interface is what makes this driverless on macOS and Linux:
+no kernel driver matches class `0xFF`, so an application claims the interface
+itself. Windows works the other way round — it binds a driver *by name*, and
+with no name it binds nothing, so the interface is visible but nothing can open
+it, the browser application included.
+
+So the device now names one for itself. `bcdUSB` is 2.1, which is what makes
+Windows ask for the BOS descriptor at all, and the BOS carries two platform
+capabilities: a Microsoft OS 2.0 descriptor set that declares the compatible id
+`WINUSB` and a `DeviceInterfaceGUIDs` registry property, and a WebUSB
+capability naming the hosted application as the landing page. Nothing has to be
+installed by hand on any platform.
+
+None of this changes a byte of the PiLyzer protocol; it is all in the enumeration
+descriptors and two vendor control requests that never touch the bulk endpoints.
+
 The diminished-chord generator remains a standalone program for a separate
 Pico 2 in [`tools/pico2-chord`](../../tools/pico2-chord). GPIO0–7 are unused on
 the instrument, and the carrier has no J8.

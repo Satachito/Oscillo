@@ -20,6 +20,11 @@ USB 2.0 full speed, one vendor-specific interface (class `0xFF`, subclass
 
 A vendor interface is claimed by no macOS driver, so the application opens it
 directly through IOKit with no kext, no driver package and no entitlement.
+Windows binds drivers by name instead, so from firmware 1.6 the device names
+`WINUSB` for itself in a Microsoft OS 2.0 descriptor and the browser
+application can open the same interface with nothing installed. Those are
+enumeration descriptors and two vendor control requests; no byte of this
+protocol changes with them.
 Bulk moves roughly 1 MB/s on this link, which is what makes 16 K-point records
 and deep logic captures practical.
 

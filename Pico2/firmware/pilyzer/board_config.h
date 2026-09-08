@@ -11,7 +11,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0105   // 1.5: three analogue channels; calibration output on GPIO20
+#define PILYZER_FIRMWARE_VERSION 0x0106   // 1.6: WinUSB/WebUSB descriptors; 1.5 added CH3 and the GPIO20 calibration output
 
 // --- Pins ---------------------------------------------------------------
 #define PIN_CALIBRATION_OUT 20    // adjustable calibration square wave
