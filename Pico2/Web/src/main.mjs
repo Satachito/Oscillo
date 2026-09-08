@@ -1,10 +1,44 @@
 import { USBInstrument } from './usb.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor } from './protocol.mjs';
+import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel } from './protocol.mjs';
 import { fmt, csv, decodeUART } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
-let settings = makeSettings(), instrument = null, frame = null, connecting = false;
+const NUMERIC_CONTROLS = { timebase: 'timebase', record: 'record', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart']];
+const STORAGE_KEY = 'pilyzer.settings.v1';
+// The front panel comes back the way it was left. Per-channel zeroing does not:
+// that belongs to a calibration session, and connecting starts a new one.
+function loadSettings() {
+  const defaults = makeSettings();
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch { return defaults; }
+  if (!saved || typeof saved !== 'object') return defaults;
+  // Field by field, and only when the stored value still has the shape the
+  // current version expects: an older or hand-edited entry cannot break start-up.
+  const accept = (value, against) => typeof value === typeof against && (typeof against !== 'number' || Number.isFinite(value));
+  for (const [key, value] of Object.entries(defaults)) {
+    if (key === 'channels') for (const [index, channel] of defaults.channels.entries()) {
+      const stored = saved.channels?.[index];
+      if (stored) for (const [field, current] of Object.entries(channel)) if (field !== 'zero' && accept(stored[field], current)) channel[field] = stored[field];
+    }
+    else if (accept(saved[key], value)) defaults[key] = saved[key];
+  }
+  if (!['scope', 'spectrum', 'logic', 'meter'].includes(defaults.mode)) defaults.mode = 'scope';
+  return defaults;
+}
+function saveSettings() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, channels: settings.channels.map(({ zero, ...rest }) => rest) })); } catch { /* private windows and disabled storage are fine */ }
+}
+// Restores the controls from the settings, which may have come back from an
+// earlier visit rather than from the defaults the markup was written with.
+function applyControls() {
+  for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) $(id).value = settings[key];
+  for (const [id, key] of CHECK_CONTROLS) $(id).checked = settings[key];
+  $('position-label').value = `${Math.round(settings.position * 100)}%`;
+  $('logic-lines').querySelectorAll('input').forEach((input, i) => { input.checked = !!(settings.logicEnabled & (1 << i)); });
+}
+let settings = loadSettings(), instrument = null, frame = null, connecting = false;
 const plot = new Plot($('plot'));
 const acquisition = new Acquisition(value => { frame = value; renderFrame(); }, (message, error = false) => {
   $('status').textContent = message; if (error) showError(message); updateButtons();
@@ -56,9 +90,17 @@ function channelControls() {
   }
 }
 const timebases = [10e-6, 20e-6, 50e-6, .0001, .0002, .0005, .001, .002, .005, .01, .02, .05, .1, .2, .5, 1, 2, 5];
+// A level left behind by another range sits on the rail, where no signal ever
+// crosses it. That reads as a broken trigger, so it is moved into reach.
+function settleTriggerLevel() {
+  if (settings.mode === 'logic' || settings.mode === 'meter') return;
+  const usable = usableTriggerLevel(scaleFor(settings, caps(), board(), settings.source), settings.level);
+  if (Math.abs(usable - settings.level) > 1e-9) { settings.level = usable; $('level').value = Number(usable.toPrecision(6)); }
+}
 function synchronize() {
   const active = activeChannels(settings, caps());
   if (!active.includes(settings.source)) settings.source = active[0] ?? 0;
+  settleTriggerLevel();
   const minimum = caps().minCycles / caps().clock * Math.max(active.length, 1) * 5;
   const allowed = timebases.filter(v => v >= minimum);
   if (!allowed.includes(settings.timebase)) settings.timebase = allowed.find(v => v >= settings.timebase) || allowed.at(-1);
@@ -84,7 +126,7 @@ function synchronize() {
   $('mode-title').textContent = { scope: 'Oscilloscope', spectrum: 'Spectrum analyser', logic: 'Logic analyser', meter: 'Voltage meter' }[settings.mode];
   document.body.classList.toggle('meter-mode', meter);
   document.querySelectorAll('[data-mode]').forEach(el => { const selected = el.dataset.mode === settings.mode; el.classList.toggle('selected', selected); el.setAttribute('aria-pressed', selected); });
-  channelControls(); renderFrame(); updateButtons();
+  channelControls(); renderFrame(); updateButtons(); saveSettings();
 }
 function renderFrame() {
   plot.update(frame, settings, caps(), board());
@@ -166,24 +208,23 @@ $('export').onclick = () => {
   if (settings.mode === 'spectrum' && plot.spectrum) text = 'frequency_Hz,rms_V,level_dBV\n' + plot.spectrum.bins.map(b => `${b.frequency},${b.rms},${b.db}`).join('\n') + '\n';
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
-for (const [id, key] of Object.entries({ timebase: 'timebase', record: 'record', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' })) {
+for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) {
   $(id).addEventListener('change', () => {
     const value = Number($(id).value); if (!Number.isFinite(value)) return;
     settings[key] = value; $('position-label').value = `${Math.round(settings.position * 100)}%`; synchronize(); changed();
   });
 }
-$('source').onchange = () => { settings[settings.mode === 'logic' ? 'logicSource' : 'source'] = Number($('source').value); changed(); renderFrame(); };
-for (const [id, key] of [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart']]) $(id).onchange = () => { settings[key] = $(id).checked; synchronize(); changed(); };
+$('source').onchange = () => { settings[settings.mode === 'logic' ? 'logicSource' : 'source'] = Number($('source').value); saveSettings(); changed(); renderFrame(); };
+for (const [id, key] of CHECK_CONTROLS) $(id).onchange = () => { settings[key] = $(id).checked; synchronize(); changed(); };
 for (const el of document.querySelectorAll('[data-mode]')) el.onclick = async () => {
   const wasRunning = acquisition.running; try { await acquisition.stop(); } catch (e) { showError(e.message); }
   settings.mode = el.dataset.mode; frame = null; synchronize(); if (wasRunning) acquisition.start(settings);
 };
 for (let i = 0; i < 8; i++) {
   const label = document.createElement('label'), input = document.createElement('input'); input.type = 'checkbox'; input.checked = true;
-  input.onchange = () => { if (input.checked) settings.logicEnabled |= 1 << i; else settings.logicEnabled &= ~(1 << i); renderFrame(); };
+  input.onchange = () => { if (input.checked) settings.logicEnabled |= 1 << i; else settings.logicEnabled &= ~(1 << i); saveSettings(); renderFrame(); };
   label.append(input, document.createTextNode(`D${i}`)); $('logic-lines').append(label); $('uart-line').add(option(i, `D${i}`));
 }
-$('uart-line').value = 4;
 if (navigator.usb) navigator.usb.addEventListener('disconnect', event => {
   if (instrument && !instrument.demo && event.device === instrument.transport.device) {
     acquisition.running = false; acquisition.token++; instrument = null; acquisition.attach(null); showError('The instrument was unplugged. Reconnect USB to continue.'); updateButtons();
@@ -191,4 +232,4 @@ if (navigator.usb) navigator.usb.addEventListener('disconnect', event => {
 });
 window.addEventListener('pagehide', () => { acquisition.token++; if (instrument && !instrument.demo) instrument.close().catch(() => {}); });
 $('browser-note').hidden = !!navigator.usb;
-synchronize();
+applyControls(); synchronize();

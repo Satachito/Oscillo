@@ -5,6 +5,9 @@ export class BulkTransport {
   constructor(device, input, output) { this.device = device; this.input = input; this.output = output; this.sequence = 0; this.buffer = new Uint8Array(); this.queue = Promise.resolve(); this.closed = false; }
   async bounded(promise) {
     let timer;
+    // Whichever side loses the race still settles later; without a handler of
+    // its own a losing transfer rejects into nothing.
+    promise.catch(() => {});
     try { return await Promise.race([promise, new Promise((_, reject) => {
       timer = setTimeout(() => { this.close().catch(() => {}); reject(new Error('USB timed out. Reconnect the instrument.')); }, 4000);
     })]); } finally { clearTimeout(timer); }

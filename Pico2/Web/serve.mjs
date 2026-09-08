@@ -6,9 +6,13 @@ const types = { '.html': 'text/html', '.mjs': 'text/javascript', '.css': 'text/c
 createServer(async (req, res) => {
   const path = resolve(root, `.${decodeURIComponent(new URL(req.url, 'http://localhost').pathname)}`);
   if (path !== root && !path.startsWith(root + '/')) { res.writeHead(403).end(); return; }
+  const file = path === root ? resolve(root, 'index.html') : path;
   try {
-    const file = path === root ? resolve(root, 'index.html') : path;
+    // Read before answering. Writing the header first leaves nothing to say
+    // when the file turns out to be missing, and the second writeHead throws
+    // out of an async handler — which takes the whole server down.
+    const body = await readFile(file);
     res.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
-    res.end(await readFile(file));
+    res.end(body);
   } catch { res.writeHead(404).end('Not found'); }
 }).listen(4173, '127.0.0.1', () => console.log('PiLyzer Web: http://localhost:4173'));

@@ -53,6 +53,34 @@ export function scaleFor(settings, caps, board, channel) {
   if (Math.abs(centre) < Math.abs(span) / 1000) centre = 0;
   return { volts, code, low, high, span, centre, zero, r };
 }
+// A trigger level sitting on the rail never fires, which looks exactly like a
+// broken trigger rather than a level left behind by a range change. Keep it
+// somewhere the signal can actually reach.
+export function usableTriggerLevel(scale, volts) {
+  const margin = Math.abs(scale.span) * .02;
+  const low = Math.min(scale.low, scale.high) + margin, high = Math.max(scale.low, scale.high) - margin;
+  if (!(low < high)) return scale.centre;
+  return Math.min(Math.max(volts, low), high);
+}
+// The wire structures of docs/protocol.md, kept apart from the planners above
+// them so the byte layout can be checked against tests/fixtures/wire-golden.json
+// — the same file the Swift core is checked against.
+export function encodeAnalogConfig(f) {
+  const bytes = new Uint8Array(32), v = view(bytes);
+  bytes[0] = f.mask; bytes[1] = f.triggerMode; bytes[2] = f.triggerSlot; bytes[3] = f.triggerSlope;
+  v.setUint16(4, f.level, true); v.setUint16(6, f.hysteresis, true);
+  v.setBigUint64(8, BigInt(f.periodFs), true);
+  v.setUint32(16, f.record, true); v.setUint32(20, f.pretrigger, true);
+  v.setUint32(24, f.timeoutUs, true); v.setUint32(28, f.lowPassHz, true);
+  return bytes;
+}
+export function encodeLogicConfig(f) {
+  const bytes = new Uint8Array(24), v = view(bytes);
+  bytes[0] = f.triggerMode; bytes[1] = f.triggerChannel; bytes[2] = f.triggerSlope;
+  v.setBigUint64(4, BigInt(f.periodFs), true);
+  v.setUint32(12, f.record, true); v.setUint32(16, f.pretrigger, true); v.setUint32(20, f.timeoutUs, true);
+  return bytes;
+}
 export function analogRequest(settings, caps, board) {
   const active = activeChannels(settings, caps);
   if (!active.length) throw new Error('Enable at least one channel.');
@@ -64,23 +92,24 @@ export function analogRequest(settings, caps, board) {
   const source = active.includes(settings.source) ? settings.source : active[0];
   const trigger = scaleFor(settings, caps, board, source);
   const pretrigger = Math.min(Math.floor(count * settings.position), caps.maxPretrigger, count - 1);
-  const payload = new Uint8Array(32), v = view(payload);
-  payload[0] = mask; payload[1] = settings.trigger; payload[2] = active.indexOf(source); payload[3] = settings.slope;
-  v.setUint16(4, trigger.code(settings.level), true);
-  v.setUint16(6, Math.round(settings.hysteresis * caps.fullScale), true);
-  v.setBigUint64(8, BigInt(Math.round(period * 1e15)), true);
-  v.setUint32(16, count, true); v.setUint32(20, pretrigger, true); v.setUint32(24, 100000, true);
   if (settings.lpf && !(caps.flags & 8)) throw new Error('Trigger LPF requires firmware 1.2 or later.');
-  v.setUint32(28, settings.lpf, true);
+  const payload = encodeAnalogConfig({
+    mask, triggerMode: settings.trigger, triggerSlot: active.indexOf(source), triggerSlope: settings.slope,
+    level: trigger.code(settings.level),
+    // The firmware compares hysteresis against a converter code, so the same
+    // ceiling as the native application applies here.
+    hysteresis: Math.min(Math.round(settings.hysteresis * caps.fullScale), 4095),
+    periodFs: Math.round(period * 1e15), record: count, pretrigger, timeoutUs: 100000, lowPassHz: settings.lpf,
+  });
   return { payload, active, mask, count, period, pretrigger, source };
 }
 export function logicRequest(settings, caps) {
-  const bytes = new Uint8Array(24), v = view(bytes);
-  bytes[0] = settings.trigger; bytes[1] = settings.logicSource; bytes[2] = settings.slope;
-  v.setBigUint64(4, BigInt(Math.round(Math.max(1 / settings.logicRate, 1 / caps.logicClock) * 1e15)), true);
   const count = Math.min(settings.logicRecord, caps.logicMaxRecord);
-  v.setUint32(12, count, true); v.setUint32(16, Math.min(Math.floor(count * settings.position), caps.logicMaxPretrigger), true);
-  v.setUint32(20, 100000, true); return bytes;
+  return encodeLogicConfig({
+    triggerMode: settings.trigger, triggerChannel: settings.logicSource, triggerSlope: settings.slope,
+    periodFs: Math.round(Math.max(1 / settings.logicRate, 1 / caps.logicClock) * 1e15),
+    record: count, pretrigger: Math.min(Math.floor(count * settings.position), caps.logicMaxPretrigger), timeoutUs: 100000,
+  });
 }
 export function readRequest(offset, count) {
   const bytes = new Uint8Array(8), v = view(bytes); v.setUint32(0, offset, true); v.setUint32(4, count, true); return bytes;

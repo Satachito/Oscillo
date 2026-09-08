@@ -59,8 +59,9 @@ export function csv(frame) {
     return rows.join('\n') + '\n';
   }
   if (frame.kind === 'meter') return 'time_s,' + frame.values.map((_, i) => `CH${i + 1}_V`).join(',') + '\n' + frame.history.map(row => [row.time, ...row.values].join(',')).join('\n') + '\n';
+  // Remove mean is a display choice; the file holds the voltages as measured.
   const rows = ['time_s,' + frame.traces.map(t => `CH${t.index + 1}_V`).join(',')];
-  for (let i = 0; i < frame.count; i++) rows.push([((i - frame.triggerIndex) * frame.period).toPrecision(10), ...frame.traces.map(t => t.samples[i].toPrecision(9))].join(','));
+  for (let i = 0; i < frame.count; i++) rows.push([((i - frame.triggerIndex) * frame.period).toPrecision(10), ...frame.traces.map(t => (t.samples[i] + (t.removedMean || 0)).toPrecision(9))].join(','));
   return rows.join('\n') + '\n';
 }
 export function fmt(value, unit = '', digits = 3) {
