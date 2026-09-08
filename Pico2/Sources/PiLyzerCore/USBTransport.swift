@@ -191,15 +191,8 @@ public final class USBTransport {
         sequence &+= 1
         let expected = sequence
 
-        var writer = ByteWriter()
-        writer.append(Wire.requestMagic)
-        writer.append(opcode.rawValue)
-        writer.append(UInt8(0))
-        writer.append(UInt8(0))
-        writer.append(expected)
-        writer.append(UInt16(0))
-        writer.append(UInt32(payload.count))
-        var frame = writer.data
+        var frame = Wire.requestHeader(opcode: opcode, sequence: expected,
+                                       payloadLength: payload.count)
         frame.append(payload)
 
         try write(frame, timeout: timeout)

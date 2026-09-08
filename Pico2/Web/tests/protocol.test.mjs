@@ -126,3 +126,28 @@ test('USB connect clears a previous host reply before identifying and claims adv
     assert.deepEqual(events, ['open', 'reset', 'claim']); await instrument.close();
   } finally { if (previous) Object.defineProperty(globalThis, 'navigator', previous); else delete globalThis.navigator; }
 });
+
+// The wire format is written twice — once in Swift, once here — so it is held
+// to one shared fixture. A change on either side that the other does not follow
+// fails here and in Tests/PiLyzerCoreTests/WireFormatTests.swift.
+test('encoders agree with the shared wire fixture', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { encodeAnalogConfig, encodeLogicConfig } = await import('../src/protocol.mjs');
+  const hex = bytes => Buffer.from(bytes).toString('hex');
+  const golden = JSON.parse(await readFile(new URL('./fixtures/wire-golden.json', import.meta.url), 'utf8'));
+  for (const c of golden.requestHeaders) assert.equal(hex(request(c.opcode, c.sequence, new Uint8Array(c.payloadLength)).slice(0, 12)), c.bytes);
+  for (const c of golden.analogConfigs) assert.equal(hex(encodeAnalogConfig(c)), c.bytes);
+  for (const c of golden.logicConfigs) assert.equal(hex(encodeLogicConfig(c)), c.bytes);
+  for (const c of golden.readRequests) assert.equal(hex(readRequest(c.offset, c.count)), c.bytes);
+  assert.ok(golden.analogConfigs.length && golden.logicConfigs.length, 'the fixture must not be empty');
+});
+
+test('a trigger level left on the rail is moved somewhere the signal reaches', async () => {
+  const { usableTriggerLevel } = await import('../src/protocol.mjs');
+  const settings = makeSettings(), bare = scaleFor(settings, caps, 0, 0);
+  assert.ok(Math.abs(usableTriggerLevel(bare, 0) - 3.3 * .02) < 1e-9);      // 0 V is the bottom rail here
+  assert.ok(Math.abs(usableTriggerLevel(bare, 99) - 3.3 * .98) < 1e-9);
+  assert.equal(usableTriggerLevel(bare, 1.65), 1.65);                       // already reachable, untouched
+  const five = scaleFor({ ...settings, channels: settings.channels.map(c => ({ ...c, range: 1 })) }, caps, 1, 0);
+  assert.ok(usableTriggerLevel(five, 20) < five.high && usableTriggerLevel(five, 20) > 5);
+});

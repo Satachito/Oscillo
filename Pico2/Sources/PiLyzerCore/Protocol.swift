@@ -23,6 +23,22 @@ public enum Wire {
     public static let raspberryPiVendorID: UInt16 = 0x2E8A
     /// RP2040 and RP2350 in BOOTSEL.
     public static let bootloaderProductIDs: Set<UInt16> = [0x0003, 0x000F]
+
+    /// The twelve-byte request header. Kept here rather than inside the
+    /// transport so it can be checked against the shared wire fixture — the
+    /// same file the browser application is checked against.
+    public static func requestHeader(opcode: Opcode, sequence: UInt16,
+                                     payloadLength: Int) -> Data {
+        var writer = ByteWriter()
+        writer.append(requestMagic)
+        writer.append(opcode.rawValue)
+        writer.append(UInt8(0))              // status, zero in a request
+        writer.append(UInt8(0))              // flags, reserved
+        writer.append(sequence)
+        writer.append(UInt16(0))             // reserved
+        writer.append(UInt32(payloadLength))
+        return writer.data
+    }
 }
 
 public enum Opcode: UInt8, Sendable {
@@ -244,7 +260,7 @@ public struct AnalogConfiguration: Equatable, Sendable {
         writer.append(triggerSlope.rawValue)
         writer.append(triggerLevel)
         writer.append(triggerHysteresis)
-        writer.append(UInt64(max(samplePeriod, 0) * 1e15))
+        writer.append(UInt64((max(samplePeriod, 0) * 1e15).rounded()))
         writer.append(UInt32(clamping: recordSamples))
         writer.append(UInt32(clamping: pretriggerSamples))
         writer.append(UInt32(clamping: Int(max(autoTimeout, 0) * 1e6)))
@@ -281,7 +297,7 @@ public struct LogicConfiguration: Equatable, Sendable {
         writer.append(UInt8(clamping: triggerChannel))
         writer.append(triggerSlope.rawValue)
         writer.append(UInt8(0))
-        writer.append(UInt64(max(samplePeriod, 0) * 1e15))
+        writer.append(UInt64((max(samplePeriod, 0) * 1e15).rounded()))
         writer.append(UInt32(clamping: recordSamples))
         writer.append(UInt32(clamping: pretriggerSamples))
         writer.append(UInt32(clamping: Int(max(autoTimeout, 0) * 1e6)))

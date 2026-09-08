@@ -1,0 +1,106 @@
+{
+  "note": "Golden encodings of docs/protocol.md, written from the document rather than from either implementation. Both the Swift core and the browser application are checked against this file, so a change to one that the other does not follow fails a test.",
+  "requestHeaders": [
+    {
+      "opcode": 1,
+      "sequence": 1,
+      "payloadLength": 0,
+      "bytes": "a50100000100000000000000"
+    },
+    {
+      "opcode": 16,
+      "sequence": 4660,
+      "payloadLength": 32,
+      "bytes": "a51000003412000020000000"
+    },
+    {
+      "opcode": 19,
+      "sequence": 65535,
+      "payloadLength": 8,
+      "bytes": "a5130000ffff000008000000"
+    }
+  ],
+  "analogConfigs": [
+    {
+      "mask": 7,
+      "triggerMode": 1,
+      "triggerSlot": 0,
+      "triggerSlope": 0,
+      "level": 32760,
+      "hysteresis": 262,
+      "periodFs": 6062500000,
+      "record": 1650,
+      "pretrigger": 247,
+      "timeoutUs": 100000,
+      "lowPassHz": 0,
+      "bytes": "07010000f87f0601a0685a690100000072060000f7000000a086010000000000"
+    },
+    {
+      "mask": 5,
+      "triggerMode": 2,
+      "triggerSlot": 1,
+      "triggerSlope": 1,
+      "level": 13107,
+      "hysteresis": 4095,
+      "periodFs": 4882812500,
+      "record": 2048,
+      "pretrigger": 307,
+      "timeoutUs": 250000,
+      "lowPassHz": 1000,
+      "bytes": "050201013333ff0f54ce092301000000000800003301000090d00300e8030000"
+    },
+    {
+      "mask": 2,
+      "triggerMode": 0,
+      "triggerSlot": 0,
+      "triggerSlope": 0,
+      "level": 0,
+      "hysteresis": 0,
+      "periodFs": 1000000000,
+      "record": 16384,
+      "pretrigger": 16383,
+      "timeoutUs": 1000,
+      "lowPassHz": 100000,
+      "bytes": "020000000000000000ca9a3b0000000000400000ff3f0000e8030000a0860100"
+    }
+  ],
+  "logicConfigs": [
+    {
+      "triggerMode": 1,
+      "triggerChannel": 4,
+      "triggerSlope": 0,
+      "periodFs": 1000000000,
+      "record": 4096,
+      "pretrigger": 614,
+      "timeoutUs": 100000,
+      "bytes": "0104000000ca9a3b000000000010000066020000a0860100"
+    },
+    {
+      "triggerMode": 2,
+      "triggerChannel": 7,
+      "triggerSlope": 1,
+      "periodFs": 6666666,
+      "record": 65536,
+      "pretrigger": 0,
+      "timeoutUs": 5000,
+      "bytes": "02070100aab9650000000000000001000000000088130000"
+    }
+  ],
+  "readRequests": [
+    {
+      "offset": 0,
+      "count": 1365,
+      "bytes": "0000000055050000"
+    },
+    {
+      "offset": 8190,
+      "count": 683,
+      "bytes": "fe1f0000ab020000"
+    },
+    {
+      "offset": 65536,
+      "count": 8192,
+      "bytes": "0000010000200000"
+    }
+  ]
+}
