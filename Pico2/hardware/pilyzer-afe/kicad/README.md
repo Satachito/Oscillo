@@ -12,7 +12,7 @@ no PCB layout or manufacturing files.
 - `PiLyzer.kicad_sym`, `PiLyzer.pretty`, and both library tables: local symbols
   and all 13 footprint types. No external library is needed for schematic or
   footprint editing. Optional 3D models use the standard KiCad model paths.
-- `bom.csv`: all 88 physical components, including the 11 DNP parts.
+- `bom.csv`: all 93 physical components, including the 11 DNP parts.
 - `previews/`: SVG exports of all four sheets.
 - `erc.rpt`: KiCad 10.0.5 electrical-rule-check report.
 - `check_kicad.py`: checks the saved circuit via KiCad's exported netlist.
@@ -82,7 +82,7 @@ python3 ../check_transfer.py
 
 ERC: **0 errors, 0 warnings**, using the project's default ERC checks (the
 report lists the default ignored check categories; no individual violations
-were excluded). The separate netlist check verifies 47 exact net groups,
+were excluded). The separate netlist check verifies 54 exact net groups,
 supply rails, range polarity, Pico mapping, every BOM entry, all electrically
 used pin numbers against footprint pads, and the 11 DNP assignments.
 All four sheets were exported and visually checked.
