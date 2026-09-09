@@ -97,7 +97,7 @@ alignment.
 | 0 | `u32` | magic `0x5A594C50` (`"PLYZ"`) |
 | 4 | `u16` | protocol version — 1 |
 | 6 | `u16` | firmware version, `major << 8 \| minor` |
-| 8 | `u32` | board id — 0 bare Pico 2, 1 PiLyzer AFE rev A |
+| 8 | `u32` | board id — 0 bare Pico 2, 1 PiLyzer AFE rev A, 2 PiLyzer Lite |
 | 12 | `char[20]` | product name, NUL padded |
 
 The application refuses to talk to a device whose magic or protocol version it

@@ -195,6 +195,40 @@ leading edge means too little.
 The signal is only 3.3 V into a ±25 V range, so put the display on a fine
 volts-per-division setting to see the corner.
 
+## The range switch only needs one throw
+
+`U2A` connects `R8` to VMID or to nothing: `NO` goes to VMID and **`NC` is
+deliberately unconnected**, which the netlist check asserts. That is an SPST
+switch wearing an SPDT's package.
+
+It matters for the count. Three channels need three switches, and a dual SPDT
+gives two per package, so the board carries two of them with one half of `U3`
+wasted. **A quad SPST would do all three in one package.** PiLyzer Lite needs no
+switch at all — see below.
+
+What the part actually has to do is undemanding, which is worth knowing before
+paying for a premium one. `COM` sits at VMID whichever way the switch is thrown,
+so it never sees a signal swing — only the ±0.62 mA that full scale pushes
+through `R8`, and only whatever that current drops across the switch itself:
+
+| On resistance | Gain | Error | Swing across the switch |
+| ---: | ---: | ---: | ---: |
+| 1 Ω | 4.7439 | −0.03% | ±0.6 mV |
+| 7 Ω, about what is fitted | 4.7355 | −0.21% | ±4.3 mV |
+| 50 Ω | 4.6765 | −1.45% | ±30.9 mV |
+| 100 Ω | 4.6101 | −2.85% | ±61.8 mV |
+
+Every one of those is a fixed gain error that a two-point calibration removes.
+What a high on resistance really costs is drift, since it moves with
+temperature; distortion it cannot cause, because there is no signal across it to
+distort. Off-state leakage does not matter much either: `R8` is 2.67 kΩ, so a
+nanoamp through it is 2.7 µV, where the same nanoamp at the divider node would
+be 62.5 µV.
+
+So the substitution list is long — a dual SPDT of any modern family, or better a
+quad or dual SPST — provided it runs on 3.3 V and takes 3.3 V logic. Check the
+pinout rather than assuming: dual SPDT switches are not all pin compatible.
+
 ## Ranges are switched, not jumpered
 
 The range switch is driven from GPIO16, GPIO17 and GPIO18, so the application always
@@ -204,6 +238,44 @@ change ranges without anyone touching the board.
 This is deliberate. A pair of jumpers per channel is cheaper, but a jumper left
 in the wrong place produces a reading that is wrong by a factor of five and
 looks perfectly plausible, with nothing in software able to tell.
+
+## PiLyzer Lite: one range, no switch
+
+Lite offers **±5 V and nothing else**, which removes the range switch from the
+board entirely: `R8` is wired to VMID instead of being taken there by `U2A`.
+Both TS5A23159 packages go, and GPIO16 and GPIO17 come free.
+
+Everything in front of the gain stage stays exactly as it is, and that is
+deliberate. The fixed 1 MΩ attenuator is where the input protection lives, not
+the range selection:
+
+| Input | Divider node | |
+| ---: | ---: | --- |
+| ±5.5 V | 2.00 V | the top of the range |
+| 12 V | 2.40 V | reads as clipped; the clamp stays idle |
+| 25 V | 3.22 V | still clipping, still no clamp current |
+| 30 V | 3.53 V | the clamp begins to conduct |
+| 100 V | 7.92 V | the continuous rating, 96 µA through the clamp |
+
+Sizing a single divider straight for ±5 V instead would drop all of that: at
+100 V the node would sit near 30 V rather than 8, and the source impedance the
+amplifier sees would go from 62.5 kΩ to about 208 kΩ, which costs offset and
+noise. On a board meant for teaching, where the wrong thing will be probed, the
+heavy fixed attenuator is worth keeping even when only one range comes out of it.
+
+The range reads **−5.559 V to +5.542 V**. Anything past that clips rather than
+damaging, all the way to the ±100 V the attenuator is rated for.
+
+Nothing changes in either application. The device reports its own ranges from
+firmware 1.7, so Lite answers with one entry and both front panels disable the
+range menu on their own — the macOS panel already asks `ranges.count > 1` and the
+browser one `frontEnd().length < 2`. Lite is `PILYZER_BOARD_ID 2` and needs no
+host release to be read correctly.
+
+**Consider a fixed capacitor in place of `TC1` on production Lite.** The
+compensation still has to be right, but once the layout is settled and the first
+boards are measured the value is known, and a trimmer on a teaching board is
+both a cost and something for a student to turn.
 
 ## Protection
 

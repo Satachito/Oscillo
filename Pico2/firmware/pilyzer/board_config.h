@@ -8,6 +8,7 @@
 #ifndef PILYZER_BOARD_ID
 // 0 = bare Pico 2, inputs straight on the converter pins.
 // 1 = PiLyzer analogue front end rev A/B.
+// 0 bare Pico 2, 1 PiLyzer AFE rev A, 2 PiLyzer Lite.
 #define PILYZER_BOARD_ID 0
 #endif
 
@@ -45,6 +46,17 @@
 #define PILYZER_INPUT_RANGES {                                                 \
     { .switch_position = 0, .gain_micro = 1000000, .offset_microvolts = 0,     \
       .name = "0 – 3.3 V" },                                                   \
+}
+#elif PILYZER_BOARD_ID == 2
+// PiLyzer Lite: the same attenuator and the same gain stage, but the gain leg
+// is wired to VMID rather than switched, so there is one range and no analogue
+// switch on the board at all. The attenuator in front of it is unchanged, which
+// is where the input protection lives — ±25 V still does not make the clamp
+// conduct, it only clips.
+#define ANALOG_RANGES 1
+#define PILYZER_INPUT_RANGES {                                                 \
+    { .switch_position = 0, .gain_micro = 297269, .offset_microvolts = 1652442,\
+      .name = "±5 V" },                                                        \
 }
 #else
 // PiLyzer AFE rev A: both ranges sit on the same attenuator and the same

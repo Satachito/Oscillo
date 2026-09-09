@@ -191,9 +191,13 @@ static void fill_capabilities(pilyzer_capabilities_t *capabilities)
     capabilities->logic_max_record = LOGIC_MAX_RECORD;
     capabilities->logic_max_pretrigger = LOGIC_MAX_RECORD - 1;
     capabilities->reference_microvolts = ADC_REFERENCE_MICROVOLTS;
+    // Only a board with a switch on it claims to switch ranges under software
+    // control. A bare Pico 2 has one range because there is nothing in front of
+    // it; PiLyzer Lite has one because its gain leg is wired rather than
+    // switched.
     capabilities->flags = CAP_CALIBRATION_OUTPUT | CAP_TRIGGER_LOWPASS |
                           CAP_REPORTS_RANGES |
-                          (PILYZER_BOARD_ID != 0 ? CAP_SOFTWARE_RANGE : 0);
+                          (ANALOG_RANGES > 1 ? CAP_SOFTWARE_RANGE : 0);
 }
 
 // What this board's front end does to a voltage on its way to the converter.
