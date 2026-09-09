@@ -22,18 +22,50 @@ wherever a through-hole part exists, and names the adapter where none does.
 Wire it as the block diagram in [`../README.md`](../README.md#the-signal-path)
 draws it, with `U4A` read as `U1B`.
 
-## The analogue switch is optional at first
+## Changing range by hand instead of fitting the switch
 
-`U2A` selects the range by connecting `R8` either to VMID (fine) or to nothing
-(coarse). On the board it sits at VMID on both sides, so it never sees a signal
-swing; the design notes put its contribution at a fixed **0.2%** of gain, which
-calibration removes.
+`U2A` selects the range by connecting the far end of `R8` either to VMID or to
+nothing:
 
-So for the first measurements a **wire link stands in for it**: link `R8` to
-VMID for the ±5 V range, lift it for ±25 V. That is exactly the two states, to
-within the 0.2% the switch adds. Fit the real part when you want the gain
-figure to be the board's rather than the breadboard's — and buy the adapter now
-either way, since you will want it eventually.
+| Range | `U2A` | Gain | On the breadboard |
+| --- | --- | ---: | --- |
+| ±25 V | COM–NC, so `R8` goes nowhere | 1 | **take `R8` out** |
+| ±5 V | COM–NO, so `R8` goes to VMID | 4.745 | `R8` in, far end wired to VMID |
+
+That is exactly the two states, and it works because the switch sits at VMID on
+both sides on the real board and so never sees a signal swing.
+
+**Pull `R8` out rather than leaving one end dangling.** Its other end is on the
+amplifier's inverting input, which is a high-impedance summing node; a free wire
+there is an aerial, and a breadboard's is a much better one than a PCB trace. An
+empty pair of holes is what "connected to nothing" is supposed to mean.
+
+**Keep the application's range selection matching the wire.** The host sends
+`setRange` to GPIO16, which with no switch fitted drives nothing at all — but it
+still applies that range's gain and offset to everything it reads. Choose ±5 V
+in the panel with `R8` out and every number will be wrong by the ratio of the
+two ranges, with nothing on screen to say so. If that is a trap you would rather
+not step in, hang an LED and a resistor off GPIO16: lit means the application
+thinks it is on the fine range, and the wire should agree.
+
+Change the link with the acquisition stopped. Nothing here is delicate, but that
+summing node will pick up your hand.
+
+### What the jumper costs
+
+The switch's on resistance is in series with `R8`, and the design notes put it
+at a fixed **0.2%** of gain — about 7 Ω:
+
+| | Gain |
+| --- | ---: |
+| jumper, 0 Ω | 4.7453 |
+| `U2A` at 7 Ω | 4.7352 |
+
+So the gain a jumper measures is the circuit's, not the board's. That matters
+for the absolute gain figure and for nothing else: the frequency response, the
+filter's Q and the clamp's leakage are all unaffected. Fit the real part when
+you want the board's own number — and buy the adapter now either way, since you
+will want it eventually.
 
 ## The op amp is not optional, and there is no DIP one
 
