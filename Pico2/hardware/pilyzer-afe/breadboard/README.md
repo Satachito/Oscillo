@@ -136,11 +136,19 @@ the compensation trim happily, and then comes out.
 - noise, and whether the whole path behaves at all
 
 **It cannot:** give you the compensation setting. `C1`/`TC1` work against the
-stray capacitance at the divider node, and a breadboard's stray is both larger
-and less predictable than a PCB's — which is why the trimmer here has more range
-than the one on the board and the fixed capacitor beside it is smaller. Trim it
-flat on the breadboard to prove the method and the range, then **trim it again
-on the first real board**, where the number will be different.
+stray capacitance at the divider node — the target is `C_node / 14.96` — and a
+breadboard's stray is both larger and less predictable than a PCB's, which is
+why the trimmer here has more range than the one on the board and the fixed
+capacitor beside it is smaller. Trim it flat on the breadboard to prove the
+method, then **trim it again on the first real board**, where the number will be
+different.
+
+It cannot tell you whether the *board's* trimmer window is wide enough either,
+and worse, it will look as though it can. A breadboard's larger stray pushes the
+answer **up**, into the window, so it trims happily even from a board that could
+not. That window has to be got right by arithmetic before fabrication rather
+than by measurement after it — which is what moved `C1` from 6.8 pF to 5.6 pF.
+See [`../README.md`](../README.md#adjusting-the-compensation).
 
 ## Measuring
 

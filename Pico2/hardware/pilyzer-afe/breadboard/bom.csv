@@ -9,7 +9,7 @@ Resistor,10k 0.1% metal film,2,Through hole,R17 R18,VMID divider. Ratio is what 
 Resistor,1k 1% metal film,1,Through hole,R44,Isolates the filter output from the converter's sampling capacitor.
 Resistor,100R 1% metal film,1,Through hole,R35,Test output series resistor from GPIO20.
 Capacitor,82pF C0G/NP0 5%,1,Through hole,C4,Sets the node capacitance the compensation works against.
-Capacitor,4.7pF C0G/NP0,1,Through hole,C1,Reduced from the PCB's 6.8pF — see the note on stray capacitance.
+Capacitor,4.7pF C0G/NP0,1,Through hole,C1,Below the PCB's 5.6pF because a breadboard's stray is larger — see the note.
 Trimmer capacitor,3-10pF,1,Through hole,TC1,More range than the PCB's 0.5-3pF because a breadboard's stray is larger.
 Capacitor,2.2nF C0G/NP0 2% or better,1,Through hole,C21,Sallen-Key feedback. With C6 this sets Q — buy tight ones or measure.
 Capacitor,1nF C0G/NP0 2% or better,2,Through hole,C6 C7,Sallen-Key shunt to VMID; reservoir at the converter pin.

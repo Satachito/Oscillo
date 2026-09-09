@@ -84,7 +84,7 @@ both ranges instead of needing a different trimmer for each.
 ```text
 IN -- R1 499k -- R2 499k -- NODE --> U1A (+)
  |__________________________|
-       C1 6.8p || TC1
+       C1 5.6p || TC1
 
 NODE -- R3 125k -- 3V3     NODE -- R4 143k -- GND
 NODE -- C4 82p -- GND      NODE -- BAV199 rail clamps -- GND / 3V3
@@ -185,6 +185,28 @@ comes out at 6.7 pF, so 6.8 pF is the part and TC1 beside it is the adjustment.
 re-run after changing any value.
 
 ## Adjusting the compensation
+
+The divider is flat when `R_top · C_top = R_bottom · C_bottom`, which here is
+
+```
+C_top = C_node / 14.96          (998 kΩ against R3 ∥ R4 = 66.7 kΩ)
+```
+
+`C_top` is `C1 + TC1`. **`C_node` is `C4` plus everything the layout adds** —
+the amplifier's input, the clamp diode, the trimmer's own body, the traces, the
+test point. That is the whole difficulty: the target moves with the layout, so
+it cannot be settled before there is one.
+
+What can be settled beforehand is that the trimmer's window contains the answer.
+With `C1` at 5.6 pF and `TC1` 0.5–3 pF, `C_top` covers 6.1–8.6 pF, which is a
+node stray of **9 to 47 pF** on top of `C4`'s 82 pF. A node with this many
+things on it plausibly sits near the middle of that.
+
+`C1` was 6.8 pF, which put the window at 7.3–9.8 pF and a stray of **27 to
+65 pF**. A small board is unlikely to reach 27 pF, and below it the trimmer
+bottoms out over-compensated with nowhere left to go. A breadboard would not
+have caught it either — its stray is *larger* than a PCB's, which pushes the
+answer up into the window and trims happily.
 
 The firmware puts a square wave on GPIO20 for exactly this. Feed it into a
 channel, set the ±25 V range, and adjust TC1 until the corners are square — the
@@ -296,10 +318,31 @@ panel already asks `ranges.count > 1` and the browser one
 `frontEnd().length < 2`. Lite is `PILYZER_BOARD_ID 2` and needs no host release
 to be read correctly.
 
-**Consider a fixed capacitor in place of `TC1` on production Lite.** The
-compensation still has to be right, but once the layout is settled and the first
-boards are measured the value is known, and a trimmer on a teaching board is
-both a cost and something for a student to turn.
+### Earning a fixed capacitor instead of a trimmer
+
+A trimmer on a teaching board is both a cost and something for a student to
+turn, so Lite should not have one. That is affordable if the compensation is
+made insensitive to the layout rather than adjustable for it.
+
+The lever is `C4`. Whatever the layout adds lands on `C_node` beside it, so the
+larger `C4` is, the smaller a fraction of `C_node` the unknown becomes:
+
+| `C4` | `C_node` with 20 pF of stray | `C_top` | Input capacitance | Error if the stray is 10 pF out |
+| ---: | ---: | ---: | ---: | ---: |
+| 82 pF, rev A | 102 pF | 6.8 pF | 6.8 pF | 9.8% |
+| 150 pF | 170 pF | 11.4 pF | 11.4 pF | 5.9% |
+| **220 pF** | **240 pF** | **16.0 pF** | **16.0 pF** | **4.2%** |
+| 470 pF | 490 pF | 32.8 pF | 32.8 pF | 2.0% |
+
+`C_top` is what the probe tip sees, so the price of insensitivity is input
+capacitance. A bench oscilloscope's input is 10 to 20 pF, which puts **220 pF
+the sensible end of the trade**: 16 pF in and a compensation that a fixed part
+can hold to a few per cent.
+
+So Lite: **`C4` 220 pF, and a fixed capacitor near 16 pF in place of `C1`/`TC1`**
+— with the exact value taken from measuring the first boards, not from this
+table. Fit a trimmer on the prototype run; fit the number it lands on
+thereafter.
 
 ## Protection
 

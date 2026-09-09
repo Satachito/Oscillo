@@ -9,7 +9,7 @@ R17 R18,10k 0.1%,,R_0805_2012Metric,2,VMID divider from 3V3
 R19-R26,330R 1%,,R_0805_2012Metric,8,Logic input series protection
 R27-R34,100k DNP,,R_0805_2012Metric,8,Optional logic pulldowns
 R35,100R 1%,,R_0805_2012Metric,1,Test output series
-C1 C8 C16,6.8pF C0G,,C_0603_1608Metric,3,Divider compensation; pairs with C4
+C1 C8 C16,5.6pF C0G,,C_0603_1608Metric,3,"Divider compensation; pairs with C4. Sized so the trimmer's window straddles a plausible node stray — see the README."
 TC1 TC2 TC3,0.5-3pF trimmer,,C_Trimmer_Murata_TZC3,3,Compensation adjustment against the test square wave
 C4 C9 C17,82pF C0G,,C_0603_1608Metric,3,Sets the node capacitance the compensation is computed from
 C6 C7 C10 C11 C18 C19,1nF C0G,,C_0603_1608Metric,6,"Sallen-Key shunt to VMID, and the reservoir at the converter pin"
