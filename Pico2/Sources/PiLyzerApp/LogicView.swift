@@ -12,7 +12,11 @@ struct LogicView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        Workspace(model: model) {
+            Text("D0–D7 · 3.3 V logic")
+                .font(Theme.monoSmall)
+                .foregroundStyle(Theme.readout)
+        } screen: {
             Canvas { context, size in
                 drawTimeGrid(&context, size: size)
                 drawChannels(&context, size: size)
@@ -23,8 +27,7 @@ struct LogicView: View {
                                  at: CGPoint(x: size.width / 2, y: size.height / 2))
                 }
             }
-            .background(Theme.screen)
-
+        } readings: {
             if model.decoderKind == .none {
                 LogicActivityRow(model: model)
             } else {
@@ -108,26 +111,23 @@ struct LogicActivityRow: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
-        Footer { content }
-    }
-
-    private var content: some View {
-        HStack(alignment: .top, spacing: 14) {
-            ForEach(model.logicActivity) { activity in
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("D\(activity.channel)")
-                        .foregroundStyle(Theme.logicColor(activity.channel)).bold()
-                    if activity.isIdle {
-                        Text("idle").foregroundStyle(.secondary)
-                    } else {
-                        Text(activity.frequency.map(Format.frequency) ?? "—")
-                        Text(Format.percent((activity.dutyCycle ?? 0) * 100, digits: 0))
-                            .foregroundStyle(.secondary)
+        MeasurementStrip {
+            if model.logicActivity.isEmpty {
+                MeasurementPlaceholder(text: "Digital inputs D0–D7 · pick a decoder to inspect a serial signal.")
+            } else {
+                ForEach(model.logicActivity) { activity in
+                    MeasurementCard(title: "D\(activity.channel)",
+                                    colour: Theme.logicColor(activity.channel)) {
+                        if activity.isIdle {
+                            MeasurementRow("State", model.logicFrame.level(activity.channel, at: 0)
+                                           ? "idle high" : "idle low")
+                        } else {
+                            MeasurementRow("Frequency", activity.frequency.map(Format.frequency))
+                            MeasurementRow("Duty", activity.dutyCycle.map { Format.percent($0 * 100, digits: 0) })
+                        }
                     }
                 }
             }
-            Spacer()
-            Text(model.planDescription).foregroundStyle(.secondary)
         }
     }
 }
@@ -136,38 +136,57 @@ struct DecodedRow: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
-        Footer { content }
-    }
-
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text("\(model.decoder.label) · \(model.decoded.count) items")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(model.planDescription).foregroundStyle(.secondary)
-            }
-            ScrollView(.horizontal, showsIndicators: true) {
-                HStack(spacing: 6) {
-                    ForEach(model.decoded) { item in
-                        Text(item.text)
-                            .padding(.horizontal, 5).padding(.vertical, 2)
-                            .background(colour(for: item.kind).opacity(0.18),
-                                        in: RoundedRectangle(cornerRadius: 3))
-                            .foregroundStyle(colour(for: item.kind))
-                            .help(Format.time(model.logicFrame.time(at: item.start)))
+        MeasurementStrip {
+            MeasurementCard(title: "\(model.decoder.label) · \(model.decoded.count) items") {
+                if model.decoded.isEmpty {
+                    Text("Nothing decoded from this record yet.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.muted)
+                } else {
+                    ScrollView(.vertical, showsIndicators: true) {
+                        FlowingBytes(items: model.decoded, model: model)
                     }
                 }
             }
-            .frame(height: 26)
+        }
+    }
+}
+
+/// The decoded bytes, wrapped the way the browser application wraps them
+/// rather than run off the side of a one-line strip.
+struct FlowingBytes: View {
+    var items: [DecodedItem]
+    @ObservedObject var model: ScopeModel
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 34), spacing: 5)],
+                  alignment: .leading, spacing: 5) {
+            ForEach(items) { item in
+                Text(item.text)
+                    .font(Theme.monoSmall)
+                    .padding(.horizontal, 6).padding(.vertical, 4)
+                    .frame(maxWidth: .infinity)
+                    .background(background(for: item.kind),
+                                in: RoundedRectangle(cornerRadius: 4))
+                    .foregroundStyle(foreground(for: item.kind))
+                    .help(Format.time(model.logicFrame.time(at: item.start)))
+            }
         }
     }
 
-    private func colour(for kind: DecodedItem.Kind) -> Color {
+    private func background(for kind: DecodedItem.Kind) -> Color {
         switch kind {
-        case .data: return .primary
-        case .control: return Theme.trigger
-        case .error: return .red
+        case .data: return Theme.line.opacity(0.7)
+        case .control: return Theme.accentSoft.opacity(0.6)
+        case .error: return Theme.clip.opacity(0.28)
+        }
+    }
+
+    private func foreground(for kind: DecodedItem.Kind) -> Color {
+        switch kind {
+        case .data: return Theme.ink
+        case .control: return Theme.accent
+        case .error: return Color(red: 0.61, green: 0.30, blue: 0.19)
         }
     }
 }
@@ -178,45 +197,47 @@ struct MeterView: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 16) {
-                ForEach(model.availableAnalogChannels, id: \.self) { channel in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("CH\(channel + 1)")
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(Theme.channelColor(channel))
-                        // Fixed width: the reading changes length as it moves
-                        // between millivolts and volts, and a box that resizes
-                        // under a live number is unreadable.
-                        Text(reading(channel))
-                            .font(.system(size: 42, weight: .medium, design: .monospaced))
-                            .foregroundStyle(Theme.channelColor(channel))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                Spacer()
-            }
-            .padding(20)
-
+        Workspace(model: model) {
+            Text(model.meter.map { "reading every \(Format.time($0.interval))" } ?? "—")
+                .font(Theme.monoSmall)
+                .foregroundStyle(Theme.readout)
+        } screen: {
+            // The readings sit on the screen itself, over the history, exactly
+            // as they do in the browser application.
             Canvas { context, size in
                 let grid = ScopeGrid(columns: 10, rows: 6)
                 grid.draw(in: &context, size: size)
                 drawHistory(&context, size: size)
             }
-            .background(Theme.screen)
-
-            Footer {
-                HStack {
-                    Text(model.meter.map { "every \(Format.time($0.interval))" } ?? "—")
-                    Spacer()
-                    Text("\(model.meter?.history.first?.count ?? 0) points")
-                }
-                .foregroundStyle(.secondary)
+            .overlay(alignment: .top) { readings }
+        } readings: {
+            MeasurementStrip {
+                MeasurementPlaceholder(text: "Meter readings are DC coupled. Ground the inputs before checking offsets.")
             }
         }
+    }
+
+    private var readings: some View {
+        HStack(spacing: 20) {
+            ForEach(model.availableAnalogChannels, id: \.self) { channel in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("CH\(channel + 1)")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(Theme.readout)
+                    // Fixed width: the reading changes length as it moves
+                    // between millivolts and volts, and a box that resizes
+                    // under a live number is unreadable.
+                    Text(reading(channel))
+                        .font(.system(size: 34, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Theme.channelColor(channel))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 18)
     }
 
     private func reading(_ channel: Int) -> String {

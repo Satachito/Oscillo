@@ -8,7 +8,7 @@ struct ControlPanelView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
                 acquisition
                 switch model.settings.mode {
                 case .scope:
@@ -26,22 +26,23 @@ struct ControlPanelView: View {
                     verticalSections
                 }
                 instrumentSection
+                Text("PiLyzer for macOS")
+                    .font(.system(size: 9))
+                    .foregroundStyle(Theme.muted)
+                    .padding(.vertical, 20)
             }
-            .padding(12)
+            .padding(.horizontal, 20)
         }
-        .frame(width: 290)
+        .frame(width: 310)
+        .background(Theme.panel)
     }
 
     // MARK: - Sections
 
     private var acquisition: some View {
-        Section("Acquisition") {
-            Picker("", selection: $model.settings.mode) {
-                ForEach(WorkMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
+        // The mode itself is chosen by the tabs above the screen, as it is in
+        // the browser application, so it is not repeated here.
+        Section("Acquisition", tag: sourceTag) {
             HStack(spacing: 6) {
                 Button(model.isRunning ? "Stop" : "Run") { model.toggleRun() }
                     .keyboardShortcut("r")
@@ -73,6 +74,11 @@ struct ControlPanelView: View {
                 }
             }
         }
+    }
+
+    private var sourceTag: String {
+        guard model.isConnected else { return "OFFLINE" }
+        return model.selectedSource == .simulator ? "DEMO" : "USB"
     }
 
     private var horizontal: some View {
@@ -416,27 +422,40 @@ struct LabeledSlider: View {
     }
 }
 
-/// A titled group, so the panel reads as a set of blocks rather than a list.
+/// A titled group. Ruled off from its neighbours rather than boxed, which is
+/// how the browser application's control column is divided.
 struct Section<Content: View>: View {
     let title: String
+    let tag: String?
     @ViewBuilder let content: () -> Content
 
-    init(_ title: String, @ViewBuilder content: @escaping () -> Content) {
+    init(_ title: String, tag: String? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
+        self.tag = tag
         self.content = content
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title.uppercased())
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                if let tag {
+                    Text(tag)
+                        .font(.system(size: 8, weight: .regular))
+                        .tracking(1)
+                        .foregroundStyle(Theme.muted)
+                }
+            }
             content()
         }
-        .padding(10)
+        .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
         .pickerStyle(.menu)
         .controlSize(.small)
+        .tint(Theme.accent)
     }
 }

@@ -37,6 +37,12 @@ struct PiLyzerApp: App {
         Window("PiLyzer", id: "main") {
             ContentView(model: model)
                 .onAppear { model.applyLaunchArguments(CommandLine.arguments) }
+                // The instrument is drawn in its own colours rather than the
+                // system's — the same off-white paper and dark screen as the
+                // browser application, which has no dark palette of its own.
+                // Without this the system's own controls would come back in
+                // dark-mode ink on that light paper and disappear.
+                .preferredColorScheme(.light)
         }
         .commands {
             CommandGroup(replacing: .newItem) {}

@@ -8,7 +8,9 @@ struct SpectrumView: View {
     private var settings: SpectrumSettings { model.settings.spectrum }
 
     var body: some View {
-        VStack(spacing: 0) {
+        Workspace(model: model) {
+            legend
+        } screen: {
             Canvas { context, size in
                 drawGrid(&context, size: size)
                 drawSpectrum(&context, size: size)
@@ -18,25 +20,27 @@ struct SpectrumView: View {
                                  at: CGPoint(x: size.width / 2, y: size.height / 2))
                 }
             }
-            .background(Theme.screen)
-            .overlay(alignment: .topLeading) { legend.padding(8) }
-
+        } readings: {
             QualityRow(model: model)
         }
     }
 
     private var legend: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
+        HStack(spacing: 14) {
+            HStack(spacing: 7) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Theme.channelColor(model.spectrumChannel))
+                    .frame(width: 6, height: 6)
                 Text("CH\(model.spectrumChannel + 1)")
                     .foregroundStyle(Theme.channelColor(model.spectrumChannel))
-                Text(settings.window.rawValue).foregroundStyle(Theme.readout)
-                Text("\(settings.averaging)× avg").foregroundStyle(Theme.readout)
             }
+            Text(settings.window.rawValue).foregroundStyle(Theme.readout)
+            Text("\(settings.averaging)× avg").foregroundStyle(Theme.readout)
             Text("\(Format.frequency(model.spectrum.binWidth)) per bin")
                 .foregroundStyle(Theme.readout)
         }
-        .font(.system(size: 11, design: .monospaced))
+        .font(Theme.monoSmall)
+        .lineLimit(1)
     }
 
     // MARK: - Axes
@@ -156,46 +160,29 @@ struct QualityRow: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
-        Footer { content }
-    }
-
-    private var content: some View {
-        HStack(alignment: .top, spacing: 24) {
+        MeasurementStrip {
             if let quality = model.quality {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Fundamental").foregroundStyle(.secondary).bold()
-                    row("Freq", Format.frequency(quality.fundamental.frequency))
-                    row("Level", Format.voltage(quality.fundamental.amplitude))
+                MeasurementCard(title: "Fundamental", colour: Theme.channelColor(model.spectrumChannel)) {
+                    MeasurementRow("Frequency", Format.frequency(quality.fundamental.frequency))
+                    MeasurementRow("Level", Format.voltage(quality.fundamental.amplitude))
                 }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Distortion").foregroundStyle(.secondary).bold()
-                    row("THD", Format.percent(quality.thdPercent))
-                    row("THD+N", Format.percent(quality.thdPlusNoise * 100))
+                MeasurementCard(title: "Distortion") {
+                    MeasurementRow("THD", Format.percent(quality.thdPercent))
+                    MeasurementRow("THD+N", Format.percent(quality.thdPlusNoise * 100))
                 }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Noise").foregroundStyle(.secondary).bold()
-                    row("SNR", Format.decibels(quality.signalToNoiseDB))
-                    row("SINAD", Format.decibels(quality.sinadDB))
-                    row("ENOB", String(format: "%.1f bits", quality.effectiveBits))
+                MeasurementCard(title: "Noise") {
+                    MeasurementRow("SNR", Format.decibels(quality.signalToNoiseDB))
+                    MeasurementRow("SINAD", Format.decibels(quality.sinadDB))
+                    MeasurementRow("ENOB", String(format: "%.1f bits", quality.effectiveBits))
                 }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Harmonics").foregroundStyle(.secondary).bold()
+                MeasurementCard(title: "Harmonics") {
                     ForEach(Array(quality.harmonics.prefix(3).enumerated()), id: \.offset) { index, peak in
-                        row("H\(index + 2)", Format.voltage(peak.amplitude))
+                        MeasurementRow("H\(index + 2)", Format.voltage(peak.amplitude))
                     }
                 }
             } else {
-                Text("No tone found yet").foregroundStyle(.secondary)
+                MeasurementPlaceholder(text: "A tone has to be on screen before its distortion can be measured.")
             }
-            Spacer()
-            Text(model.planDescription).foregroundStyle(.secondary)
-        }
-    }
-
-    private func row(_ label: String, _ value: String) -> some View {
-        HStack(spacing: 4) {
-            Text(label).foregroundStyle(.secondary).frame(width: 44, alignment: .leading)
-            Text(value)
         }
     }
 }

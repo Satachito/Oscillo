@@ -10,7 +10,9 @@ struct ScopeDisplayView: View {
     private let rows = ScopeSettings.verticalDivisions
 
     var body: some View {
-        VStack(spacing: 0) {
+        Workspace(model: model) {
+            legend
+        } screen: {
             Canvas { context, size in
                 if model.settings.showsXY {
                     drawXYGrid(&context, size: size)
@@ -24,39 +26,42 @@ struct ScopeDisplayView: View {
                 }
                 drawBanner(&context, size: size)
             }
-            .background(Theme.screen)
-            .overlay(alignment: .topLeading) { legend.padding(8) }
-
+        } readings: {
             ReadoutRow(model: model)
         }
     }
 
+    /// Laid out along the strip rather than stacked on the trace, as the
+    /// browser application's legend is.
     private var legend: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            ForEach(model.frame.traces) { trace in
-                let channel = trace.index
-                let perDivision = voltsPerDivision(channel)
-                HStack(spacing: 6) {
+        HStack(spacing: 18) {
+            ForEach(model.enabledAnalogChannels, id: \.self) { channel in
+                let trace = model.frame.trace(channel)
+                HStack(spacing: 7) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.channelColor(channel))
+                        .frame(width: 6, height: 6)
                     Text("CH\(channel + 1)")
                         .foregroundStyle(Theme.channelColor(channel))
-                    Text(Format.voltage(perDivision) + "/div")
+                    Text(Format.voltage(voltsPerDivision(channel)) + "/div")
                         .foregroundStyle(Theme.readout)
                     if model.settings.channels[channel].removesMean {
-                        Text("AC").foregroundStyle(Theme.readout)
+                        Text("· AC").foregroundStyle(Theme.readout)
                     }
                     // Say where the centre line is whenever it is not zero, or
                     // the offset looks like a fault rather than a choice.
                     if abs(centre(channel)) > 1e-6 {
-                        Text("mid " + Format.voltage(centre(channel)))
+                        Text("· mid " + Format.voltage(centre(channel)))
                             .foregroundStyle(Theme.readout)
                     }
-                    if trace.clipped {
-                        Text("CLIP").foregroundStyle(.red).bold()
+                    if trace?.clipped == true {
+                        Text("· CLIP").foregroundStyle(Theme.clip).bold()
                     }
                 }
-                .font(.system(size: 11, design: .monospaced))
             }
         }
+        .font(Theme.monoSmall)
+        .lineLimit(1)
     }
 
     private func voltsPerDivision(_ channel: Int) -> Double {
@@ -219,77 +224,38 @@ struct ScopeDisplayView: View {
     }
 }
 
-/// The numbers under the screen.
+/// The numbers under the screen, one card a channel.
 struct ReadoutRow: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
-        Footer { content }
-    }
-
-    private var content: some View {
-        HStack(alignment: .top, spacing: 24) {
+        MeasurementStrip {
             // Driven by the enabled channels rather than by whatever the last
             // frame contained, and every reading always occupies its line. A
             // grounded input has no edges, so its frequency, duty and rise time
-            // have no value — but the footer must not change height as a
+            // have no value — but the strip must not change height as a
             // measurement comes and goes underneath the trace.
             ForEach(model.enabledAnalogChannels, id: \.self) { channel in
                 let measured = model.measurements(for: channel)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("CH\(channel + 1)")
-                        .foregroundStyle(Theme.channelColor(channel))
-                        .bold()
-                    row("Vpp", measured.map { Format.voltage($0.peakToPeak) })
-                    row("Mean", measured.map { Format.voltage($0.mean) })
-                    row("RMS", measured.map { Format.voltage($0.rms) })
-                    row("AC RMS", measured.map { Format.voltage($0.acRMS) })
-                    row("Freq", measured?.frequency.map(Format.frequency))
-                    row("Duty", measured?.dutyCycle.map { Format.percent($0 * 100, digits: 1) })
-                    row("Rise", measured?.riseTime.map(Format.time))
+                MeasurementCard(title: "Channel \(channel + 1)",
+                                colour: Theme.channelColor(channel)) {
+                    MeasurementRow("Peak to peak", measured.map { Format.voltage($0.peakToPeak) })
+                    MeasurementRow("Mean", measured.map { Format.voltage($0.mean) })
+                    MeasurementRow("RMS", measured.map { Format.voltage($0.rms) })
+                    MeasurementRow("AC RMS", measured.map { Format.voltage($0.acRMS) })
+                    MeasurementRow("Frequency", measured?.frequency.map(Format.frequency))
+                    MeasurementRow("Duty", measured?.dutyCycle.map { Format.percent($0 * 100, digits: 1) })
+                    MeasurementRow("Rise", measured?.riseTime.map(Format.time))
                 }
             }
 
             if model.cursorsEnabled, model.frame.samplePeriod > 0 {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Cursors").foregroundStyle(Theme.cursor).bold()
+                MeasurementCard(title: "Cursors", colour: Theme.cursor) {
                     let span = abs(model.cursorB - model.cursorA) * model.frame.duration
-                    row("Δt", Format.time(span))
-                    row("1/Δt", span > 0 ? Format.frequency(1 / span) : nil)
+                    MeasurementRow("Δt", Format.time(span))
+                    MeasurementRow("1/Δt", span > 0 ? Format.frequency(1 / span) : nil)
                 }
             }
-
-            Spacer()
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(model.planDescription).foregroundStyle(.secondary)
-                // Kept in the layout whether or not the filter is on, for the
-                // same reason as the readings above.
-                Text(model.settings.trigger.lowPassHz > 0 && model.capabilities.hasTriggerLowPass
-                     ? "Trigger LPF · " + Format.frequency(Double(model.settings.trigger.lowPassHz))
-                     : " ")
-                    .foregroundStyle(Theme.trigger)
-                Text(model.frame.triggered ? "Triggered" : "Not triggered")
-                    .foregroundStyle(model.frame.triggered ? Theme.trigger : .secondary)
-            }
         }
-    }
-
-    private func row(_ label: String, _ value: String?) -> some View {
-        row(label, value ?? "—")
-    }
-
-    private func row(_ label: String, _ value: String) -> some View {
-        // Format separates the numeric reading and engineering unit with a space.
-        // Keep both columns fixed so changing digits or SI prefixes cannot move them.
-        let parts = value.split(separator: " ", maxSplits: 1)
-        let number = parts.first.map(String.init) ?? value
-        let unit = parts.count > 1 ? String(parts[1]) : ""
-        return HStack(spacing: 4) {
-            Text(label).foregroundStyle(.secondary).frame(width: 46, alignment: .leading)
-            Text(number).frame(width: 60, alignment: .trailing)
-            Text(unit).frame(width: 24, alignment: .trailing)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label) \(value)")
     }
 }

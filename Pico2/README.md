@@ -6,6 +6,13 @@ built on a Raspberry Pi Pico 2, with a native macOS application to drive it.
 The RP2350 appears as a vendor-specific USB device, so the application claims it
 directly through IOKit: no driver, no kext, no permission dialog, no Python.
 
+The macOS application and the browser application in [Web/](Web/) are the same
+instrument seen through two windows, and are drawn to match: one palette, one
+layout, one set of readings. The colours here come from the custom properties
+at the top of `Web/style.css`, and because that page is a light design with no
+dark palette of its own, the macOS window keeps a light appearance whatever the
+system is set to.
+
 ## Downloads and Web app
 
 [Download PiLyzer for macOS](https://github.com/Satachito/Oscillo/releases/latest)

@@ -7,13 +7,11 @@ struct ContentView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                screen
-                statusBar
-            }
-            Divider()
+            screen
+            Rectangle().fill(Theme.line).frame(width: 1)
             ControlPanelView(model: model)
         }
+        .background(Theme.page)
         .frame(minWidth: 1040, minHeight: 640)
         .toolbar { toolbar }
         .alert("Instrument", isPresented: Binding(
@@ -32,27 +30,6 @@ struct ContentView: View {
         case .logic: LogicView(model: model)
         case .meter: MeterView(model: model)
         }
-    }
-
-    private var statusBar: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(model.isConnected ? Color.green : Color.secondary)
-                .frame(width: 8, height: 8)
-            Text(model.statusText)
-            if !model.isConnected, let hint = model.busHint {
-                Text("·").foregroundStyle(.secondary)
-                Text(hint).foregroundStyle(.orange)
-            }
-            Spacer()
-            if model.isRunning {
-                ProgressView().controlSize(.small).scaleEffect(0.6).frame(width: 14, height: 14)
-            }
-        }
-        .font(.system(size: 11))
-        .padding(.horizontal, 10)
-        .frame(height: 22)
-        .background(.bar)
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
