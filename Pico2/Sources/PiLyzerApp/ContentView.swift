@@ -51,8 +51,15 @@ struct ContentView: View {
 
             // Ruled off from the transport: the two on the left say which
             // instrument and whether it is connected, the three on the right
-            // say what it should do.
-            Divider()
+            // say what it should do. Divider() draws itself horizontally in a
+            // toolbar group — there is no stack to take an axis from — so the
+            // rule is an explicit one.
+            Rectangle()
+                // The toolbar is the system's material, not our paper, so the
+                // rule is the system's separator rather than Theme.line.
+                .fill(Color(nsColor: .separatorColor))
+                .frame(width: 1, height: 16)
+                .accessibilityHidden(true)
 
             Button { model.toggleRun() } label: {
                 Label(model.isRunning ? "Stop" : "Run",
