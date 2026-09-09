@@ -1,0 +1,32 @@
+{
+  "symbols": {
+    "Device_R": "Device:R",
+    "Amplifier_Operational_TLV9064": "Amplifier_Operational:TLV9064",
+    "Device_C": "Device:C",
+    "Device_C_Trim": "Device:C_Trim",
+    "Connector_Conn_Coaxial": "Connector:Conn_Coaxial",
+    "Connector_Generic_Conn_01x02": "Connector_Generic:Conn_01x02",
+    "Device_D_TVS": "Device:D_TVS",
+    "Device_D_Dual_Series_AKC": "Device:D_Dual_Series_AKC",
+    "Analog_Switch_TS5A23159DGS": "Analog_Switch:TS5A23159DGS",
+    "Connector_TestPoint": "Connector:TestPoint",
+    "Connector_Generic_Conn_01x20": "Connector_Generic:Conn_01x20",
+    "Connector_Generic_Conn_01x10": "Connector_Generic:Conn_01x10",
+    "power_PWR_FLAG": "power:PWR_FLAG"
+  },
+  "footprints": {
+    "R_0805_2012Metric": "Resistor_SMD:R_0805_2012Metric",
+    "SOIC-14_3.9x8.7mm_P1.27mm": "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
+    "C_0603_1608Metric": "Capacitor_SMD:C_0603_1608Metric",
+    "C_Trimmer_Murata_TZC3": "Capacitor_SMD:C_Trimmer_Murata_TZC3",
+    "BNC_Amphenol_031-6575_Horizontal": "Connector_Coaxial:BNC_Amphenol_031-6575_Horizontal",
+    "PinHeader_1x02_P2.54mm_Vertical": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+    "D_SOD-323": "Diode_SMD:D_SOD-323",
+    "SOT-23": "Package_TO_SOT_SMD:SOT-23",
+    "TSSOP-10_3x3mm_P0.5mm": "Package_SO:TSSOP-10_3x3mm_P0.5mm",
+    "TestPoint_Plated_Hole_D2.0mm": "TestPoint:TestPoint_Plated_Hole_D2.0mm",
+    "PinSocket_1x20_P2.54mm_Vertical": "Connector_PinSocket_2.54mm:PinSocket_1x20_P2.54mm_Vertical",
+    "PinHeader_1x10_P2.54mm_Vertical": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+    "C_0805_2012Metric": "Capacitor_SMD:C_0805_2012Metric"
+  }
+}

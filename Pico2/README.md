@@ -28,6 +28,12 @@ The macOS download is ad-hoc signed, not Apple-notarized. Unzip it and move
 PiLyzer.app to Applications. macOS may require approving its first launch in
 System Settings → Privacy & Security → Open Anyway.
 
+Two boards share this firmware and both applications:
+[PiLyzer Lite](hardware/pilyzer-lite) — two channels, one ±15 V range, no
+analogue switch — and [the rev A front end](hardware/pilyzer-afe) — three
+channels, two switched ranges. Neither needs its own release of either
+application: the board describes its own front end from firmware 1.7.
+
 All commands below run from the `Pico2` directory.
 
 ## What it is
