@@ -43,6 +43,9 @@ hand. macOS and Linux are unaffected either way.
 - Adjustable calibration square wave and per-channel Set zero / Reset.
   Ground the selected input and capture it before using Set zero. Calibration
   is session-local; changing devices starts a new calibration session.
+- Light and dark follow the system. Only the paper around the instrument
+  changes: the screen stays dark, because that is what an oscilloscope's face
+  is under any lighting and the trace colours are chosen against it.
 - Local CSV export for scope, spectrum, logic and meter records. Remove mean is
   a display choice; exported scope files hold the voltages as measured.
 - The front panel is remembered in this browser between visits. Per-channel

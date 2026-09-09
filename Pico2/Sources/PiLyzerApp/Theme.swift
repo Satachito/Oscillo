@@ -1,3 +1,4 @@
+import AppKit
 import PiLyzerCore
 import SwiftUI
 
@@ -5,50 +6,64 @@ import SwiftUI
 ///
 /// The browser application in `Web/` and this one are the same instrument seen
 /// through two windows, so they are drawn in the same colours: the values here
-/// are the custom properties at the top of `Web/style.css`. The screen keeps an
-/// instrument's own dark face whatever the system theme is, and the panel
-/// around it is the same off-white paper the web page uses rather than the
-/// system window colour — otherwise the two look like different products.
+/// are the custom properties at the top of `Web/style.css`, light and dark
+/// alike.
+///
+/// Only the paper around the instrument follows the system appearance. The
+/// screen does not: an oscilloscope's face is dark on a bench under any
+/// lighting, the trace colours are chosen against that dark, and a screen that
+/// inverted with the system would make every reading a different colour from
+/// the one the user learned.
 enum Theme {
-    private static func hex(_ value: UInt32) -> Color {
-        Color(red: Double((value >> 16) & 0xFF) / 255,
-              green: Double((value >> 8) & 0xFF) / 255,
-              blue: Double(value & 0xFF) / 255)
+    private static func rgb(_ value: UInt32) -> NSColor {
+        NSColor(srgbRed: Double((value >> 16) & 0xFF) / 255,
+                green: Double((value >> 8) & 0xFF) / 255,
+                blue: Double(value & 0xFF) / 255, alpha: 1)
     }
 
-    // The page around the instrument.
-    static let page = hex(0xF2F3ED)
-    static let panel = hex(0xFAFBF6)
-    static let line = hex(0xDFE3D9)
-    static let ink = hex(0x253329)
-    static let muted = hex(0x778074)
-    static let accent = hex(0x284A32)
-    static let accentSoft = hex(0xC4EDA0)
+    /// Resolved against whatever appearance the view is drawn in, so the window
+    /// follows the system live rather than at launch.
+    private static func paper(_ light: UInt32, _ dark: UInt32) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? rgb(dark) : rgb(light)
+        })
+    }
 
-    // The screen itself.
-    static let screen = hex(0x101917)
-    static let screenEdge = hex(0x25332C)
-    static let grid = hex(0x344238)
-    static let gridStrong = hex(0x607160)
-    static let readout = hex(0x8C9E90)
-    static let screenInk = hex(0xD4E0D3)
+    private static func fixed(_ value: UInt32) -> Color { Color(nsColor: rgb(value)) }
+
+    // The page around the instrument.
+    static let page = paper(0xF2F3ED, 0x171C1A)
+    static let panel = paper(0xFAFBF6, 0x1E2522)
+    static let line = paper(0xDFE3D9, 0x2F3833)
+    static let ink = paper(0x253329, 0xE2E8DF)
+    static let muted = paper(0x778074, 0x8D9789)
+    static let accent = paper(0x284A32, 0xA9D18C)
+    static let accentSoft = paper(0xC4EDA0, 0x35513A)
+
+    // The screen itself, the same under either appearance.
+    static let screen = fixed(0x101917)
+    static let screenEdge = fixed(0x25332C)
+    static let grid = fixed(0x344238)
+    static let gridStrong = fixed(0x607160)
+    static let readout = fixed(0x8C9E90)
+    static let screenInk = fixed(0xD4E0D3)
 
     /// The eight trace colours of `COLORS` in `Web/src/plot.mjs`. The analogue
     /// channels take the first three; the logic inputs take all eight, so D0
     /// and CH1 share a colour exactly as they do in the browser.
     static let traces: [Color] = [
-        hex(0xE9C96B), hex(0x79CDD8), hex(0xC0A1EF), hex(0x9ED190),
-        hex(0xD8AD7F), hex(0xA6BCEC), hex(0xD592B9), hex(0xAFBF7A),
+        fixed(0xE9C96B), fixed(0x79CDD8), fixed(0xC0A1EF), fixed(0x9ED190),
+        fixed(0xD8AD7F), fixed(0xA6BCEC), fixed(0xD592B9), fixed(0xAFBF7A),
     ]
 
     static func channelColor(_ index: Int) -> Color { traces[index % traces.count] }
     static func logicColor(_ index: Int) -> Color { traces[index % traces.count] }
 
-    static let trigger = hex(0xA3CD87)
-    static let live = hex(0xB8EF83)
-    static let connected = hex(0x77AD4C)
-    static let clip = hex(0xE69B7F)
-    static let cursor = hex(0xE58B72)
+    static let trigger = fixed(0xA3CD87)
+    static let live = fixed(0xB8EF83)
+    static let connected = fixed(0x77AD4C)
+    static let clip = fixed(0xE69B7F)
+    static let cursor = fixed(0xE58B72)
 
     static let mono = Font.system(size: 11, design: .monospaced)
     static let monoSmall = Font.system(size: 10, design: .monospaced)

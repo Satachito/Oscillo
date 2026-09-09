@@ -8,10 +8,14 @@ directly through IOKit: no driver, no kext, no permission dialog, no Python.
 
 The macOS application and the browser application in [Web/](Web/) are the same
 instrument seen through two windows, and are drawn to match: one palette, one
-layout, one set of readings. The colours here come from the custom properties
-at the top of `Web/style.css`, and because that page is a light design with no
-dark palette of its own, the macOS window keeps a light appearance whatever the
-system is set to.
+layout, one set of readings. The colours come from the custom properties at the
+top of `Web/style.css`, light and dark alike, and both applications follow the
+system appearance.
+
+Only the paper around the instrument changes with it. The screen does not: an
+oscilloscope's face is dark on a bench under any lighting, the trace colours are
+chosen against that dark, and a screen that inverted with the system would give
+every reading a different colour from the one you learned.
 
 ## Downloads and Web app
 
