@@ -101,18 +101,18 @@ test('single capture returns all enabled channels once', async () => {
   await engine.start(settings, true); assert.equal(frames.length, 1); assert.equal(frames[0].traces.length, 3); assert.equal(engine.running, false);
 });
 
-test('USB connect clears a previous host reply before identifying and claims advertised endpoints', async () => {
+test('USB connect synchronizes past stale ADC bytes even when reset leaves IN data queued', async () => {
   const { USBInstrument } = await import('../src/usb.mjs');
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   const events = [], alternate = { interfaceClass: 255, alternateSetting: 0, endpoints: [{ direction: 'in', type: 'bulk', endpointNumber: 2 }, { direction: 'out', type: 'bulk', endpointNumber: 1 }] };
   const device = new FakeDevice();
-  device.packets = [reply(OP.analogStatus, 987, new Uint8Array(16))];
+  device.packets = [Uint8Array.from([0x30, 0, 0x30, 0, 0x60, 0x8b, 0x20, 0, 0x20, 0, 0xb0, 0x8b]), reply(OP.identify, 987, new Uint8Array(32))];
   device.configuration = { interfaces: [{ interfaceNumber: 0, alternate, alternates: [alternate] }] };
   device.open = async () => { events.push('open'); device.opened = true; };
-  device.reset = async () => { events.push('reset'); device.packets = []; };
+  device.reset = async () => { events.push('reset'); /* host retains unread IN packets */ };
   device.claimInterface = async n => { assert.equal(n, 0); events.push('claim'); };
   device.transferOut = async (endpoint, bytes) => {
-    assert.equal(endpoint, 1); assert.equal(device.packets.length, 0, 'previous session must be cleared');
+    assert.equal(endpoint, 1); if (bytes[1] !== OP.identify) assert.equal(device.packets.length, 0, 'handshake must consume old replies');
     const op = bytes[1], payload = new Uint8Array(op === OP.identify ? 32 : 48), v = view(payload);
     if (op === OP.identify) { v.setUint32(0, 0x5a594c50, true); v.setUint16(4, 1, true); v.setUint16(6, 0x105, true); }
     else { payload.set([3, 12, 8, 2]); [48000000, 97, 16384, 16383, 150000000, 65536, 65535, 3300000, 15].forEach((n, i) => v.setUint32(4 + i * 4, n, true)); }
@@ -150,4 +150,13 @@ test('a trigger level left on the rail is moved somewhere the signal reaches', a
   assert.equal(usableTriggerLevel(bare, 1.65), 1.65);                       // already reachable, untouched
   const five = scaleFor({ ...settings, channels: settings.channels.map(c => ({ ...c, range: 1 })) }, caps, 1, 0);
   assert.ok(usableTriggerLevel(five, 20) < five.high && usableTriggerLevel(five, 20) > 5);
+});
+
+test('initial synchronization is bounded and closes a stream without a valid identity', async () => {
+  const device = new FakeDevice();
+  device.transferOut = async (_, bytes) => ({ status: 'ok', bytesWritten: bytes.length });
+  device.transferIn = async () => ({ status: 'ok', data: view(new Uint8Array(8192)) });
+  const transport = new BulkTransport(device, 2, 1);
+  await assert.rejects(transport.synchronize(), /Too much stale USB data/);
+  assert.equal(device.opened, false);
 });

@@ -16,14 +16,39 @@ export class BulkTransport {
     const operation = this.queue.then(() => this.transaction(opcode, payload));
     this.queue = operation.catch(() => {}); return operation;
   }
-  async transaction(opcode, payload) {
+  synchronize() {
+    // Use a fresh nonce so a previous session's IDENTIFY reply is not accepted.
+    this.sequence = crypto.getRandomValues(new Uint16Array(1))[0];
+    const operation = this.queue.then(() => this.transaction(OP.identify, undefined, true));
+    this.queue = operation.catch(() => {}); return operation;
+  }
+  async seekIdentity(sequence) {
+    // Reset does not reliably empty already queued IN data on every host.
+    // Only the initial handshake may scan past old data; normal exchanges
+    // remain strict. Never leave a timed-out read pending behind a new request.
+    const deadline = performance.now() + 4000;
+    for (let discarded = 0; discarded <= 65536; discarded++) {
+      if (performance.now() > deadline) throw new Error('USB synchronization timed out. Reconnect the instrument.');
+      await this.fill(12);
+      const b = this.buffer, v = view(b);
+      if (b[0] === 0x5a && b[1] === OP.identify && b[2] === 0 && b[3] === 0 &&
+          v.getUint16(4, true) === sequence && v.getUint16(6, true) === 0 && v.getUint32(8, true) === 32) {
+        await this.fill(44);
+        try { identity(this.buffer.subarray(12, 44)); return; } catch { /* old sample bytes can resemble a header */ }
+      }
+      this.buffer = this.buffer.subarray(1);
+    }
+    throw new Error('Too much stale USB data. Reconnect the instrument.');
+  }
+  async transaction(opcode, payload, synchronizing = false) {
     if (this.closed) throw new Error('USB connection is closed.');
     const sequence = this.sequence = (this.sequence + 1) & 0xffff;
     const bytes = request(opcode, sequence, payload);
     try {
       const result = await this.bounded(this.device.transferOut(this.output, bytes));
       if (result.status !== 'ok' || result.bytesWritten !== bytes.length) throw new Error('USB write failed');
-      await this.fill(12);
+      if (synchronizing) await this.seekIdentity(sequence);
+      else await this.fill(12);
       const header = responseHeader(this.buffer, opcode, sequence);
       await this.fill(12 + header.length);
       const data = this.buffer.slice(12, 12 + header.length);
@@ -60,7 +85,7 @@ export class USBInstrument {
     try {
       await device.open();
       // A previous host can leave an unread reply in the bulk endpoint.
-      // Reset the USB session before IDENTIFY so the firmware clears its queues.
+      // Reset first, then synchronize explicitly with the new IDENTIFY reply.
       await device.reset();
       if (!device.configuration) await device.selectConfiguration(1);
       const iface = device.configuration.interfaces.find(i => i.alternates.some(a => a.interfaceClass === 255));
@@ -72,7 +97,7 @@ export class USBInstrument {
       const output = alternate.endpoints.find(e => e.direction === 'out' && e.type === 'bulk');
       if (!input || !output) throw new Error('PiLyzer bulk endpoints are missing');
       const instrument = new USBInstrument(new BulkTransport(device, input.endpointNumber, output.endpointNumber));
-      instrument.identity = identity(await instrument.command(OP.identify));
+      instrument.identity = identity(await instrument.transport.synchronize());
       instrument.caps = capabilities(await instrument.command(OP.capabilities));
       return instrument;
     } catch (error) {
