@@ -35,6 +35,58 @@ within the 0.2% the switch adds. Fit the real part when you want the gain
 figure to be the board's rather than the breadboard's — and buy the adapter now
 either way, since you will want it eventually.
 
+## The op amp is not optional, and there is no DIP one
+
+There is no through-hole TLV9064, and the DIP op amps everybody has in a drawer
+— LM358, TL072, NE5532, OPA2134 — cannot do this job at all: none of them will
+run rail to rail on a single 3.3 V supply, and on the ±25 V range the follower's
+input covers the whole 0 V to 3.3 V of the divider node. So the choice is a
+SOIC-14 adapter or a different modern part.
+
+What the circuit actually asks for:
+
+| | | |
+| --- | --- | --- |
+| Supply | single 3.3 V | the board runs off the Pico's 3V3 and nothing else |
+| Input and output | both rail to rail | the follower's input is the divider node, 0 – 3.3 V |
+| Gain bandwidth | ≥ 4 MHz | 100 × the filter's 40.2 kHz corner. The TLV9064's 10 MHz is 249 × |
+| Input bias current | ≤ 1 nA, so CMOS or FET | see below |
+| Amplifiers | three | one quad, or two duals |
+
+The bandwidth and the bias current are not preferences. **The filter's Q and the
+clamp's leakage are measurements of the amplifier as much as of the circuit
+around it**, so substituting it quietly defeats the point of making them.
+
+The divider node's source impedance is 62.5 kΩ — 125k, 143k and the 998k input
+in parallel. Input bias current flows through that:
+
+| Input stage | Bias current | At the node | In converter counts |
+| --- | ---: | ---: | ---: |
+| CMOS, as specified | 10 pA | 0.6 µV | 0.00 LSB |
+| **the clamp leakage being measured** | **1 nA** | **62.5 µV** | **0.08 LSB** |
+| an ordinary bipolar input | 45 nA | 2813 µV | 3.49 LSB |
+
+A bipolar-input part buries the nanoamp it is supposed to reveal under forty-five
+of its own. Checking the clamp diodes at temperature stops being possible.
+
+The bandwidth argument is the same shape. A 1 MHz part is 25 × the filter's
+corner, not 249 ×, and its finite gain bandwidth moves Q by several per cent —
+the same order as the difference the measurement is looking for, which is 0.742
+against 0.8, or 5.7% overshoot against 8.1%.
+
+If a DIP part is wanted anyway, the specification above is the test to apply.
+Check current stock rather than this list, which will rot:
+
+| Part | GBW | Verdict |
+| --- | ---: | --- |
+| MCP6024, MCP6294 | 10 MHz | CMOS, rail to rail, PDIP-14 — near enough equivalent |
+| MCP6004, LMC6484 | 1 – 1.5 MHz | fine for checking the wiring and for the compensation trim; not for Q |
+
+The cheapest correct answer is the adapter. SOIC-14 is 1.27 mm pitch and easier
+to solder by hand than the SOT-23 and VSSOP-10 parts already on this list. If
+you would rather prove the wiring before committing, an MCP6004 does that and
+the compensation trim happily, and then comes out.
+
 ## What a breadboard can and cannot tell you
 
 **It can:**

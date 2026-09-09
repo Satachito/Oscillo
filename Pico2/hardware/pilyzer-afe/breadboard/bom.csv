@@ -16,7 +16,7 @@ Capacitor,1nF C0G/NP0 2% or better,2,Through hole,C6 C7,Sallen-Key shunt to VMID
 Capacitor,100nF X7R,2,Through hole,C12,Op amp decoupling. One at each supply pin.
 Capacitor,1uF X7R,1,Through hole,C15,VMID divider bypass, before the buffer.
 Capacitor,10uF X7R or electrolytic,1,Through hole,C14,Bulk on the 3V3 rail.
-Op amp,TLV9064IDR,1,SOIC-14,U1,"One is enough for a single channel: A gain, B filter, D VMID buffer."
+Op amp,TLV9064IDR,1,SOIC-14,U1,"One is enough for a single channel: A gain, B filter, D VMID buffer. No DIP equivalent — see the README before substituting."
 Analogue switch,TS5A23159DGSR,1,VSSOP-10 (DGS),U2,Optional for the first measurements — see the README.
 Diode,BAV199,1,SOT-23,D1,Dual series low-leakage clamp. Pin 1 GND, pin 2 3V3, pin 3 node.
 Adapter board,SOIC-14 to DIP-14,1,,,No through-hole TLV9064 exists.
