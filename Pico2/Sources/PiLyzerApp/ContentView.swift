@@ -33,7 +33,10 @@ struct ContentView: View {
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigation) {
+        // Nothing is placed leading, so the window keeps its name at the far
+        // left and everything that acts on the instrument sits together on the
+        // right: which instrument, whether it is connected, then what it does.
+        ToolbarItemGroup {
             Picker("", selection: $model.selectedSource) {
                 ForEach(model.sources, id: \.source) { entry in
                     Text(entry.label).tag(entry.source)
@@ -45,9 +48,12 @@ struct ContentView: View {
 
             Button(model.isConnected ? "Disconnect" : "Connect") { model.toggleConnection() }
                 .keyboardShortcut("k")
-        }
 
-        ToolbarItemGroup {
+            // Ruled off from the transport: the two on the left say which
+            // instrument and whether it is connected, the three on the right
+            // say what it should do.
+            Divider()
+
             Button { model.toggleRun() } label: {
                 Label(model.isRunning ? "Stop" : "Run",
                       systemImage: model.isRunning ? "stop.fill" : "play.fill")
