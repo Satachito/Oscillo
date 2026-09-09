@@ -48,15 +48,15 @@
       .name = "0 – 3.3 V" },                                                   \
 }
 #elif PILYZER_BOARD_ID == 2
-// PiLyzer Lite: the same attenuator and the same gain stage, but the gain leg
-// is wired to VMID rather than switched, so there is one range and no analogue
-// switch on the board at all. The attenuator in front of it is unchanged, which
-// is where the input protection lives — ±25 V still does not make the clamp
-// conduct, it only clips.
+// PiLyzer Lite: one range, wide enough for a 12 V supply. The attenuator is
+// rev A's, unchanged — that is where the input protection lives — and the gain
+// leg is wired to VMID rather than switched, so there is no analogue switch on
+// the board at all. R8 is 15k rather than rev A's 2.67k, which is the whole
+// difference: a stage gain of 1.667 instead of 4.745.
 #define ANALOG_RANGES 1
 #define PILYZER_INPUT_RANGES {                                                 \
-    { .switch_position = 0, .gain_micro = 297269, .offset_microvolts = 1652442,\
-      .name = "±5 V" },                                                        \
+    { .switch_position = 0, .gain_micro = 104408, .offset_microvolts = 1650858,\
+      .name = "±15 V" },                                                       \
 }
 #else
 // PiLyzer AFE rev A: both ranges sit on the same attenuator and the same

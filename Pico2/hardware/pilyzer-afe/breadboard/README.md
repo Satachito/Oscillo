@@ -32,6 +32,11 @@ nothing:
 | ±25 V | COM–NC, so `R8` goes nowhere | 1 | **take `R8` out** |
 | ±5 V | COM–NO, so `R8` goes to VMID | 4.745 | `R8` in, far end wired to VMID |
 
+**PiLyzer Lite has no switch**, and its one ±15 V range is this same circuit
+with `R8` at 15 kΩ wired permanently to VMID. Building that instead is a change
+of one resistor; everything measured here — the compensation, the filter, the
+clamp — is identical either way.
+
 That is exactly the two states, and it works because the switch sits at VMID on
 both sides on the real board and so never sees a signal swing.
 

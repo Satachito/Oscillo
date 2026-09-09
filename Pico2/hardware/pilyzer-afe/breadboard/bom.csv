@@ -4,7 +4,7 @@ Resistor,125k 1% metal film,1,Through hole,R3,Bias leg to 3V3. Deliberately smal
 Resistor,143k 1% metal film,1,Through hole,R4,Bias leg to ground.
 Resistor,2.67k 1% metal film,2,Through hole,R5 R6,Sallen-Key pair. Must be equal; measure both and pair them.
 Resistor,10k 0.1% metal film,1,Through hole,R7,Gain stage feedback. 1% will do if you measure it.
-Resistor,2.67k 0.1% metal film,1,Through hole,R8,Sets the fine range gain. 1% will do if you measure it.
+Resistor,2.67k 0.1% metal film,1,Through hole,R8,"Sets the gain. 2.67k is rev A's fine range; use 15k for a PiLyzer Lite channel. 1% will do if you measure it."
 Resistor,10k 0.1% metal film,2,Through hole,R17 R18,VMID divider. Ratio is what matters — pair them from one batch.
 Resistor,1k 1% metal film,1,Through hole,R44,Isolates the filter output from the converter's sampling capacitor.
 Resistor,100R 1% metal film,1,Through hole,R35,Test output series resistor from GPIO20.

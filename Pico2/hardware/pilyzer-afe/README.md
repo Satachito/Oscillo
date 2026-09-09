@@ -241,36 +241,60 @@ looks perfectly plausible, with nothing in software able to tell.
 
 ## PiLyzer Lite: one range, no switch
 
-Lite offers **±5 V and nothing else**, which removes the range switch from the
-board entirely: `R8` is wired to VMID instead of being taken there by `U2A`.
-Both TS5A23159 packages go, and GPIO16 and GPIO17 come free.
+Lite offers **±15 V and nothing else** — wide enough for a 12 V supply, which is
+what a single range has to reach to be useful on a bench with students at it.
 
-Everything in front of the gain stage stays exactly as it is, and that is
+The whole difference from rev A is **`R8`: 15 kΩ instead of 2.67 kΩ**, wired
+permanently to VMID instead of being taken there by `U2A`. That makes the gain
+stage ×1.667 rather than ×4.745. Both TS5A23159 packages leave the board, and
+GPIO16 and GPIO17 come free.
+
+| | Overall gain | Offset | Reads |
+| --- | ---: | ---: | --- |
+| Lite, `R8` 15 kΩ | 0.104408 | 1.650858 V | −15.81 … +15.80 V |
+
+15 kΩ rather than the 13.3 kΩ that would land on exactly ±15 V, because 1%
+parts at their worst corner still have to clear 15 V: 13.3 kΩ falls to 14.90 V
+there, 15 kΩ only to 15.67 V.
+
+Everything in front of the gain stage stays exactly as rev A has it, and that is
 deliberate. The fixed 1 MΩ attenuator is where the input protection lives, not
-the range selection:
+where the range is chosen, so none of it moves:
 
 | Input | Divider node | |
 | ---: | ---: | --- |
-| ±5.5 V | 2.00 V | the top of the range |
-| 12 V | 2.40 V | reads as clipped; the clamp stays idle |
-| 25 V | 3.22 V | still clipping, still no clamp current |
-| 30 V | 3.53 V | the clamp begins to conduct |
+| ±15.8 V | 2.64 V | the top of the range |
+| 25 V | 3.22 V | reads as clipped; the clamp is still idle |
+| 26.3 V | 3.30 V | the clamp begins to conduct |
 | 100 V | 7.92 V | the continuous rating, 96 µA through the clamp |
 
-Sizing a single divider straight for ±5 V instead would drop all of that: at
-100 V the node would sit near 30 V rather than 8, and the source impedance the
-amplifier sees would go from 62.5 kΩ to about 208 kΩ, which costs offset and
-noise. On a board meant for teaching, where the wrong thing will be probed, the
-heavy fixed attenuator is worth keeping even when only one range comes out of it.
+Sizing a single divider straight for ±15 V and dropping the gain stage would
+give up all of that. Full scale would put the divider node **at the rail**, so
+the clamp would sit on the edge of conduction at the top of the range with its
+leakage in the measurement, instead of having 26 V of headroom in front of it.
 
-The range reads **−5.559 V to +5.542 V**. Anything past that clips rather than
-damaging, all the way to the ±100 V the attenuator is rated for.
+### What the single range costs
 
-Nothing changes in either application. The device reports its own ranges from
-firmware 1.7, so Lite answers with one entry and both front panels disable the
-range menu on their own — the macOS panel already asks `ranges.count > 1` and the
-browser one `frontEnd().length < 2`. Lite is `PILYZER_BOARD_ID 2` and needs no
-host release to be read correctly.
+One range this wide is 1.5 bits coarser on small signals than rev A's fine
+range:
+
+| | Span | One count |
+| --- | ---: | ---: |
+| Lite ±15 V | 31.6 V | 7.72 mV |
+| rev A ±5 V | 11.1 V | 2.71 mV |
+| rev A ±25 V | 52.7 V | 12.86 mV |
+
+3.3 V logic still lands on about 430 counts and a line-level audio signal on
+360, which is enough to teach with, and the firmware's box-car decimation puts
+bits back on slow sweeps. It is worth knowing rather than discovering.
+
+### Nothing changes in either application
+
+The device has reported its own ranges since firmware 1.7, so Lite answers with
+one entry and both front panels disable the range menu on their own — the macOS
+panel already asks `ranges.count > 1` and the browser one
+`frontEnd().length < 2`. Lite is `PILYZER_BOARD_ID 2` and needs no host release
+to be read correctly.
 
 **Consider a fixed capacitor in place of `TC1` on production Lite.** The
 compensation still has to be right, but once the layout is settled and the first
