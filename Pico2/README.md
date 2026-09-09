@@ -104,7 +104,7 @@ The firmware has its own build; see [firmware/pilyzer/README.md](firmware/pilyze
 | **Scope** | voltage against time, or X/Y; Vpp, mean, RMS, AC RMS, frequency, duty, rise time |
 | **Spectrum** | windowed FFT with peak markers, and the distortion figures |
 | **Logic** | eight traces, per-channel rate and duty, protocol decoding |
-| **Meter** | all inputs as numbers, with a rolling chart |
+| **Meter / logger** | all inputs as numbers, and a log at 50 ms to 5 minutes a point — each point the lowest, mean and highest reading of its interval |
 
 ### The instrument tells the application what it can do
 

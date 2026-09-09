@@ -58,7 +58,18 @@ export function csv(frame) {
     for (let i = 0; i < frame.samples.length; i++) rows.push([((i - frame.triggerIndex) * frame.period).toPrecision(10), ...Array.from({ length: 8 }, (_, b) => (frame.samples[i] >> b) & 1)].join(','));
     return rows.join('\n') + '\n';
   }
-  if (frame.kind === 'meter') return 'time_s,' + frame.values.map((_, i) => `CH${i + 1}_V`).join(',') + '\n' + frame.history.map(row => [row.time, ...row.values].join(',')).join('\n') + '\n';
+  // One row a logged interval, so the extremes within it are part of the record
+  // rather than something only the screen knew.
+  if (frame.kind === 'meter') {
+    const header = ['time_s', 'timestamp'];
+    frame.values.forEach((_, i) => header.push(`CH${i + 1}_min_V`, `CH${i + 1}_mean_V`, `CH${i + 1}_max_V`));
+    const rows = frame.history.map(row => {
+      const cells = [row.time.toPrecision(9), new Date((frame.start + row.time) * 1000).toISOString()];
+      row.mean.forEach((_, i) => cells.push(row.low[i].toPrecision(9), row.mean[i].toPrecision(9), row.high[i].toPrecision(9)));
+      return cells.join(',');
+    });
+    return [header.join(','), ...rows].join('\n') + '\n';
+  }
   // Remove mean is a display choice; the file holds the voltages as measured.
   const rows = ['time_s,' + frame.traces.map(t => `CH${t.index + 1}_V`).join(',')];
   for (let i = 0; i < frame.count; i++) rows.push([((i - frame.triggerIndex) * frame.period).toPrecision(10), ...frame.traces.map(t => (t.samples[i] + (t.removedMean || 0)).toPrecision(9))].join(','));

@@ -198,7 +198,7 @@ struct MeterView: View {
 
     var body: some View {
         Workspace(model: model) {
-            Text(model.meter.map { "reading every \(Format.time($0.interval))" } ?? "—")
+            Text(model.meter.map { "logging every \(Format.time($0.interval)) · min/mean/max" } ?? "—")
                 .font(Theme.monoSmall)
                 .foregroundStyle(Theme.readout)
         } screen: {
@@ -245,25 +245,37 @@ struct MeterView: View {
         return Format.voltage(meter.volts[channel])
     }
 
+    /// The mean as a line, with everything the instrument saw between the
+    /// points shaded behind it. Without the shading a slow log looks calm
+    /// however much the signal was moving.
     private func drawHistory(_ context: inout GraphicsContext, size: CGSize) {
         guard let meter = model.meter else { return }
         let series = meter.history.filter { !$0.isEmpty }
         guard !series.isEmpty else { return }
 
-        let low = series.flatMap { $0 }.min() ?? 0
-        let high = series.flatMap { $0 }.max() ?? 1
+        let low = series.flatMap { $0 }.map(\.low).min() ?? 0
+        let high = series.flatMap { $0 }.map(\.high).max() ?? 1
         let span = max(high - low, 1e-6)
+        let y = { (volts: Double) in size.height * CGFloat(1 - (volts - low) / span) }
+        let columns = max(Int(size.width), 2)
 
         for (channel, values) in series.enumerated() {
-            let bands = envelope(values, width: max(Int(size.width), 2))
+            // One column of pixels a point, keeping the interval's extremes.
+            let bands = envelope(values.map(\.low), width: columns)
+            let highs = envelope(values.map(\.high), width: columns)
+            let means = envelope(values.map(\.mean), width: columns)
             guard bands.count > 1 else { continue }
-            var points: [CGPoint] = []
-            for (index, band) in bands.enumerated() {
-                let x = size.width * CGFloat(index) / CGFloat(bands.count - 1)
-                let middle = (band.low + band.high) / 2
-                points.append(CGPoint(x: x, y: size.height * CGFloat(1 - (middle - low) / span)))
-            }
-            context.strokeTrace(points, color: Theme.channelColor(channel), width: 1.2)
+            let x = { (index: Int) in size.width * CGFloat(index) / CGFloat(bands.count - 1) }
+
+            var shade = Path()
+            shade.move(to: CGPoint(x: x(0), y: y(highs[0].high)))
+            for index in highs.indices { shade.addLine(to: CGPoint(x: x(index), y: y(highs[index].high))) }
+            for index in bands.indices.reversed() { shade.addLine(to: CGPoint(x: x(index), y: y(bands[index].low))) }
+            shade.closeSubpath()
+            context.fill(shade, with: .color(Theme.channelColor(channel).opacity(0.18)))
+
+            context.strokeTrace(means.indices.map { CGPoint(x: x($0), y: y(means[$0].high)) },
+                                color: Theme.channelColor(channel), width: 1.2)
         }
     }
 }

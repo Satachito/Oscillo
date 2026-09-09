@@ -39,7 +39,11 @@ hand. macOS and Linux are unaffected either way.
   hysteresis, trigger-only LPF when supported by firmware.
 - Spectrum: Hann-window FFT, RMS amplitude in dBV, peak and bin resolution.
 - Logic: D0–D7, rate/record selection, hardware edge trigger, UART 8N1 decode.
-- Meter: all ADC inputs and up to 1,000 readings of rolling history.
+- Logger: all ADC inputs, at an interval from 50 ms to 5 minutes, for up to
+  20,000 points — two months at the slowest. Each point holds the lowest, mean
+  and highest reading of its own interval rather than one instant, so a slow log
+  still shows what happened between the points; the chart draws the mean as a
+  line with that spread shaded behind it, and the CSV has all three.
 - Adjustable calibration square wave and per-channel Set zero / Reset.
   Ground the selected input and capture it before using Set zero. Calibration
   is session-local; changing devices starts a new calibration session.

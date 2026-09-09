@@ -4,7 +4,7 @@ import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel } from '
 import { fmt, csv, decodeUART } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
-const NUMERIC_CONTROLS = { timebase: 'timebase', record: 'record', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+const NUMERIC_CONTROLS = { timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
 const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart']];
 const STORAGE_KEY = 'pilyzer.settings.v1';
 // The front panel comes back the way it was left. Per-channel zeroing does not:
@@ -112,6 +112,7 @@ function synchronize() {
   $('active-count').textContent = `${active.length} channel${active.length === 1 ? '' : 's'} enabled`;
   $('max-rate').replaceChildren(document.createTextNode(fmt(caps().clock / caps().minCycles / Math.max(active.length, 1), 'Sa/s') + ' '), Object.assign(document.createElement('small'), { textContent: '/ channel max' }));
   $('horizontal-controls').hidden = logic || meter; $('trigger-controls').hidden = meter; $('analog-trigger-extra').hidden = logic;
+  $('logger-controls').hidden = !meter;
   $('channel-controls').hidden = logic; $('logic-controls').hidden = !logic;
   $('level').disabled = logic; $('xy').disabled = settings.mode !== 'scope' || active.length < 2;
   $('test-controls').hidden = instrument && !(caps().flags & 2);
@@ -130,6 +131,11 @@ function synchronize() {
   document.querySelectorAll('[data-mode]').forEach(el => { const selected = el.dataset.mode === settings.mode; el.classList.toggle('selected', selected); el.setAttribute('aria-pressed', selected); });
   channelControls(); renderFrame(); updateButtons(); saveSettings();
 }
+// How much log there is, in its own terms rather than in wall-clock time.
+function logSummary(frame) {
+  if (!frame.history.length) return 'no points yet';
+  return `${frame.history.length.toLocaleString()} pt · every ${fmt(frame.interval, 's')} · ${fmt(frame.history.at(-1).time, 's')}`;
+}
 function renderFrame() {
   plot.update(frame, settings, caps(), frontEnd());
   $('legend').replaceChildren();
@@ -141,8 +147,9 @@ function renderFrame() {
     $('legend').append(el);
   }
   if (settings.mode === 'logic') $('legend').textContent = 'D0–D7 · 3.3 V logic';
-  $('trigger-summary').textContent = settings.mode === 'meter' ? 'Immediate readings · all inputs' : `Trigger: ${['Free run', 'Auto', 'Normal'][settings.trigger]}${settings.mode === 'logic' ? ` · D${settings.logicSource}` : ` · CH${settings.source + 1}`}${settings.lpf && settings.mode !== 'logic' ? ` · LPF ${fmt(settings.lpf, 'Hz')}` : ''}`;
-  $('timing').textContent = frame?.period ? `${fmt(1 / frame.period, 'Sa/s')} · ${frame.count.toLocaleString()} points${frame.decimation > 1 ? ` · ${frame.decimation}× decimation` : ''}` : frame?.kind === 'meter' ? `${frame.history.length} readings` : '— Sa/s · — points';
+  $('trigger-summary').textContent = settings.mode === 'meter' ? 'Logging all inputs · min/mean/max a point' : `Trigger: ${['Free run', 'Auto', 'Normal'][settings.trigger]}${settings.mode === 'logic' ? ` · D${settings.logicSource}` : ` · CH${settings.source + 1}`}${settings.lpf && settings.mode !== 'logic' ? ` · LPF ${fmt(settings.lpf, 'Hz')}` : ''}`;
+  $('timing').textContent = frame?.period ? `${fmt(1 / frame.period, 'Sa/s')} · ${frame.count.toLocaleString()} points${frame.decimation > 1 ? ` · ${frame.decimation}× decimation` : ''}` : frame?.kind === 'meter' ? logSummary(frame) : '— Sa/s · — points';
+  if (settings.mode === 'meter') $('log-span').textContent = frame?.kind === 'meter' && frame.history.length ? `${frame.history.length} PT · ${fmt(frame.history.at(-1).time, 's').toUpperCase()}` : 'EMPTY';
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
   $('meter-values').hidden = frame?.kind !== 'meter';
   $('measurements').replaceChildren();
@@ -206,7 +213,7 @@ $('disconnect').onclick = async () => {
 };
 $('run').onclick = async () => { showError(); if (acquisition.running) { try { await acquisition.stop(); } catch (e) { showError(e.message); } } else acquisition.start(settings); updateButtons(); };
 $('single').onclick = () => { showError(); acquisition.start(settings, true); updateButtons(); };
-$('clear').onclick = () => { frame = null; acquisition.history = []; renderFrame(); };
+$('clear').onclick = () => { frame = null; acquisition.resetLog(); renderFrame(); };
 $('export').onclick = () => {
   let text = csv(frame), name = `pilyzer-${settings.mode}-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
   if (settings.mode === 'spectrum' && plot.spectrum) text = 'frequency_Hz,rms_V,level_dBV\n' + plot.spectrum.bins.map(b => `${b.frequency},${b.rms},${b.db}`).join('\n') + '\n';
@@ -215,6 +222,9 @@ $('export').onclick = () => {
 for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) {
   $(id).addEventListener('change', () => {
     const value = Number($(id).value); if (!Number.isFinite(value)) return;
+    // Points logged at one interval cannot share a time axis with points logged
+    // at another, so changing it starts a new log.
+    if (key === 'logInterval' && value !== settings[key]) { acquisition.resetLog(); frame = null; }
     settings[key] = value; $('position-label').value = `${Math.round(settings.position * 100)}%`; synchronize(); changed();
   });
 }

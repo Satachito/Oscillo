@@ -23,6 +23,7 @@ struct ControlPanelView: View {
                     logicSection
                     decoderSection
                 case .meter:
+                    loggerSection
                     verticalSections
                 }
                 instrumentSection
@@ -73,6 +74,17 @@ struct ControlPanelView: View {
                     }
                 }
             }
+        }
+    }
+
+    private var loggerSection: some View {
+        Section("Logger", tag: model.meterSpanDescription) {
+            Picker("Every", selection: $model.settings.logIntervalSeconds) {
+                ForEach(ScopeSettings.logIntervals, id: \.self) { Text(Format.time($0)).tag($0) }
+            }
+            Text(model.loggerAdvice)
+                .font(.caption).foregroundStyle(.secondary)
+            Button("Clear log") { model.clear() }
         }
     }
 

@@ -356,16 +356,46 @@ final class ScopeModel: ObservableObject {
             }
             return ("decoded.csv", Export.csv(decoded: decoded, frame: logicFrame))
         case .meter:
-            guard let meter else { return ("meter.csv", "") }
-            var lines = [( ["time_s"] + meter.history.indices.map { "channel\($0 + 1)_V" } ).joined(separator: ",")]
+            guard let meter else { return ("log.csv", "") }
+            // Each row is one logged interval, so the extremes within it are
+            // part of the record rather than something only the screen knew.
+            let stamp = ISO8601DateFormatter()
+            var header = ["time_s", "timestamp"]
+            for channel in meter.history.indices {
+                header += ["CH\(channel + 1)_min_V", "CH\(channel + 1)_mean_V", "CH\(channel + 1)_max_V"]
+            }
+            var lines = [header.joined(separator: ",")]
             let count = meter.history.map(\.count).min() ?? 0
             for index in 0..<count {
-                let row = [String(format: "%.6g", Double(index) * meter.interval)]
-                    + meter.history.map { String(format: "%.7g", $0[index]) }
+                let seconds = Double(index) * meter.interval
+                var row = [String(format: "%.6g", seconds),
+                           stamp.string(from: meter.start.addingTimeInterval(seconds))]
+                for channel in meter.history.indices {
+                    let sample = meter.history[channel][index]
+                    row += [String(format: "%.7g", sample.low),
+                            String(format: "%.7g", sample.mean),
+                            String(format: "%.7g", sample.high)]
+                }
                 lines.append(row.joined(separator: ","))
             }
-            return ("meter.csv", lines.joined(separator: "\n") + "\n")
+            return ("log.csv", lines.joined(separator: "\n") + "\n")
         }
+    }
+
+    /// How much log is on screen, for the section's tag.
+    var meterSpanDescription: String {
+        guard let meter, let points = meter.history.first?.count, points > 0 else { return "EMPTY" }
+        return "\(points) PT · \(Format.time(meter.span).uppercased())"
+    }
+
+    /// What this interval means in practice: how long the log can run before it
+    /// starts dropping its oldest points.
+    var loggerAdvice: String {
+        let interval = max(settings.logIntervalSeconds, 0.05)
+        let full = Format.time(interval * Double(InstrumentEngine.meterCapacity))
+        return "Each point holds the lowest, mean and highest reading of its "
+            + "interval. \(InstrumentEngine.meterCapacity.formatted()) points fit — \(full) — "
+            + "after which the oldest are dropped."
     }
 
     var fullScaleVolts: Double {

@@ -205,6 +205,11 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
     public var xyVertical: Int
     public var calibrationOutputEnabled: Bool
     public var calibrationOutputFrequency: Int
+    /// How often the meter writes a point into its log. The instrument is read
+    /// far faster than this whatever it is set to, and each point carries the
+    /// lowest, mean and highest reading of its interval — a log at one point a
+    /// minute that sampled once a minute would miss everything in between.
+    public var logIntervalSeconds: Double
 
     public init(mode: WorkMode = .scope,
                 channels: [AnalogChannelSettings] = [AnalogChannelSettings(), AnalogChannelSettings()],
@@ -213,7 +218,8 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
                 logic: LogicSettings = LogicSettings(), spectrum: SpectrumSettings = SpectrumSettings(),
                 showsXY: Bool = false, xyHorizontal: Int = 0, xyVertical: Int = 1,
                 calibrationOutputEnabled: Bool = true,
-                calibrationOutputFrequency: Int = 1000) {
+                calibrationOutputFrequency: Int = 1000,
+                logIntervalSeconds: Double = 0.5) {
         self.mode = mode
         self.channels = channels
         self.secondsPerDivision = secondsPerDivision
@@ -227,6 +233,40 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         self.xyVertical = xyVertical
         self.calibrationOutputEnabled = calibrationOutputEnabled
         self.calibrationOutputFrequency = calibrationOutputFrequency
+        self.logIntervalSeconds = logIntervalSeconds
+    }
+
+    /// Intervals the logger offers: fast enough to watch a rail settle, slow
+    /// enough to leave running overnight.
+    public static let logIntervals: [Double] = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 30, 60, 300]
+
+    private enum CodingKeys: String, CodingKey {
+        case mode, channels, secondsPerDivision, recordLength, trigger, averaging
+        case logic, spectrum, showsXY, xyHorizontal, xyVertical
+        case calibrationOutputEnabled, calibrationOutputFrequency, logIntervalSeconds
+    }
+
+    /// Every field is optional on the way in, so a panel saved by an older
+    /// build comes back with the settings it did have rather than being thrown
+    /// away wholesale for the one it did not.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let fallback = ScopeSettings()
+        mode = try values.decodeIfPresent(WorkMode.self, forKey: .mode) ?? fallback.mode
+        channels = try values.decodeIfPresent([AnalogChannelSettings].self, forKey: .channels) ?? fallback.channels
+        secondsPerDivision = try values.decodeIfPresent(Double.self, forKey: .secondsPerDivision) ?? fallback.secondsPerDivision
+        recordLength = try values.decodeIfPresent(Int.self, forKey: .recordLength) ?? fallback.recordLength
+        trigger = try values.decodeIfPresent(AnalogTriggerSettings.self, forKey: .trigger) ?? fallback.trigger
+        averaging = try values.decodeIfPresent(Int.self, forKey: .averaging) ?? fallback.averaging
+        logic = try values.decodeIfPresent(LogicSettings.self, forKey: .logic) ?? fallback.logic
+        spectrum = try values.decodeIfPresent(SpectrumSettings.self, forKey: .spectrum) ?? fallback.spectrum
+        showsXY = try values.decodeIfPresent(Bool.self, forKey: .showsXY) ?? fallback.showsXY
+        xyHorizontal = try values.decodeIfPresent(Int.self, forKey: .xyHorizontal) ?? fallback.xyHorizontal
+        xyVertical = try values.decodeIfPresent(Int.self, forKey: .xyVertical) ?? fallback.xyVertical
+        calibrationOutputEnabled = try values.decodeIfPresent(Bool.self, forKey: .calibrationOutputEnabled) ?? fallback.calibrationOutputEnabled
+        calibrationOutputFrequency = try values.decodeIfPresent(Int.self, forKey: .calibrationOutputFrequency) ?? fallback.calibrationOutputFrequency
+        let interval = try values.decodeIfPresent(Double.self, forKey: .logIntervalSeconds) ?? fallback.logIntervalSeconds
+        logIntervalSeconds = Self.logIntervals.contains(interval) ? interval : fallback.logIntervalSeconds
     }
 
     public static let horizontalDivisions = 10

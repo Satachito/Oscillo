@@ -36,11 +36,35 @@ public enum ConnectionState: Equatable, Sendable {
     }
 }
 
+/// One logged point: not a single reading but everything the instrument saw
+/// during that point's interval. A log at one point a minute that sampled once
+/// a minute would miss the other fifty-nine seconds.
+public struct MeterSample: Equatable, Sendable {
+    public var low: Double
+    public var mean: Double
+    public var high: Double
+
+    public init(low: Double, mean: Double, high: Double) {
+        self.low = low
+        self.mean = mean
+        self.high = high
+    }
+}
+
 public struct MeterReading: Equatable, Sendable {
+    /// The instrument as it is now, for the big numbers.
     public var volts: [Double]
-    public var history: [[Double]]
+    /// The log so far, one array a channel.
+    public var history: [[MeterSample]]
+    /// Seconds between logged points.
     public var interval: Double
+    /// When the log was started.
+    public var start: Date
     public var timestamp: Date
+
+    /// How long the log has been running, by its own points rather than by the
+    /// clock: the last point's time is what the axis ends at.
+    public var span: Double { Double(max((history.first?.count ?? 1) - 1, 0)) * interval }
 }
 
 /// Drives the instrument on one background queue and hands finished records to
@@ -78,8 +102,11 @@ public final class InstrumentEngine {
     private var appliedLogic: LogicConfiguration?
     private var analogPlan = AcquisitionPlan.empty
     private var logicPlan = AcquisitionPlan.empty
-    private var meterHistory: [[Double]] = [[], []]
+    private var meterHistory: [[MeterSample]] = [[], []]
     private var meterStart = Date()
+    /// What the instrument has shown since the last point was written.
+    private var meterPending: [(low: Double, high: Double, sum: Double, count: Int)] = []
+    private var meterPointDue = Date()
     private let makeInstrument: (DeviceSource) throws -> Instrument
 
     public init() {
@@ -187,6 +214,7 @@ public final class InstrumentEngine {
         let token = nextGeneration()
         queue.async { [self] in
             let modeChanged = newSettings.mode != settings.mode
+            let intervalChanged = newSettings.logIntervalSeconds != settings.logIntervalSeconds
             let panelChanged = newSettings.channels.map(\.rangeIndex) != settings.channels.map(\.rangeIndex)
                 || newSettings.calibrationOutputEnabled != settings.calibrationOutputEnabled
                 || newSettings.calibrationOutputFrequency != settings.calibrationOutputFrequency
@@ -194,7 +222,9 @@ public final class InstrumentEngine {
             if let instrument { settings.ensureAnalogChannels(instrument.capabilities.analogChannels) }
             appliedAnalog = nil
             appliedLogic = nil
-            if modeChanged { resetMeter() }
+            // Points logged at one interval cannot share a time axis with
+            // points logged at another, so changing it starts a new log.
+            if modeChanged || intervalChanged { resetMeter() }
             if panelChanged, let instrument { applyPanel(to: instrument) }
             if acquisitionMode != .stopped, isCurrent(token) { step(token: token) }
         }
@@ -446,21 +476,48 @@ public final class InstrumentEngine {
 
     private func acquireMeter(_ instrument: Instrument, token: Int) throws {
         let volts = try currentVolts(instrument)
-        for (index, value) in volts.enumerated() where index < meterHistory.count {
-            meterHistory[index].append(value)
-            if meterHistory[index].count > Self.meterCapacity {
-                meterHistory[index].removeFirst(meterHistory[index].count - Self.meterCapacity)
-            }
+        let interval = max(settings.logIntervalSeconds, 0.05)
+
+        if meterPending.count != meterHistory.count { resetMeterPending() }
+        for (index, value) in volts.enumerated() where index < meterPending.count {
+            meterPending[index].low = min(meterPending[index].low, value)
+            meterPending[index].high = max(meterPending[index].high, value)
+            meterPending[index].sum += value
+            meterPending[index].count += 1
         }
-        let span = Date().timeIntervalSince(meterStart)
-        let count = meterHistory.first?.count ?? 1
-        let interval = count > 1 ? span / Double(count - 1) : 0.05
+
+        // The instrument is read as fast as it will answer whatever the
+        // interval is; a point is written only when its interval is up, and it
+        // carries the whole interval rather than the instant it ended on.
+        let now = Date()
+        if now >= meterPointDue {
+            for index in meterHistory.indices where index < meterPending.count {
+                let pending = meterPending[index]
+                guard pending.count > 0 else { continue }
+                meterHistory[index].append(MeterSample(low: pending.low,
+                                                       mean: pending.sum / Double(pending.count),
+                                                       high: pending.high))
+                if meterHistory[index].count > Self.meterCapacity {
+                    meterHistory[index].removeFirst(meterHistory[index].count - Self.meterCapacity)
+                }
+            }
+            resetMeterPending()
+            // Advance by whole intervals so a slow read cannot make the axis
+            // drift away from the interval the log is labelled with.
+            repeat { meterPointDue = meterPointDue.addingTimeInterval(interval) } while meterPointDue <= now
+        }
+
         let reading = MeterReading(volts: volts, history: meterHistory,
-                                   interval: interval, timestamp: Date())
+                                   interval: interval, start: meterStart, timestamp: now)
         callbackQueue.async { [weak self, onMeterReading] in
             guard self?.isCurrent(token) == true else { return }
             onMeterReading?(reading)
         }
+    }
+
+    private func resetMeterPending() {
+        meterPending = Array(repeating: (low: .infinity, high: -.infinity, sum: 0, count: 0),
+                             count: meterHistory.count)
     }
 
     private func currentVolts(_ instrument: Instrument) throws -> [Double] {
@@ -492,6 +549,11 @@ public final class InstrumentEngine {
     private func resetMeter() {
         meterHistory = Array(repeating: [], count: instrument?.capabilities.analogChannels ?? 2)
         meterStart = Date()
+        // Due immediately, so the log starts with a point rather than with an
+        // empty chart for one interval — which at five minutes a point is five
+        // minutes of looking at nothing.
+        meterPointDue = meterStart
+        resetMeterPending()
     }
 
     // MARK: - Reporting

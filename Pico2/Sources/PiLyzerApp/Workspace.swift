@@ -98,8 +98,9 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
     /// how much history it is drawing instead.
     private var timing: String {
         guard model.settings.mode == .meter else { return model.planDescription }
-        let readings = model.meter?.history.first?.count ?? 0
-        return "\(readings) reading\(readings == 1 ? "" : "s")"
+        let meter = model.meter
+        guard let meter, let points = meter.history.first?.count, points > 0 else { return "no points yet" }
+        return "\(points) pt · every \(Format.time(meter.interval)) · \(Format.time(meter.span))"
     }
 
     private var hairline: some View {
@@ -109,7 +110,7 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
     private var triggerSummary: String {
         switch model.settings.mode {
         case .meter:
-            return "Immediate readings · all inputs"
+            return "Logging all inputs · min/mean/max a point"
         case .logic:
             return "Trigger: \(model.settings.logic.triggerMode.label) · D\(model.settings.logic.triggerChannel)"
         default:

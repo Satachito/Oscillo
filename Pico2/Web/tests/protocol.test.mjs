@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
-import { makeSettings, Acquisition, DemoInstrument } from '../src/acquisition.mjs';
+import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/usb.mjs';
 import { measure, spectrum, csv, decodeUART } from '../src/signal.mjs';
 const caps = demoCaps;
@@ -224,4 +224,57 @@ test('the front end comes from the device, and from the board-id table only when
     assert.deepEqual(older.ranges.map(r => r.name), ['0 – 3.3 V']);
     assert.equal(older.ranges[0].gain, 1);
   } finally { if (previous) Object.defineProperty(globalThis, 'navigator', previous); else delete globalThis.navigator; }
+});
+
+test('a logged point carries the whole interval, not the instant it ended on', async () => {
+  const engine = new Acquisition(() => {}, () => {});
+  engine.attach(new DemoInstrument());
+  const settings = makeSettings();
+  settings.mode = 'meter'; settings.logInterval = .05;
+  // Read many times across several intervals, so each written point has a
+  // whole interval's worth of readings behind it rather than just the one it
+  // fell due on.
+  const { pause } = await import('../src/acquisition.mjs');
+  let frame;
+  for (let i = 0; i < 40; i++) {
+    frame = await engine.capture(engine.instrument, settings, null, engine.token);
+    await pause(5);
+  }
+  assert.ok(frame.history.length >= 3, `expected several points, got ${frame.history.length}`);
+  assert.ok(frame.history.length >= 1, 'the log starts with a point rather than an empty chart');
+  const point = frame.history[0];
+  assert.equal(point.low.length, 3);
+  for (let ch = 0; ch < 3; ch++) {
+    assert.ok(point.low[ch] <= point.mean[ch] && point.mean[ch] <= point.high[ch]);
+  }
+  // The demo's channels move, so at least one interval must have spanned a
+  // range rather than collapsing to a single reading.
+  const spread = frame.history.some(row => row.high.some((h, i) => h - row.low[i] > 1e-9));
+  assert.ok(spread, 'every point collapsed to one reading — the interval was not accumulated');
+  // The axis is laid out from the interval, not from how long the reads took.
+  assert.equal(frame.interval, .05);
+  frame.history.forEach((row, i) => assert.ok(Math.abs(row.time - i * .05) < 1e-9));
+});
+
+test('the log CSV carries each interval\'s extremes and an absolute timestamp', () => {
+  const start = Date.UTC(2026, 0, 2, 3, 4, 5) / 1000;
+  const text = csv({ kind: 'meter', values: [0, 0], interval: 2, start, history: [
+    { time: 0, low: [1, -1], mean: [1.5, -0.5], high: [2, 0] },
+    { time: 2, low: [3, -3], mean: [3.5, -2.5], high: [4, -2] },
+  ] });
+  const lines = text.trim().split('\n');
+  assert.equal(lines[0], 'time_s,timestamp,CH1_min_V,CH1_mean_V,CH1_max_V,CH2_min_V,CH2_mean_V,CH2_max_V');
+  assert.match(lines[1], /^0\.00000000,2026-01-02T03:04:05\.000Z,1\.00000000,1\.50000000,2\.00000000,/);
+  assert.match(lines[2], /^2\.00000000,2026-01-02T03:04:07\.000Z,3\.00000000,/);
+});
+
+test('the log drops its oldest points rather than growing without limit', async () => {
+  const engine = new Acquisition(() => {}, () => {});
+  engine.attach(new DemoInstrument());
+  engine.history = Array.from({ length: LOG_CAPACITY }, (_, i) => ({ time: i, low: [0], mean: [0], high: [0] }));
+  const settings = makeSettings();
+  settings.mode = 'meter'; settings.logInterval = .05;
+  engine.pointDue = 0;
+  const frame = await engine.capture(engine.instrument, settings, null, engine.token);
+  assert.equal(frame.history.length, LOG_CAPACITY);
 });

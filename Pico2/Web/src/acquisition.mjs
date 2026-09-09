@@ -1,7 +1,10 @@
 import { OP, activeChannels, analogRequest, logicRequest, plan, status, readRequest, splitAnalog, scaleFor, ranges, view, demoCaps } from './protocol.mjs';
 import { measure } from './signal.mjs';
 export const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, zero: [0, 0] })), testEnabled: true, testFrequency: 1000, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
+// Points kept before the oldest are dropped: at half a second that is nearly
+// three hours, at five minutes a little over two months.
+export const LOG_CAPACITY = 20000;
+export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, zero: [0, 0] })), testEnabled: true, testFrequency: 1000, logInterval: .5, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
 const tone = (channel, t) => channel === 0 ? 2 * Math.sin(2 * Math.PI * 1000 * t) + .02 * Math.sin(2 * Math.PI * 3000 * t) : channel === 1 ? (Math.sin(2 * Math.PI * 500 * t) >= 0 ? 1 : -1) + .25 : 1.5 * Math.sin(2 * Math.PI * 194 * t);
 export class DemoInstrument {
   constructor() { this.demo = true; this.identity = { name: 'Demo signal', board: 1, firmware: '1.7' }; this.caps = demoCaps; this.ranges = ranges(1); }
@@ -56,8 +59,10 @@ function demoLogic(settings, caps) {
 }
 // Generation tokens cancel polling; transactions remain serialized by the transport.
 export class Acquisition {
-  constructor(onFrame, onState) { this.onFrame = onFrame; this.onState = onState; this.token = 0; this.running = false; this.pending = Promise.resolve(); this.history = []; }
-  attach(instrument) { this.instrument = instrument; this.history = []; }
+  constructor(onFrame, onState) { this.onFrame = onFrame; this.onState = onState; this.token = 0; this.running = false; this.pending = Promise.resolve(); this.resetLog(); }
+  attach(instrument) { this.instrument = instrument; this.resetLog(); }
+  // The log, and what the instrument has shown since its last point was written.
+  resetLog() { this.history = []; this.logStart = Date.now() / 1000; this.pointDue = this.logStart; this.pending_ = null; }
   async stop() {
     this.running = false; this.token++;
     await this.pending.catch(() => {});
@@ -99,7 +104,9 @@ export class Acquisition {
         const frame = await this.capture(instrument, settings, prepared, token);
         if (token !== this.token) return;
         if (frame) { this.onFrame(frame); this.onState(frame.kind === 'meter' ? 'Meter' : frame.triggered ? 'Triggered' : 'Free running'); if (single) { this.running = false; this.onState('Single capture'); return; } }
-        await pause(Math.max(10, (settings.mode === 'meter' ? 100 : 80) - (performance.now() - before)));
+        // The logger reads faster than its shortest interval, so even a 50 ms
+        // point has a reading behind it and a slow one has hundreds.
+        await pause(Math.max(10, (settings.mode === 'meter' ? 40 : 80) - (performance.now() - before)));
       }
     } catch (error) {
       if (token === this.token) { this.running = false; this.onState(error.message, true); }
@@ -114,8 +121,32 @@ export class Acquisition {
         if (bytes.length !== instrument.caps.channels * 2) throw new Error('Incomplete meter reading');
         values = Array.from({ length: instrument.caps.channels }, (_, c) => scaleFor(settings, instrument.caps, instrument.ranges, c).volts(view(bytes).getUint16(c * 2, true)));
       }
-      this.history.push({ time: Date.now() / 1000, values }); if (this.history.length > 1000) this.history.shift();
-      return { kind: 'meter', values, history: this.history.slice(), timestamp: Date.now() };
+      // The instrument is read as fast as it will answer whatever the interval
+      // is. A point is written only when its interval is up, and it carries the
+      // whole interval rather than the instant it ended on — a log at one point
+      // a minute that sampled once a minute would miss the other 59 seconds.
+      const interval = Math.max(settings.logInterval, .05), now = Date.now() / 1000;
+      if (!this.pending_ || this.pending_.length !== values.length) {
+        this.pending_ = values.map(v => ({ low: v, high: v, sum: 0, count: 0 }));
+      }
+      values.forEach((v, i) => {
+        const p = this.pending_[i];
+        p.low = Math.min(p.low, v); p.high = Math.max(p.high, v); p.sum += v; p.count++;
+      });
+      if (now >= this.pointDue) {
+        this.history.push({
+          time: this.history.length * interval,
+          low: this.pending_.map(p => p.low),
+          mean: this.pending_.map(p => p.sum / p.count),
+          high: this.pending_.map(p => p.high),
+        });
+        if (this.history.length > LOG_CAPACITY) this.history.shift();
+        this.pending_ = null;
+        // Whole intervals, so a slow read cannot drift the axis away from the
+        // interval the log is labelled with.
+        do { this.pointDue += interval; } while (this.pointDue <= now);
+      }
+      return { kind: 'meter', values, history: this.history.slice(), interval, start: this.logStart, timestamp: Date.now() };
     }
     if (instrument.demo) return settings.mode === 'logic' ? demoLogic(settings, instrument.caps) : demoAnalog(instrument, settings);
     const logic = settings.mode === 'logic', arm = logic ? OP.logicArm : OP.analogArm, poll = logic ? OP.logicStatus : OP.analogStatus;

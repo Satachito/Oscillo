@@ -110,11 +110,25 @@ export class Plot {
       c.fillStyle = COLORS[channel]; c.fillText(`D${channel}`, box.x + 5, top - 4);
     }
   }
+  // Without the shading a slow log looks calm however much the signal moved
+  // between its points.
   meter(c, box) {
-    const all = this.frame.history.flatMap(r => r.values); if (!all.length) return;
-    let low = Math.min(...all), high = Math.max(...all), span = Math.max(.1, high - low); low -= span * .1; high += span * .1;
+    const history = this.frame.history; if (!history.length) return;
+    let low = Infinity, high = -Infinity;
+    for (const row of history) for (let i = 0; i < row.low.length; i++) { low = Math.min(low, row.low[i]); high = Math.max(high, row.high[i]); }
+    if (!Number.isFinite(low)) return;
+    const span = Math.max(.1, high - low); low -= span * .1; high += span * .1;
     this.meterRange = { low, high };
-    for (let i = 0; i < this.frame.values.length; i++) this.trace(c, this.frame.history, box, v => box.y + (high - v) / (high - low) * box.h, COLORS[i], row => row.values[i]);
+    const x = i => box.x + i / Math.max(history.length - 1, 1) * box.w;
+    const y = v => box.y + (high - v) / (high - low) * box.h;
+    for (let i = 0; i < this.frame.values.length; i++) {
+      c.fillStyle = COLORS[i] + '2e';
+      c.beginPath();
+      for (let n = 0; n < history.length; n++) c.lineTo(x(n), y(history[n].high[i]));
+      for (let n = history.length - 1; n >= 0; n--) c.lineTo(x(n), y(history[n].low[i]));
+      c.closePath(); c.fill();
+      this.trace(c, history, box, y, COLORS[i], row => row.mean[i]);
+    }
   }
   axes(c, box, columns) {
     c.fillStyle = '#758c7b'; c.textAlign = 'right';
@@ -134,7 +148,7 @@ export class Plot {
     for (let col = 0; col <= columns; col += 2) {
       let label;
       if (this.spectrum) label = fmt(col / columns / frame.period / 2, 'Hz');
-      else if (frame.kind === 'meter') label = fmt(col / columns * ((frame.history.at(-1)?.time || 0) - (frame.history[0]?.time || 0)), 's');
+      else if (frame.kind === 'meter') label = fmt(col / columns * (frame.history.at(-1)?.time || 0), 's');
       else if (this.xyMode) { const index = frame.traces[0].index, m = this.mapping(index, box); label = fmt(m.centre + (col - columns / 2 - this.settings.channels[index].offset) * m.perDiv, 'V'); }
       else label = fmt((col / columns * (frame.count - 1) - frame.triggerIndex) * frame.period, 's');
       c.fillText(label, box.x + col / columns * box.w, box.y + box.h + 19);
