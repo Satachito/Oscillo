@@ -1,4 +1,4 @@
-import { USB_IDS, OP, MAX_PAYLOAD, request, responseHeader, identity, capabilities, view } from './protocol.mjs';
+import { USB_IDS, OP, MAX_PAYLOAD, request, responseHeader, identity, capabilities, inputRanges, ranges, view } from './protocol.mjs';
 const errors = ['OK', 'Unknown command', 'Wrong payload size', 'Invalid setting', 'Instrument busy', 'Acquisition not configured', 'No record available', 'Instrument error'];
 // One transaction at a time. Bulk packets are a byte stream, not message boundaries.
 export class BulkTransport {
@@ -99,6 +99,7 @@ export class USBInstrument {
       const instrument = new USBInstrument(new BulkTransport(device, input.endpointNumber, output.endpointNumber));
       instrument.identity = identity(await instrument.transport.synchronize());
       instrument.caps = capabilities(await instrument.command(OP.capabilities));
+      instrument.ranges = await instrument.frontEnd();
       return instrument;
     } catch (error) {
       if (device.opened) await device.close().catch(() => {});
@@ -109,6 +110,13 @@ export class USBInstrument {
   constructor(transport) { this.transport = transport; this.demo = false; }
   command(opcode, payload) { return this.transport.exchange(opcode, payload); }
   async setRange(channel, range) { await this.command(OP.range, new Uint8Array([channel, range])); }
+  // The device's own description of its front end whenever it will give one.
+  // Firmware before 1.7 does not, so the board-id table stands in for it.
+  async frontEnd() {
+    if (!(this.caps.flags & 16)) return ranges(this.identity.board);
+    try { return inputRanges(await this.command(OP.inputRanges)); }
+    catch { return ranges(this.identity.board); }
+  }
   async setTest(on, frequency) {
     const bytes = new Uint8Array(5); bytes[0] = +on; view(bytes).setUint32(1, frequency, true);
     return view(await this.command(OP.test, bytes)).getUint32(0, true);

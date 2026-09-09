@@ -72,6 +72,7 @@ transfer.
 | `0x04` | `setRange` | `u8 channel, u8 range` | — |
 | `0x05` | `setCalibrationOutput` | `u8 on, u32 frequencyHz` | `u32 actualFrequencyHz` |
 | `0x06` | `rebootToBootloader` | — | — (device restarts) |
+| `0x07` | `inputRanges` | — | `InputRange[analogueRanges]` (firmware 1.7) |
 | `0x10` | `analogConfigure` | `AnalogConfig` | `AcquisitionPlan` |
 | `0x11` | `analogArm` | — | — |
 | `0x12` | `analogStatus` | — | `AcquisitionStatus` |
@@ -130,7 +131,8 @@ as authoritative rather than computing it from the converter's datasheet.
 
 Flags: bit 0 the input ranges are switched under software control, bit 1 the
 board has a calibration output, bit 2 the logic inputs are buffered, bit 3
-the analogue trigger supports a low-pass filter (firmware 1.2 and later).
+the analogue trigger supports a low-pass filter (firmware 1.2 and later),
+bit 4 the device answers `inputRanges` (firmware 1.7 and later).
 
 Analogue samples are unsigned 16-bit values, left-aligned from the converter's
 own resolution: a 12-bit code `c` arrives as `c << 4`. So a reading at the top
@@ -138,6 +140,41 @@ of the converter's range is `((1 << bits) - 1) << (16 - bits)` — 65520 for
 twelve bits, not 65535 — and that is what the host divides by to get a fraction
 of the reference. Decimation (below) fills in the bits underneath, so the same
 host code reads a raw sample and a 4096-fold average without a special case.
+
+### `InputRange` — 32 bytes each
+
+| Offset | Type | Field |
+| ---: | --- | --- |
+| 0 | `u8` | switch position — what `setRange` takes to select this range |
+| 1 | `u8` | flags, reserved, 0 |
+| 2 | `u16` | reserved |
+| 4 | `i32` | gain — converter volts per volt at the input, in millionths |
+| 8 | `i32` | offset — converter volts with 0 V at the input, in microvolts |
+| 12 | `char[20]` | name, NUL padded, UTF-8 |
+
+`analogueRanges` of these, in the order the host should offer them. Together
+they are the straight line from a voltage at the probe tip to a voltage at the
+converter:
+
+```
+converterVolts = offset + gain * inputVolts
+```
+
+Everything else about the front end — dividers, op amps, which analogue switch
+is closed — stays on the board and in its documentation. This is the only shape
+the application needs, and it comes from the device precisely so that a new
+board does not need a new release of the host. A host that meets firmware
+without capability bit 4 falls back to a table of its own keyed on the board id;
+that fallback is the only place either application still compiles in a constant
+about a particular board.
+
+Millionths of a volt per volt is finer than the 1% resistors that set the gain
+by three orders of magnitude, and reaches a gain of 2147 — far past any range a
+front end of this kind would offer.
+
+A bare Pico 2 reports one range and nothing to switch. Firmware before 1.7
+reported two even there, which was wrong; nothing used it, because the host was
+reading its own table.
 
 ### `AnalogConfig` — 32 bytes
 

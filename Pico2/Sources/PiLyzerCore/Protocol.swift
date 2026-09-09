@@ -48,6 +48,7 @@ public enum Opcode: UInt8, Sendable {
     case setRange = 0x04
     case setCalibrationOutput = 0x05
     case rebootToBootloader = 0x06
+    case inputRanges = 0x07
 
     case analogConfigure = 0x10
     case analogArm = 0x11
@@ -153,6 +154,9 @@ public struct DeviceCapabilities: Equatable, Sendable {
     public var hasSoftwareRanges: Bool { flags & 1 != 0 }
     public var hasCalibrationOutput: Bool { flags & 2 != 0 }
     public var hasTriggerLowPass: Bool { flags & 8 != 0 }
+    /// The device describes its own front end, so the host does not have to
+    /// keep a table keyed on the board id.
+    public var reportsInputRanges: Bool { flags & 16 != 0 }
 
     /// Samples arrive left-aligned in 16 bits, so this is the value a reading
     /// at the top of the converter's range comes back as.

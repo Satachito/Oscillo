@@ -1,15 +1,15 @@
-import { OP, activeChannels, analogRequest, logicRequest, plan, status, readRequest, splitAnalog, scaleFor, view, demoCaps } from './protocol.mjs';
+import { OP, activeChannels, analogRequest, logicRequest, plan, status, readRequest, splitAnalog, scaleFor, ranges, view, demoCaps } from './protocol.mjs';
 import { measure } from './signal.mjs';
 export const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, zero: [0, 0] })), testEnabled: true, testFrequency: 1000, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
 const tone = (channel, t) => channel === 0 ? 2 * Math.sin(2 * Math.PI * 1000 * t) + .02 * Math.sin(2 * Math.PI * 3000 * t) : channel === 1 ? (Math.sin(2 * Math.PI * 500 * t) >= 0 ? 1 : -1) + .25 : 1.5 * Math.sin(2 * Math.PI * 194 * t);
 export class DemoInstrument {
-  constructor() { this.demo = true; this.identity = { name: 'Demo signal', board: 1, firmware: '1.5' }; this.caps = demoCaps; }
+  constructor() { this.demo = true; this.identity = { name: 'Demo signal', board: 1, firmware: '1.7' }; this.caps = demoCaps; this.ranges = ranges(1); }
   async abort() {} async close() {} async setRange() {} async setTest(on, hz) { return hz; }
 }
 function columnsToFrame(columns, request, settings, instrument, actual, triggered, triggerIndex) {
   const traces = request.active.map((index, slot) => {
-    const scale = scaleFor(settings, instrument.caps, instrument.identity.board, index);
+    const scale = scaleFor(settings, instrument.caps, instrument.ranges, index);
     const raw = columns[slot], volts = Float64Array.from(raw, scale.volts);
     const stats = measure(volts, actual.period), mean = settings.channels[index].ac ? stats.mean : 0;
     return { index, samples: Float64Array.from(volts, v => v - mean), removedMean: mean, stats, clipped: raw.some(v => v === 0 || v >= instrument.caps.fullScale) };
@@ -17,13 +17,13 @@ function columnsToFrame(columns, request, settings, instrument, actual, triggere
   return { kind: 'scope', traces, period: actual.period, count: actual.count, triggerIndex, triggered, decimation: actual.decimation, timestamp: Date.now() };
 }
 function demoAnalog(instrument, settings) {
-  const req = analogRequest(settings, instrument.caps, instrument.identity.board), { period, count, pretrigger } = req;
+  const req = analogRequest(settings, instrument.caps, instrument.ranges), { period, count, pretrigger } = req;
   let start = performance.now() / 1000, triggered = settings.trigger !== 0;
   const alpha = settings.lpf ? 1 - Math.exp(-2 * Math.PI * settings.lpf * period) : 1;
   const settle = settings.lpf ? Math.ceil(5 / (2 * Math.PI * settings.lpf * period)) : 0;
   let filtered = tone(req.source, start), armed = false, edge = -1;
   if (triggered) {
-    const margin = settings.hysteresis * scaleFor(settings, instrument.caps, 1, req.source).span;
+    const margin = settings.hysteresis * scaleFor(settings, instrument.caps, instrument.ranges, req.source).span;
     for (let i = 0; i < settle + Math.max(count * 3, Math.ceil(.025 / period)); i++) {
       const x = tone(req.source, start + i * period); filtered += alpha * (x - filtered);
       if (i < settle || i < pretrigger) continue;
@@ -35,7 +35,7 @@ function demoAnalog(instrument, settings) {
     if (triggered) start += (edge - pretrigger) * period;
   }
   const columns = req.active.map(c => {
-    const r = scaleFor(settings, instrument.caps, 1, c).r;
+    const r = scaleFor(settings, instrument.caps, instrument.ranges, c).r;
     return Float64Array.from({ length: count }, (_, i) => Math.max(0, Math.min(4095, Math.round((tone(c, start + i * period) * r.gain + r.offset) / instrument.caps.reference * 4095))) * 16);
   });
   return columnsToFrame(columns, req, settings, instrument, { period, count, decimation: Math.max(1, Math.floor(period / (instrument.caps.minCycles / instrument.caps.clock * req.active.length))) }, triggered, pretrigger);
@@ -75,7 +75,7 @@ export class Acquisition {
     this.pending = this.pending.catch(() => {}).then(async () => {
       if (!instrument || instrument !== this.instrument) return;
       await instrument.abort();
-      for (let c = 0; c < instrument.caps.channels; c++) await instrument.setRange(c, instrument.identity.board === 0 ? 0 : snapshot.channels[c].range);
+      for (let c = 0; c < instrument.caps.channels; c++) await instrument.setRange(c, instrument.ranges[snapshot.channels[c].range]?.switchPosition ?? 0);
       if (instrument.caps.flags & 2) await instrument.setTest(snapshot.testEnabled, snapshot.testFrequency);
     });
     return this.pending;
@@ -85,13 +85,13 @@ export class Acquisition {
     if (!instrument || token !== this.token) return;
     try {
       await instrument.abort();
-      for (let c = 0; c < instrument.caps.channels; c++) await instrument.setRange(c, instrument.identity.board === 0 ? 0 : settings.channels[c].range);
+      for (let c = 0; c < instrument.caps.channels; c++) await instrument.setRange(c, instrument.ranges[settings.channels[c].range]?.switchPosition ?? 0);
       if (instrument.caps.flags & 2) await instrument.setTest(settings.testEnabled, settings.testFrequency);
       let prepared;
       if (!instrument.demo && settings.mode !== 'meter') {
         prepared = settings.mode === 'logic'
           ? plan(await instrument.command(OP.logicConfigure, logicRequest(settings, instrument.caps)))
-          : plan(await instrument.command(OP.analogConfigure, analogRequest(settings, instrument.caps, instrument.identity.board).payload));
+          : plan(await instrument.command(OP.analogConfigure, analogRequest(settings, instrument.caps, instrument.ranges).payload));
       }
       while (token === this.token) {
         const before = performance.now();
@@ -112,7 +112,7 @@ export class Acquisition {
       else {
         const bytes = await instrument.command(OP.sample, new Uint8Array([64, 0]));
         if (bytes.length !== instrument.caps.channels * 2) throw new Error('Incomplete meter reading');
-        values = Array.from({ length: instrument.caps.channels }, (_, c) => scaleFor(settings, instrument.caps, instrument.identity.board, c).volts(view(bytes).getUint16(c * 2, true)));
+        values = Array.from({ length: instrument.caps.channels }, (_, c) => scaleFor(settings, instrument.caps, instrument.ranges, c).volts(view(bytes).getUint16(c * 2, true)));
       }
       this.history.push({ time: Date.now() / 1000, values }); if (this.history.length > 1000) this.history.shift();
       return { kind: 'meter', values, history: this.history.slice(), timestamp: Date.now() };
@@ -140,7 +140,7 @@ export class Acquisition {
     }
     if (token !== this.token) return null;
     if (logic) return { kind: 'logic', samples: bytes, period: actual.period, count: actual.count, triggerIndex: result.triggerIndex, triggered: result.triggered, timestamp: Date.now() };
-    const request = analogRequest(settings, instrument.caps, instrument.identity.board);
+    const request = analogRequest(settings, instrument.caps, instrument.ranges);
     if (actual.mask !== request.mask || actual.channels !== request.active.length) throw new Error('The instrument returned an unexpected channel mask');
     return columnsToFrame(splitAnalog(bytes, actual.channels), request, settings, instrument, actual, result.triggered, result.triggerIndex);
   }

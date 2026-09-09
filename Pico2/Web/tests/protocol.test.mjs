@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/usb.mjs';
 import { measure, spectrum, csv, decodeUART } from '../src/signal.mjs';
 const caps = demoCaps;
+const afe = ranges(1), bare = ranges(0);
 for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, scale and 97-cycle rate floor`, () => {
   const settings = makeSettings(); settings.timebase = 50e-6; settings.source = 2;
   settings.channels.forEach((c, i) => c.enabled = !!(mask & (1 << i)));
-  const actual = analogRequest(settings, caps, 1), active = activeChannels(settings, caps), v = view(actual.payload);
+  const actual = analogRequest(settings, caps, afe), active = activeChannels(settings, caps), v = view(actual.payload);
   assert.equal(actual.mask, mask); assert.equal(actual.payload[0], mask);
   assert.equal(actual.payload[2], Math.max(0, active.indexOf(2)));
   assert.ok(Math.abs(actual.period - active.length * 97 / 48000000) < 1e-12);
@@ -18,18 +19,18 @@ for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, 
 });
 test('older two-channel device and unipolar scale remain supported', () => {
   const settings = makeSettings(); settings.source = 2; settings.level = 1.65;
-  const actual = analogRequest(settings, { ...caps, channels: 2, minCycles: 96 }, 0);
+  const actual = analogRequest(settings, { ...caps, channels: 2, minCycles: 96 }, bare);
   assert.equal(actual.mask, 3); assert.equal(actual.source, 0);
   assert.ok(Math.abs(view(actual.payload).getUint16(4, true) - 32760) < 1);
-  assert.equal(scaleFor(settings, caps, 0, 0).centre, 1.65);
+  assert.equal(scaleFor(settings, caps, bare, 0).centre, 1.65);
   settings.channels[0].probe = 10; settings.channels[0].zero[0] = .1;
-  const scale = scaleFor(settings, caps, 0, 0); assert.ok(Math.abs(scale.volts(scale.code(5)) - 5) < .001);
+  const scale = scaleFor(settings, caps, bare, 0); assert.ok(Math.abs(scale.volts(scale.code(5)) - 5) < .001);
 });
 test('trigger LPF support and no-channel requests are validated', () => {
   const s = makeSettings(); s.lpf = 1000;
-  assert.throws(() => analogRequest(s, { ...caps, flags: 0 }, 1), /LPF/);
+  assert.throws(() => analogRequest(s, { ...caps, flags: 0 }, afe), /LPF/);
   s.channels.forEach(c => c.enabled = false);
-  assert.throws(() => analogRequest(s, caps, 1), /Enable/);
+  assert.throws(() => analogRequest(s, caps, afe), /Enable/);
 });
 test('three-channel payload splitting preserves sparse input order', () => {
   const bytes = new Uint8Array(18), v = view(bytes);
@@ -139,16 +140,28 @@ test('encoders agree with the shared wire fixture', async () => {
   for (const c of golden.analogConfigs) assert.equal(hex(encodeAnalogConfig(c)), c.bytes);
   for (const c of golden.logicConfigs) assert.equal(hex(encodeLogicConfig(c)), c.bytes);
   for (const c of golden.readRequests) assert.equal(hex(readRequest(c.offset, c.count)), c.bytes);
+  // The decoder is checked the other way round: bytes in, front end out.
+  for (const c of golden.inputRanges) {
+    const [range] = inputRanges(Uint8Array.from(Buffer.from(c.bytes, 'hex')));
+    assert.equal(range.name, c.name);
+    assert.equal(range.switchPosition, c.switchPosition);
+    assert.ok(Math.abs(range.gain - c.gainMicro / 1e6) < 1e-12);
+    assert.ok(Math.abs(range.offset - c.offsetMicrovolts / 1e6) < 1e-12);
+  }
+  const both = new Uint8Array(64);
+  both.set(Buffer.from(golden.inputRanges[0].bytes, 'hex'), 0);
+  both.set(Buffer.from(golden.inputRanges[1].bytes, 'hex'), 32);
+  assert.deepEqual(inputRanges(both).map(r => r.name), ['±25 V', '±5 V']);
   assert.ok(golden.analogConfigs.length && golden.logicConfigs.length, 'the fixture must not be empty');
 });
 
 test('a trigger level left on the rail is moved somewhere the signal reaches', async () => {
   const { usableTriggerLevel } = await import('../src/protocol.mjs');
-  const settings = makeSettings(), bare = scaleFor(settings, caps, 0, 0);
-  assert.ok(Math.abs(usableTriggerLevel(bare, 0) - 3.3 * .02) < 1e-9);      // 0 V is the bottom rail here
-  assert.ok(Math.abs(usableTriggerLevel(bare, 99) - 3.3 * .98) < 1e-9);
-  assert.equal(usableTriggerLevel(bare, 1.65), 1.65);                       // already reachable, untouched
-  const five = scaleFor({ ...settings, channels: settings.channels.map(c => ({ ...c, range: 1 })) }, caps, 1, 0);
+  const settings = makeSettings(), unipolar = scaleFor(settings, caps, bare, 0);
+  assert.ok(Math.abs(usableTriggerLevel(unipolar, 0) - 3.3 * .02) < 1e-9);      // 0 V is the bottom rail here
+  assert.ok(Math.abs(usableTriggerLevel(unipolar, 99) - 3.3 * .98) < 1e-9);
+  assert.equal(usableTriggerLevel(unipolar, 1.65), 1.65);                       // already reachable, untouched
+  const five = scaleFor({ ...settings, channels: settings.channels.map(c => ({ ...c, range: 1 })) }, caps, afe, 0);
   assert.ok(usableTriggerLevel(five, 20) < five.high && usableTriggerLevel(five, 20) > 5);
 });
 
@@ -159,4 +172,56 @@ test('initial synchronization is bounded and closes a stream without a valid ide
   const transport = new BulkTransport(device, 2, 1);
   await assert.rejects(transport.synchronize(), /Too much stale USB data/);
   assert.equal(device.opened, false);
+});
+
+test('the front end comes from the device, and from the board-id table only when it will not say', async () => {
+  const { USBInstrument } = await import('../src/usb.mjs');
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const alternate = { interfaceClass: 255, alternateSetting: 0, endpoints: [{ direction: 'in', type: 'bulk', endpointNumber: 2 }, { direction: 'out', type: 'bulk', endpointNumber: 1 }] };
+  const golden = JSON.parse(await (await import('node:fs/promises')).readFile(new URL('./fixtures/wire-golden.json', import.meta.url), 'utf8'));
+
+  async function connect({ flags, board }) {
+    const device = new FakeDevice();
+    device.configuration = { interfaces: [{ interfaceNumber: 0, alternate, alternates: [alternate] }] };
+    device.open = async () => { device.opened = true; };
+    device.reset = async () => {};
+    device.claimInterface = async () => {};
+    device.transferOut = async (_, bytes) => {
+      const op = bytes[1], sequence = view(bytes).getUint16(4, true);
+      let payload;
+      if (op === OP.identify) {
+        payload = new Uint8Array(32); const v = view(payload);
+        v.setUint32(0, 0x5a594c50, true); v.setUint16(4, 1, true); v.setUint16(6, 0x107, true);
+        v.setUint32(8, board, true);
+      } else if (op === OP.capabilities) {
+        payload = new Uint8Array(48); const v = view(payload);
+        payload.set([3, 12, 8, 2]);
+        [48000000, 97, 16384, 16383, 150000000, 65536, 65535, 3300000, flags].forEach((n, i) => v.setUint32(4 + i * 4, n, true));
+      } else if (op === OP.inputRanges) {
+        // Only firmware that advertises the capability is ever asked.
+        assert.ok(flags & 16, 'a device without the capability bit must not be asked');
+        payload = new Uint8Array(64);
+        payload.set(Buffer.from(golden.inputRanges[0].bytes, 'hex'), 0);
+        payload.set(Buffer.from(golden.inputRanges[1].bytes, 'hex'), 32);
+      } else payload = new Uint8Array();
+      device.packets = [reply(op, sequence, payload)];
+      return { status: 'ok', bytesWritten: bytes.length };
+    };
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { usb: { requestDevice: async () => device } } });
+    const instrument = await USBInstrument.connect();
+    await instrument.close();
+    return instrument;
+  }
+
+  try {
+    const reported = await connect({ flags: 15 | 16, board: 1 });
+    assert.deepEqual(reported.ranges.map(r => r.name), ['±25 V', '±5 V']);
+    assert.equal(reported.ranges[1].switchPosition, 1);
+
+    // Firmware 1.6 and earlier: the board-id table stands in, and CH1 on a bare
+    // Pico still reads 0 to 3.3 V rather than nothing at all.
+    const older = await connect({ flags: 15, board: 0 });
+    assert.deepEqual(older.ranges.map(r => r.name), ['0 – 3.3 V']);
+    assert.equal(older.ranges[0].gain, 1);
+  } finally { if (previous) Object.defineProperty(globalThis, 'navigator', previous); else delete globalThis.navigator; }
 });

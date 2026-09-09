@@ -28,11 +28,32 @@ public protocol Instrument: AnyObject {
     @discardableResult func setCalibrationOutput(enabled: Bool, frequency: Int) throws -> Int
     /// Restarts the instrument in its bootloader, ready for new firmware.
     func rebootToBootloader() throws
+    /// What this board's front end does to a voltage on its way to the
+    /// converter, one entry per position of the range switch.
+    func inputRanges() throws -> [InputRange]
     func close()
 }
 
 public extension Instrument {
     func rebootToBootloader() throws {}
+
+    /// Firmware before 1.7 does not describe its front end, so the host falls
+    /// back to a table of its own keyed on the board id. That fallback is the
+    /// only place this application still compiles in a constant about a
+    /// particular board, and it exists only for those older devices.
+    func inputRanges() throws -> [InputRange] {
+        FrontEnd.ranges(forBoard: identity.boardID)
+    }
+
+    /// The ranges to draw with: the device's own whenever it will say, and a
+    /// board-id table when it will not.
+    func resolvedInputRanges() -> [InputRange] {
+        guard capabilities.reportsInputRanges,
+              let reported = try? inputRanges(), !reported.isEmpty else {
+            return FrontEnd.ranges(forBoard: identity.boardID)
+        }
+        return reported
+    }
 }
 
 public extension Instrument {
@@ -235,6 +256,22 @@ public final class USBInstrument: Instrument {
     }
 
     @discardableResult
+    public func inputRanges() throws -> [InputRange] {
+        let data = try transport.exchange(.inputRanges)
+        let bytes = [UInt8](data)
+        var result: [InputRange] = []
+        var offset = 0
+        while offset + InputRange.wireSize <= bytes.count {
+            guard let range = InputRange(wire: bytes[offset..<offset + InputRange.wireSize]) else {
+                throw InstrumentError.shortReply(.inputRanges, bytes.count)
+            }
+            result.append(range)
+            offset += InputRange.wireSize
+        }
+        guard !result.isEmpty else { throw InstrumentError.shortReply(.inputRanges, bytes.count) }
+        return result
+    }
+
     public func setCalibrationOutput(enabled: Bool, frequency: Int) throws -> Int {
         var writer = ByteWriter()
         writer.append(UInt8(enabled ? 1 : 0))

@@ -44,7 +44,9 @@ const acquisition = new Acquisition(value => { frame = value; renderFrame(); }, 
   $('status').textContent = message; if (error) showError(message); updateButtons();
 });
 function caps() { return instrument?.caps || demoCaps; }
-function board() { return instrument?.identity.board ?? 1; }
+// The instrument's own range list. Offline there is no instrument to ask, so
+// the panel previews the front end this application was built alongside.
+function frontEnd() { return instrument?.ranges ?? ranges(1); }
 function showError(message = '') { $('error').textContent = message; $('error').hidden = !message; }
 function updateButtons() {
   $('run').disabled = !instrument || connecting; $('run').textContent = acquisition.running ? '■ Stop' : '▶ Run';
@@ -68,7 +70,7 @@ function channelControls() {
   for (let i = 0; i < caps().channels; i++) {
     const ch = settings.channels[i], el = document.createElement('div'); el.className = 'channel-card'; el.style.setProperty('--channel-color', COLORS[i]);
     el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><div class="channel-actions"><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><button class="zero-button" data-zero title="Ground this input and capture a trace before setting zero.">Set zero</button><button class="zero-button" data-reset>Reset</button></div>`;
-    const range = el.querySelector('[data-field=range]'); ranges(board()).forEach((r, j) => range.add(option(j, r.name))); range.disabled = board() === 0;
+    const range = el.querySelector('[data-field=range]'); frontEnd().forEach((r, j) => range.add(option(j, r.name))); range.disabled = frontEnd().length < 2;
     const scale = el.querySelector('[data-field=scale]'); [[0, 'Full range'], ...[.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20].map(v => [v, fmt(v, 'V')])].forEach(([v, t]) => scale.add(option(v, t)));
     for (const control of el.querySelectorAll('[data-field]')) {
       const key = control.dataset.field;
@@ -94,7 +96,7 @@ const timebases = [10e-6, 20e-6, 50e-6, .0001, .0002, .0005, .001, .002, .005, .
 // crosses it. That reads as a broken trigger, so it is moved into reach.
 function settleTriggerLevel() {
   if (settings.mode === 'logic' || settings.mode === 'meter') return;
-  const usable = usableTriggerLevel(scaleFor(settings, caps(), board(), settings.source), settings.level);
+  const usable = usableTriggerLevel(scaleFor(settings, caps(), frontEnd(), settings.source), settings.level);
   if (Math.abs(usable - settings.level) > 1e-9) { settings.level = usable; $('level').value = Number(usable.toPrecision(6)); }
 }
 function synchronize() {
@@ -129,12 +131,12 @@ function synchronize() {
   channelControls(); renderFrame(); updateButtons(); saveSettings();
 }
 function renderFrame() {
-  plot.update(frame, settings, caps(), board());
+  plot.update(frame, settings, caps(), frontEnd());
   $('legend').replaceChildren();
   const traces = frame?.traces || activeChannels(settings, caps()).map(index => ({ index }));
   for (const trace of traces) {
     const el = document.createElement('span'); el.className = 'trace-label'; el.style.color = COLORS[trace.index];
-    const scale = scaleFor(settings, caps(), board(), trace.index), ch = settings.channels[trace.index];
+    const scale = scaleFor(settings, caps(), frontEnd(), trace.index), ch = settings.channels[trace.index];
     el.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || scale.span / 8, 'V')}/div${ch.ac ? ' · AC' : ''}${trace.clipped ? ' · CLIP' : ''}`;
     $('legend').append(el);
   }
@@ -183,8 +185,10 @@ async function connect(demo) {
     instrument = demo ? new DemoInstrument() : await USBInstrument.connect(); acquisition.attach(instrument); frame = null;
     settings.channels.forEach(ch => { ch.zero = [0, 0]; });
     if (demo) settings.channels.forEach(ch => { ch.range = 1; ch.scale = 1; });
-    if (board() === 0) { settings.channels.forEach(ch => { ch.range = 0; ch.zero = [0, 0]; }); settings.level = caps().reference / 2; }
-    else settings.level = 0;
+    // Start the trigger where the front end's own range is centred: mid rail on
+    // a bare Pico 2, zero on a bipolar front end. No board id needed.
+    settings.channels.forEach(ch => { if (ch.range >= frontEnd().length) ch.range = 0; });
+    settings.level = scaleFor(settings, caps(), frontEnd(), 0).centre;
     $('level').value = settings.level;
     settings.record = Math.min(settings.record, caps().maxRecord);
     if (!(caps().flags & 8)) { settings.lpf = 0; $('lpf').value = 0; }

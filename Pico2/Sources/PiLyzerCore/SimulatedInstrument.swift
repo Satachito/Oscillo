@@ -48,6 +48,10 @@ public final class SimulatedInstrument: Instrument {
         referenceVolts: 3.3, flags: 1 | 2 | 8)
 
     private var ranges = [0, 0, 0]
+
+    public func inputRanges() throws -> [InputRange] {
+        FrontEnd.ranges(forBoard: identity.boardID)
+    }
     private let epoch = Date()
 
     private var analogPlan = AcquisitionPlan.empty

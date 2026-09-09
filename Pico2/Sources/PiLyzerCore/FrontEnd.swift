@@ -24,6 +24,25 @@ public struct InputRange: Codable, Hashable, Sendable, Identifiable {
         self.switchPosition = switchPosition
     }
 
+    /// One `InputRange` as the device reports it — see `docs/protocol.md`.
+    /// Gain arrives in millionths of a volt per volt and offset in microvolts,
+    /// which is finer than the 1% resistors that set them by three orders of
+    /// magnitude.
+    public static let wireSize = 32
+
+    public init?(wire bytes: ArraySlice<UInt8>) {
+        guard bytes.count >= Self.wireSize else { return nil }
+        var reader = ByteReader(Data(bytes))
+        let position = Int(reader.uint8())
+        _ = reader.uint8()                       // flags, reserved
+        _ = reader.uint16()                      // reserved
+        let gain = Double(Int32(bitPattern: reader.uint32())) / 1e6
+        let offset = Double(Int32(bitPattern: reader.uint32())) / 1e6
+        let name = reader.string(20)
+        guard gain != 0, !name.isEmpty else { return nil }
+        self.init(name: name, gain: gain, offset: offset, switchPosition: position)
+    }
+
     public var lowestInput: Double { -offset / gain }
     public func highestInput(reference: Double) -> Double { (reference - offset) / gain }
 

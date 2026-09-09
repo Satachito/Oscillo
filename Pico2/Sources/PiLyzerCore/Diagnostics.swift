@@ -90,13 +90,22 @@ public enum Diagnostics {
             + "\(capabilities.logicMaxRecord) pt")
         say("reference     \(Format.voltage(capabilities.referenceVolts)), "
             + "full scale \(Int(capabilities.analogFullScale))")
-        say("ranges        \(FrontEnd.ranges(forBoard: identity.boardID).map(\.name).joined(separator: ", "))")
+        // Says where the numbers came from, so a firmware that has stopped
+        // answering is visible rather than silently falling back.
+        let reported = capabilities.reportsInputRanges ? try? instrument.inputRanges() : nil
+        let ranges = reported ?? FrontEnd.ranges(forBoard: identity.boardID)
+        say("ranges        \(ranges.map(\.name).joined(separator: ", ")) "
+            + "(\(reported != nil ? "from the device" : "from the board-id table"))")
+        for range in ranges {
+            say(String(format: "              %@  gain %.6f  offset %.6f V",
+                       range.name, range.gain, range.offset))
+        }
 
         do {
             let immediate = try instrument.sampleAnalog(averages: 64)
             let scale = VoltageScale(reference: capabilities.referenceVolts,
                                      fullScale: capabilities.analogFullScale,
-                                     range: FrontEnd.ranges(forBoard: identity.boardID)[0])
+                                     range: ranges[0])
             say("")
             say("immediate     " + immediate.enumerated().map { index, code in
                 "CH\(index + 1) \(code) (\(Format.voltage(scale.volts(code))))"

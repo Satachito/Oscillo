@@ -1,6 +1,6 @@
 // PiLyzer protocol v1. Keep this in step with ../../docs/protocol.md.
 export const USB_IDS = { vendorId: 0x1209, productId: 0x0001 };
-export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
+export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, inputRanges: 7, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
 export const MAX_PAYLOAD = 8192;
 export const view = bytes => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 export function request(opcode, sequence, payload = new Uint8Array()) {
@@ -42,9 +42,28 @@ export function status(bytes) {
   return { state: bytes[0], triggered: bytes[1] === 1, count: v.getUint32(4, true), triggerIndex: v.getUint32(8, true) };
 }
 export const activeChannels = (settings, caps) => settings.channels.flatMap((c, i) => c.enabled && i < caps.channels ? [i] : []);
-export const ranges = board => board === 0 ? [{ name: '0–3.3 V', gain: 1, offset: 0 }] : [{ name: '±25 V', gain: .062645, offset: 1.650515 }, { name: '±5 V', gain: .297269, offset: 1.652442 }];
-export function scaleFor(settings, caps, board, channel) {
-  const ch = settings.channels[channel], r = ranges(board)[ch.range] || ranges(board)[0];
+// One InputRange as the device reports it — see ../../docs/protocol.md. Gain
+// arrives in millionths of a volt per volt and offset in microvolts.
+export function inputRanges(bytes) {
+  const v = view(bytes), result = [];
+  for (let offset = 0; offset + 32 <= bytes.length; offset += 32) {
+    const name = new TextDecoder().decode(bytes.subarray(offset + 12, offset + 32)).split('\0')[0];
+    const gain = v.getInt32(offset + 4, true) / 1e6;
+    if (!gain || !name) throw new Error('The instrument described a range this application cannot use.');
+    result.push({ name, gain, offset: v.getInt32(offset + 8, true) / 1e6, switchPosition: bytes[offset] });
+  }
+  if (!result.length) throw new Error('Incomplete input range reply');
+  return result;
+}
+// Firmware before 1.7 does not describe its front end, so the application falls
+// back to a table of its own keyed on the board id. This is the only place it
+// still compiles in a constant about a particular board, and it exists only for
+// those older devices.
+export const ranges = board => board === 0 ? [{ name: '0 – 3.3 V', gain: 1, offset: 0, switchPosition: 0 }] : [{ name: '±25 V', gain: .062645, offset: 1.650515, switchPosition: 0 }, { name: '±5 V', gain: .297269, offset: 1.652442, switchPosition: 1 }];
+// `frontEnd` is the instrument's own range list, from inputRanges() or from the
+// fallback table. Nothing below this line knows what board it is talking to.
+export function scaleFor(settings, caps, frontEnd, channel) {
+  const ch = settings.channels[channel], r = frontEnd[ch.range] || frontEnd[0];
   const zero = ch.zero?.[ch.range] || 0;
   const volts = code => ((code / caps.fullScale * caps.reference - r.offset) / r.gain - zero) * ch.probe;
   const code = volts => Math.max(0, Math.min(caps.fullScale, Math.round(((volts / ch.probe + zero) * r.gain + r.offset) / caps.reference * caps.fullScale)));
@@ -81,7 +100,7 @@ export function encodeLogicConfig(f) {
   v.setUint32(12, f.record, true); v.setUint32(16, f.pretrigger, true); v.setUint32(20, f.timeoutUs, true);
   return bytes;
 }
-export function analogRequest(settings, caps, board) {
+export function analogRequest(settings, caps, frontEnd) {
   const active = activeChannels(settings, caps);
   if (!active.length) throw new Error('Enable at least one channel.');
   const mask = active.reduce((m, c) => m | (1 << c), 0);
@@ -90,7 +109,7 @@ export function analogRequest(settings, caps, board) {
   let count = Math.min(settings.record, caps.maxRecord), period = duration / count;
   if (period < floor) { period = floor; count = Math.min(caps.maxRecord, Math.max(50, Math.round(duration / period))); }
   const source = active.includes(settings.source) ? settings.source : active[0];
-  const trigger = scaleFor(settings, caps, board, source);
+  const trigger = scaleFor(settings, caps, frontEnd, source);
   const pretrigger = Math.min(Math.floor(count * settings.position), caps.maxPretrigger, count - 1);
   if (settings.lpf && !(caps.flags & 8)) throw new Error('Trigger LPF requires firmware 1.2 or later.');
   const payload = encodeAnalogConfig({

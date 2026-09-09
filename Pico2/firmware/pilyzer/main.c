@@ -192,8 +192,19 @@ static void fill_capabilities(pilyzer_capabilities_t *capabilities)
     capabilities->logic_max_pretrigger = LOGIC_MAX_RECORD - 1;
     capabilities->reference_microvolts = ADC_REFERENCE_MICROVOLTS;
     capabilities->flags = CAP_CALIBRATION_OUTPUT | CAP_TRIGGER_LOWPASS |
+                          CAP_REPORTS_RANGES |
                           (PILYZER_BOARD_ID != 0 ? CAP_SOFTWARE_RANGE : 0);
 }
+
+// What this board's front end does to a voltage on its way to the converter.
+// The host draws its volts axis from these rather than from a table of its own
+// keyed on the board id.
+static const pilyzer_input_range_t input_ranges[ANALOG_RANGES] = PILYZER_INPUT_RANGES;
+
+_Static_assert(sizeof(pilyzer_input_range_t) == 32,
+               "an input range descriptor is 32 bytes on the wire");
+_Static_assert(sizeof input_ranges / sizeof input_ranges[0] == ANALOG_RANGES,
+               "the range table and ANALOG_RANGES disagree");
 
 static void handle(const pilyzer_header_t *header, const uint8_t *payload)
 {
@@ -214,6 +225,9 @@ static void handle(const pilyzer_header_t *header, const uint8_t *payload)
         respond(opcode, sequence, ST_OK, &capabilities, sizeof capabilities, NULL, 0);
         return;
     }
+    case OP_INPUT_RANGES:
+        respond(opcode, sequence, ST_OK, input_ranges, sizeof input_ranges, NULL, 0);
+        return;
     case OP_SET_LED:
         if (length < 1) { respond(opcode, sequence, ST_BAD_LENGTH, NULL, 0, NULL, 0); return; }
         set_led(payload[0] != 0);

@@ -102,5 +102,28 @@
       "count": 8192,
       "bytes": "0000010000200000"
     }
+  ],
+  "inputRanges": [
+    {
+      "switchPosition": 0,
+      "gainMicro": 62645,
+      "offsetMicrovolts": 1650515,
+      "name": "±25 V",
+      "bytes": "00000000b5f40000532f1900c2b1323520560000000000000000000000000000"
+    },
+    {
+      "switchPosition": 1,
+      "gainMicro": 297269,
+      "offsetMicrovolts": 1652442,
+      "name": "±5 V",
+      "bytes": "0100000035890400da361900c2b1352056000000000000000000000000000000"
+    },
+    {
+      "switchPosition": 0,
+      "gainMicro": 1000000,
+      "offsetMicrovolts": 0,
+      "name": "0 – 3.3 V",
+      "bytes": "0000000040420f00000000003020e2809320332e332056000000000000000000"
+    }
   ]
 }

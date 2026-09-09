@@ -133,7 +133,7 @@ public final class InstrumentEngine {
 
             do {
                 let device = try makeInstrument(source)
-                let ranges = FrontEnd.ranges(forBoard: device.identity.boardID)
+                let ranges = device.resolvedInputRanges()
                 instrument = device
                 settings.ensureAnalogChannels(device.capabilities.analogChannels)
                 resetMeter()

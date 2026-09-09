@@ -11,7 +11,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0106   // 1.6: WinUSB/WebUSB descriptors; 1.5 added CH3 and the GPIO20 calibration output
+#define PILYZER_FIRMWARE_VERSION 0x0107   // 1.7: the board reports its own input ranges; 1.6 added the WinUSB/WebUSB descriptors
 
 // --- Pins ---------------------------------------------------------------
 #define PIN_CALIBRATION_OUT 20    // adjustable calibration square wave
@@ -26,7 +26,37 @@
 
 #define ANALOG_CHANNELS 3
 #define LOGIC_CHANNELS  8
-#define ANALOG_RANGES   2
+
+// --- Input ranges -------------------------------------------------------
+// The straight line from a voltage at the input to a voltage at the converter,
+// one entry per position of the range switch.
+//
+// These used to live in the host, selected by board id, which meant every new
+// board needed a new release of both applications before it could be read
+// correctly — the one place where the host used a compiled-in constant instead
+// of the device's own answer. They belong here, with the board.
+//
+//   gain   converter volts per input volt, in millionths
+//   offset converter volts with 0 V at the input, in microvolts
+//
+// A bare Pico 2 has nothing to switch, so it offers exactly one.
+#if PILYZER_BOARD_ID == 0
+#define ANALOG_RANGES 1
+#define PILYZER_INPUT_RANGES {                                                 \
+    { .switch_position = 0, .gain_micro = 1000000, .offset_microvolts = 0,     \
+      .name = "0 – 3.3 V" },                                                   \
+}
+#else
+// PiLyzer AFE rev A: both ranges sit on the same attenuator and the same
+// mid-rail bias; the switch only changes the gain of the stage after it.
+#define ANALOG_RANGES 2
+#define PILYZER_INPUT_RANGES {                                                 \
+    { .switch_position = 0, .gain_micro =  62645, .offset_microvolts = 1650515,\
+      .name = "±25 V" },                                                       \
+    { .switch_position = 1, .gain_micro = 297269, .offset_microvolts = 1652442,\
+      .name = "±5 V" },                                                        \
+}
+#endif
 
 // --- Converter ----------------------------------------------------------
 #define ADC_CLOCK_HZ        48000000u

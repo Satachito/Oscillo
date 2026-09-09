@@ -18,6 +18,7 @@ enum pilyzer_opcode {
     OP_SET_RANGE             = 0x04,
     OP_SET_CALIBRATION_OUT   = 0x05,
     OP_REBOOT_BOOTLOADER     = 0x06,
+    OP_INPUT_RANGES          = 0x07,
 
     OP_ANALOG_CONFIGURE      = 0x10,
     OP_ANALOG_ARM            = 0x11,
@@ -62,6 +63,8 @@ enum pilyzer_state {
 #define CAP_CALIBRATION_OUTPUT (1u << 1)
 #define CAP_BUFFERED_LOGIC     (1u << 2)
 #define CAP_TRIGGER_LOWPASS    (1u << 3)
+// The device answers OP_INPUT_RANGES; the host need not know the board.
+#define CAP_REPORTS_RANGES     (1u << 4)
 
 #define PILYZER_HEADER_SIZE 12
 
@@ -82,6 +85,17 @@ typedef struct __attribute__((packed)) {
     uint32_t board_id;
     char     name[20];
 } pilyzer_identity_t;
+
+// One selectable input range, `analog_ranges` of them in the reply to
+// OP_INPUT_RANGES.
+typedef struct __attribute__((packed)) {
+    uint8_t  switch_position;      // what OP_SET_RANGE takes for this range
+    uint8_t  flags;                // reserved, 0
+    uint16_t reserved;
+    int32_t  gain_micro;           // converter volts per input volt, millionths
+    int32_t  offset_microvolts;    // converter volts with 0 V at the input
+    char     name[20];             // NUL padded, UTF-8
+} pilyzer_input_range_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t  analog_channels;

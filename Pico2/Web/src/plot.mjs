@@ -6,7 +6,7 @@ export class Plot {
     this.canvas = canvas; this.context = canvas.getContext('2d');
     this.observer = new ResizeObserver(() => this.draw()); this.observer.observe(canvas);
   }
-  update(frame, settings, caps, board) { this.frame = frame; this.settings = settings; this.caps = caps; this.board = board; this.spectrum = frame?.kind === 'scope' && settings.mode === 'spectrum' ? spectrum(frame.traces[0]?.samples || [], frame.period) : null; this.draw(); }
+  update(frame, settings, caps, frontEnd) { this.frame = frame; this.settings = settings; this.caps = caps; this.frontEnd = frontEnd; this.spectrum = frame?.kind === 'scope' && settings.mode === 'spectrum' ? spectrum(frame.traces[0]?.samples || [], frame.period) : null; this.draw(); }
   draw() {
     const { canvas, context: c } = this, width = canvas.clientWidth, height = canvas.clientHeight;
     if (!width || !height) return;
@@ -48,7 +48,7 @@ export class Plot {
     c.restore(); this.axes(c, box, columns);
   }
   mapping(index, box) {
-    const settings = this.settings.channels[index], scale = scaleFor(this.settings, this.caps, this.board, index);
+    const settings = this.settings.channels[index], scale = scaleFor(this.settings, this.caps, this.frontEnd, index);
     const centre = settings.ac ? 0 : scale.centre;
     const perDiv = settings.scale || scale.span / 8;
     return { centre, perDiv, y: v => box.y + box.h / 2 - ((v - centre) / perDiv + settings.offset) * box.h / 8 };
