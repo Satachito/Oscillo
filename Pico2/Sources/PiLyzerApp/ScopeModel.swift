@@ -47,12 +47,22 @@ final class ScopeModel: ObservableObject {
     private var startsOnConnect = false
 
     var instrument: ConnectedInstrument? { connection.instrument }
-    var capabilities: DeviceCapabilities { instrument?.capabilities ?? .unavailable }
+    // Show the Pico 2 front panel before connecting; the device's actual
+    // capabilities take precedence as soon as it answers.
+    private static let previewCapabilities: DeviceCapabilities = {
+        var caps = DeviceCapabilities.unavailable
+        caps.analogChannels = 3
+        caps.analogMinPeriodCycles = 97
+        return caps
+    }()
+    var capabilities: DeviceCapabilities { instrument?.capabilities ?? Self.previewCapabilities }
     var ranges: [InputRange] { instrument?.ranges ?? FrontEnd.bareBoard }
     var isConnected: Bool { connection.isConnected }
 
     init() {
-        settings = Preferences.load()
+        var savedSettings = Preferences.load()
+        savedSettings.ensureAnalogChannels(Self.previewCapabilities.analogChannels)
+        settings = savedSettings
         selectedSource = Preferences.loadSource() ?? .simulator
 
         engine.onStateChange = { [weak self] state in self?.apply(state) }
