@@ -1,0 +1,27 @@
+Item,Value,Qty,Package,Designator on the PCB,Notes
+Resistor,499k 1% metal film,2,Through hole,R1 R2,The 1 MΩ input. Split in two so each part sees half the voltage.
+Resistor,125k 1% metal film,1,Through hole,R3,Bias leg to 3V3. Deliberately smaller than R4.
+Resistor,143k 1% metal film,1,Through hole,R4,Bias leg to ground.
+Resistor,2.67k 1% metal film,2,Through hole,R5 R6,Sallen-Key pair. Must be equal; measure both and pair them.
+Resistor,10k 0.1% metal film,1,Through hole,R7,Gain stage feedback. 1% will do if you measure it.
+Resistor,2.67k 0.1% metal film,1,Through hole,R8,Sets the fine range gain. 1% will do if you measure it.
+Resistor,10k 0.1% metal film,2,Through hole,R17 R18,VMID divider. Ratio is what matters — pair them from one batch.
+Resistor,1k 1% metal film,1,Through hole,R44,Isolates the filter output from the converter's sampling capacitor.
+Resistor,100R 1% metal film,1,Through hole,R35,Test output series resistor from GPIO20.
+Capacitor,82pF C0G/NP0 5%,1,Through hole,C4,Sets the node capacitance the compensation works against.
+Capacitor,4.7pF C0G/NP0,1,Through hole,C1,Reduced from the PCB's 6.8pF — see the note on stray capacitance.
+Trimmer capacitor,3-10pF,1,Through hole,TC1,More range than the PCB's 0.5-3pF because a breadboard's stray is larger.
+Capacitor,2.2nF C0G/NP0 2% or better,1,Through hole,C21,Sallen-Key feedback. With C6 this sets Q — buy tight ones or measure.
+Capacitor,1nF C0G/NP0 2% or better,2,Through hole,C6 C7,Sallen-Key shunt to VMID; reservoir at the converter pin.
+Capacitor,100nF X7R,2,Through hole,C12,Op amp decoupling. One at each supply pin.
+Capacitor,1uF X7R,1,Through hole,C15,VMID divider bypass, before the buffer.
+Capacitor,10uF X7R or electrolytic,1,Through hole,C14,Bulk on the 3V3 rail.
+Op amp,TLV9064IDR,1,SOIC-14,U1,"One is enough for a single channel: A gain, B filter, D VMID buffer."
+Analogue switch,TS5A23159DGSR,1,VSSOP-10 (DGS),U2,Optional for the first measurements — see the README.
+Diode,BAV199,1,SOT-23,D1,Dual series low-leakage clamp. Pin 1 GND, pin 2 3V3, pin 3 node.
+Adapter board,SOIC-14 to DIP-14,1,,,No through-hole TLV9064 exists.
+Adapter board,VSSOP/MSOP-10 to DIP,1,,,Only if you fit the analogue switch.
+Adapter board,SOT-23 to DIP,1,,,For the BAV199.
+Breadboard,830 tie point or larger,1,,,
+Jumper wire,Assorted,1 set,,,
+Pin header,1x40 breakaway 2.54mm,1,,,To solder onto the adapter boards.

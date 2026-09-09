@@ -283,8 +283,9 @@ output from GPIO28 to GPIO20 before GPIO28 is used as CH3. The software range ga
 
 ## Before fabrication
 
-1. Breadboard one channel and **measure** the frequency response in both
-   ranges. Every number above is nominal; the compensation in particular is
+1. Breadboard one channel — [`breadboard/`](breadboard/) has the parts list and
+   what that build can and cannot tell you — and **measure** the frequency
+   response in both ranges. Every number above is nominal; the compensation in particular is
    only as good as the stray capacitance, which a layout changes.
 2. Measure the Sallen-Key's actual corner and Q against the calculated
    40.2 kHz and 0.742. Capacitor tolerance moves Q, and a Q much above 0.8
