@@ -82,11 +82,23 @@ export class USBInstrument {
   static async connect() {
     if (!navigator.usb) throw new Error('WebUSB requires desktop Chrome or Edge. You can still use Demo.');
     const device = await navigator.usb.requestDevice({ filters: [USB_IDS] });
+    // A reset clears a previous session's unread reply, but a host is allowed
+    // to invalidate the handle by performing one, and Windows does. Losing the
+    // handle shows up at the next call rather than at the reset itself, so the
+    // whole sequence is retried once without it. The nonce scan in
+    // synchronize() is what actually recovers framing; the reset is a courtesy.
+    try { return await USBInstrument.open(device, true); }
+    catch (error) {
+      if (error.deviceStatus || error.name === 'NotFoundError' || error.name === 'AbortError') throw error;
+      // The plain path is the one that says what is really wrong, so its
+      // failure is the one reported.
+      return await USBInstrument.open(device, false);
+    }
+  }
+  static async open(device, reset) {
     try {
       await device.open();
-      // A previous host can leave an unread reply in the bulk endpoint.
-      // Reset first, then synchronize explicitly with the new IDENTIFY reply.
-      await device.reset();
+      if (reset) await device.reset();
       if (!device.configuration) await device.selectConfiguration(1);
       const iface = device.configuration.interfaces.find(i => i.alternates.some(a => a.interfaceClass === 255));
       if (!iface) throw new Error('No PiLyzer vendor interface found');
@@ -103,7 +115,11 @@ export class USBInstrument {
       return instrument;
     } catch (error) {
       if (device.opened) await device.close().catch(() => {});
-      if (error.name === 'NetworkError' || error.name === 'InvalidStateError') throw new Error('USB is unavailable. Disconnect the macOS app and other browser tabs, then try again.');
+      // Name the failure. Every one of these means something else holds the
+      // interface or the handle went stale, and which of the two it is only
+      // the browser knows.
+      if (error.name === 'NetworkError' || error.name === 'InvalidStateError' || error.name === 'SecurityError' || error.name === 'NotFoundError')
+        throw new Error(`USB is unavailable — ${error.name}: ${error.message} Close any other tab or application holding the instrument, then unplug it and plug it back in.`);
       throw error;
     }
   }
