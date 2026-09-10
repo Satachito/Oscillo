@@ -85,7 +85,7 @@ bytes on firmware 1.5). Configuration and capability packet layouts are unchange
 Firmware 1.2 used logic GPIO6–13, ranges GPIO14/15 and test output GPIO2;
 firmware 1.3/1.4 used test output GPIO28. Update wiring before installing 1.5.
 
-### Driverless on Windows too (firmware 1.6)
+### Driverless on Windows too (firmware 1.6, working from 1.8)
 
 A vendor-specific interface is what makes this driverless on macOS and Linux:
 no kernel driver matches class `0xFF`, so an application claims the interface
@@ -103,6 +103,19 @@ installed by hand on any platform.
 None of this changes a byte of the PiLyzer protocol; it is all in the enumeration
 descriptors and two vendor control requests that never touch the bulk endpoints.
 
+**Firmware 1.6 and 1.7 did not actually bind on Windows**, and 1.8 is the first
+that does. The descriptor set carried its `WINUSB` compatible id inside a
+configuration subset and a function subset, which is the shape a *composite*
+device uses to hand different metadata to each of its functions. `usbccgp` is
+what reads those subsets, and a device with a single interface never loads it,
+so the compatible id was read by nobody: Windows saw a device that named no
+driver and stopped at `CM_PROB_FAILED_INSTALL`. In 1.8 the compatible id and the
+registry property sit directly under the set header, at device level, and the
+descriptor set is 162 bytes rather than 178.
+
+The bytes were self-consistent all along, which is why a host-side probe that
+asked for the descriptor and checked its lengths reported it correct. Only
+Windows could tell that they were in the wrong place.
 The diminished-chord generator remains a standalone program for a separate
 Pico 2 in [`tools/pico2-chord`](../../tools/pico2-chord). GPIO0–7 are unused on
 the instrument, and the carrier has no J8.

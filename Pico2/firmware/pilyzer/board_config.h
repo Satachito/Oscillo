@@ -12,7 +12,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0107   // 1.7: the board reports its own input ranges; 1.6 added the WinUSB/WebUSB descriptors
+#define PILYZER_FIRMWARE_VERSION 0x0108   // 1.8: WinUSB binds on Windows; 1.7 reported input ranges; 1.6 added the WinUSB/WebUSB descriptors
 
 // --- Pins ---------------------------------------------------------------
 #define PIN_CALIBRATION_OUT 20    // adjustable calibration square wave

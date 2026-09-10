@@ -59,7 +59,7 @@ uint8_t const *tud_descriptor_configuration_cb(uint8_t index)
 #define VENDOR_REQUEST_WEBUSB   1
 #define VENDOR_REQUEST_MICROSOFT 2
 
-#define MS_OS_20_DESC_LEN 0xB2
+#define MS_OS_20_DESC_LEN 0xA2
 #define BOS_TOTAL_LEN (TUD_BOS_DESC_LEN + TUD_BOS_WEBUSB_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
 
 static uint8_t const bos_descriptor[] = {
@@ -80,21 +80,18 @@ static uint8_t const ms_os_20_descriptor[] = {
     U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR),
     U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
 
-    // Configuration subset: length, type, configuration index, reserved, length.
-    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION),
-    0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A),
-
-    // Function subset: length, type, first interface, reserved, length.
-    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION),
-    ITF_NUM_VENDOR, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x08),
-
-    // Compatible id: this interface wants WinUSB.
+    // Compatible id: this device wants WinUSB. It sits directly under the set
+    // header, at device level, with no configuration or function subset around
+    // it. Those subsets exist so that a composite device can hand different
+    // metadata to each of its functions, and usbccgp is what reads them; a
+    // device with one interface never loads usbccgp, so a compatible id buried
+    // in a function subset is read by nobody and no driver is bound at all.
     U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID),
     'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 
     // Registry property: DeviceInterfaceGUIDs, so applications can find it.
-    U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x08 - 0x08 - 0x14),
+    U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x14),
     U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
     U16_TO_U8S_LE(0x0007),               // REG_MULTI_SZ
     U16_TO_U8S_LE(0x002A),               // name length, "DeviceInterfaceGUIDs" in UTF-16

@@ -230,7 +230,8 @@ MIT. See [LICENSE](LICENSE).
 
 Firmware 1.5 adds CH3 on GPIO28 and moves the test output to GPIO20 (TP6).
 Firmware 1.6 adds the WinUSB and WebUSB descriptors that let the browser
-application open the instrument on Windows without a hand-installed driver.
+application open the instrument on Windows without a hand-installed driver, and
+firmware 1.8 is the first in which Windows actually binds to them.
 Logic stays on GPIO8–15; range controls are GPIO16/17/18. The application uses
 the channel count reported by the device, so older two-channel firmware remains
 usable. Channel Enabled checkboxes control acquisition as well as display:

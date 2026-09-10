@@ -18,11 +18,12 @@ Samples stay in browser memory until exported locally as CSV.
 Safari and Firefox can use Demo but do not currently provide WebUSB. A Pico in
 BOOTSEL does not appear in the PiLyzer chooser; install the firmware first.
 
-Windows needs firmware 1.6 or later, which names WinUSB for itself through a
-Microsoft OS 2.0 descriptor. There is nothing to install: plug the instrument
-in and the browser can open it. Firmware 1.5 and earlier leave the interface
-unbound, and Windows will not open it without a driver association added by
-hand. macOS and Linux are unaffected either way.
+Windows needs **firmware 1.8 or later**, which names WinUSB for itself through
+a Microsoft OS 2.0 descriptor. There is nothing to install: plug the instrument
+in and the browser can open it. Firmware 1.7 and earlier leave the interface
+unbound — 1.5 and earlier carry no such descriptor at all, and 1.6 and 1.7 put
+it where Windows does not look — and Windows will not open the interface without
+a driver association added by hand. macOS and Linux are unaffected either way.
 
 ## Features
 
