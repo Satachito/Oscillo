@@ -8,7 +8,8 @@ in KiCad 10.
 
 This board is USB-ground referenced and **not isolated**. It must not be used
 on mains primary circuits, on anything floating at a dangerous potential, or on
-any circuit that is unsafe to connect to the computer's USB ground.
+any circuit that is unsafe to connect to the USB ground of whatever is hosting
+it — a computer, or a phone.
 
 ## What it is for
 
@@ -19,7 +20,39 @@ any circuit that is unsafe to connect to the computer's USB ground.
 | Logic | 8 inputs, 3.3 V only, up to 150 MSa/s |
 | Resolution | 12 bits, extended by averaging on slow sweeps |
 | Instruments | oscilloscope, spectrum, logic analyser, logger |
-| Firmware | `PILYZER_BOARD_ID 2`, 1.7 or later |
+| Firmware | `PILYZER_BOARD_ID 2`, 1.8 or later |
+| Host | a browser — Chrome or Edge on a computer, or Chrome on Android |
+
+## No computer needed
+
+The browser application talks to the board over WebUSB, and **Chrome on Android
+is a WebUSB host**. Plug the board into a phone or tablet through USB
+On-The-Go, open the page, and the oscilloscope, the spectrum, the logic
+analyser and the logger all run there. Verified on hardware.
+
+For a classroom that is the whole software story: **no driver, no application,
+no store account, no administrator** — a URL. A bench needs a board and
+something the students already carry, rather than a PC per bench and permission
+to install on it. The page is served as static files from GitHub Pages, so it
+costs nothing to run and there is nothing to keep patched.
+
+The front panel holds together at phone width — at 375 px the page does not
+scroll sideways and the display keeps 370 px of plot — though a tablet gives
+the trace more room.
+
+Two things it does not do:
+
+- **iPhone and iPad cannot.** No browser on iOS exposes WebUSB. This is not a
+  matter of which browser is installed.
+- **The phone powers the board.** A Pico 2 plus a few milliamps of analogue is
+  well inside what an OTG port supplies, but it comes out of the battery.
+
+And one that matters more on a phone than on a desk. The board's ground is the
+host's ground, and a phone on battery is **floating**: whatever the ground lead
+is clipped to pulls the phone, and the hand holding it, to that potential. The
+warning at the top of this page is not relaxed by the host being small — if
+anything a phone makes it sharper, because a mains-earthed computer would have
+blown a fuse where a phone quietly follows the circuit.
 
 ## Why one range
 
@@ -81,7 +114,8 @@ cd ../../firmware/pilyzer && BOARD_ID=2 ./build.sh
 
 Neither application needs a release. The device has described its own front end
 since firmware 1.7, so Lite answers with one range and both front panels hide
-the range menu on their own.
+the range menu on their own. Build 1.8 or later: it is the first firmware that
+Windows binds WinUSB to, and so the first the browser can open there.
 
 ## Before fabrication
 
