@@ -9,7 +9,9 @@ Samples stay in browser memory until exported locally as CSV.
 
 ## Connecting
 
-1. Use desktop Chrome or Edge over HTTPS (or localhost when developing).
+1. Use Chrome or Edge over HTTPS (or localhost when developing), on a computer
+   or on Android. Safari has no WebUSB at all, on any platform, so nothing
+   reaches the instrument from an iPhone or iPad.
 2. Plug in a Pico 2 running PiLyzer firmware. Disconnect the native app and
    other tabs first: only one application can claim the USB interface.
 3. Click **Connect USB** and select **PiLyzer Pico 2** in the browser chooser.

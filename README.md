@@ -1,10 +1,11 @@
 # Oscillo
 
-Two independent oscilloscope projects:
+Oscilloscope projects and supported front ends:
 
 | Project | Hardware | Applications |
 | --- | --- | --- |
 | [Pico2](Pico2/) | Raspberry Pi Pico 2 / PiLyzer AFE | [macOS](Pico2/README.md) · [WebUSB](Pico2/Web/) |
+| [Scoppy](Scoppy/) | Pico 2 + picoLABO PL2407AFE (2ch) | Shared PiLyzer macOS / WebUSB, dedicated firmware |
 | [PCBScope](PCBScope/) | PCBScope / DPScope SE | Native macOS HID application restored from the original project |
 
 **[Open PiLyzer Web](https://satachito.github.io/Oscillo/)** ·

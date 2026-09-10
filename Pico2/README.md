@@ -22,7 +22,8 @@ every reading a different colour from the one you learned.
 [Download PiLyzer for macOS](https://github.com/Satachito/Oscillo/releases/latest)
 (Apple Silicon + Intel, macOS 13+) or
 [open PiLyzer Web](https://satachito.github.io/Oscillo/).
-The WebUSB app lives in [Web/](Web/) and requires desktop Chrome or Edge for USB.
+The WebUSB app lives in [Web/](Web/) and needs Chrome or Edge for USB — on a
+computer, or on Android through USB On-The-Go.
 
 The macOS download is ad-hoc signed, not Apple-notarized. Unzip it and move
 PiLyzer.app to Applications. macOS may require approving its first launch in

@@ -8,13 +8,16 @@
 #ifndef PILYZER_BOARD_ID
 // 0 = bare Pico 2, inputs straight on the converter pins.
 // 1 = PiLyzer analogue front end rev A/B.
-// 0 bare Pico 2, 1 PiLyzer AFE rev A, 2 PiLyzer Lite.
+// 0 bare Pico 2, 1 PiLyzer AFE rev A, 2 PiLyzer Lite, 3 PL2407AFE.
 #define PILYZER_BOARD_ID 0
 #endif
 
 #define PILYZER_FIRMWARE_VERSION 0x0108   // 1.8: WinUSB binds on Windows; 1.7 reported input ranges; 1.6 added the WinUSB/WebUSB descriptors
 
 // --- Pins ---------------------------------------------------------------
+#if PILYZER_BOARD_ID == 3
+#include "../../../Scoppy/firmware/board_config.h"
+#else
 #define PIN_CALIBRATION_OUT 20    // adjustable calibration square wave
 #define PIN_LOGIC_BASE      8     // D0…D7 on GPIO8…GPIO15, consecutive for PIO
 #define PIN_RANGE_CH1       16    // switch position: 0 = ±25 V, 1 = ±5 V
@@ -27,6 +30,7 @@
 
 #define ANALOG_CHANNELS 3
 #define LOGIC_CHANNELS  8
+#endif
 
 // --- Input ranges -------------------------------------------------------
 // The straight line from a voltage at the input to a voltage at the converter,
@@ -41,7 +45,9 @@
 //   offset converter volts with 0 V at the input, in microvolts
 //
 // A bare Pico 2 has nothing to switch, so it offers exactly one.
-#if PILYZER_BOARD_ID == 0
+#if PILYZER_BOARD_ID == 3
+// PL2407AFE descriptors are supplied by Scoppy/firmware/board_config.h.
+#elif PILYZER_BOARD_ID == 0
 #define ANALOG_RANGES 1
 #define PILYZER_INPUT_RANGES {                                                 \
     { .switch_position = 0, .gain_micro = 1000000, .offset_microvolts = 0,     \

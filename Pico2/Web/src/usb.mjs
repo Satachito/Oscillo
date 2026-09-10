@@ -80,7 +80,7 @@ export class BulkTransport {
 }
 export class USBInstrument {
   static async connect() {
-    if (!navigator.usb) throw new Error('WebUSB requires desktop Chrome or Edge. You can still use Demo.');
+    if (!navigator.usb) throw new Error('WebUSB requires Chrome or Edge, on a computer or on Android. You can still use Demo.');
     const device = await navigator.usb.requestDevice({ filters: [USB_IDS] });
     // A reset clears a previous session's unread reply, but a host is allowed
     // to invalidate the handle by performing one, and Windows does. Losing the

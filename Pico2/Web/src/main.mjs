@@ -123,7 +123,7 @@ function synchronize() {
   for (const op of $('logic-record').options) op.disabled = Number(op.value) > caps().logicMaxRecord;
   if (instrument) {
     const [major, minor] = instrument.identity.firmware.split('.').map(Number);
-    const pin = major > 1 || minor >= 5 ? 20 : minor >= 3 ? 28 : 2;
+    const pin = instrument.identity.board === 3 ? 22 : major > 1 || minor >= 5 ? 20 : minor >= 3 ? 28 : 2;
     $('test-pin').textContent = instrument.demo ? 'Demo is generated in this browser. Test output controls apply to a USB instrument.' : `GPIO${pin} · 0–3.3 V square wave. Wire the output to an input to measure it.`;
   }
   $('mode-title').textContent = { scope: 'Oscilloscope', spectrum: 'Spectrum analyser', logic: 'Logic analyser', meter: 'Voltage meter' }[settings.mode];

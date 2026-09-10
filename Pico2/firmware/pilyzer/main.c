@@ -126,8 +126,21 @@ static void set_led(bool on)
 
 static uint8_t range_pin(uint8_t channel)
 {
-    static const uint8_t pins[ANALOG_CHANNELS] = {PIN_RANGE_CH1, PIN_RANGE_CH2, PIN_RANGE_CH3};
+    static const uint8_t pins[] = {PIN_RANGE_CH1, PIN_RANGE_CH2, PIN_RANGE_CH3};
     return pins[channel];
+}
+
+static void set_input_range(uint8_t channel, uint8_t position)
+{
+#if PILYZER_BOARD_ID == 3
+    // Break before make: start at the widest range before enabling a bypass.
+    gpio_put(range_pin(channel), false);
+    gpio_put(range_pin(channel) + 1, false);
+    if (position == 1) gpio_put(range_pin(channel) + 1, true);
+    if (position == 2) gpio_put(range_pin(channel), true);
+#else
+    gpio_put(range_pin(channel), position != 0);
+#endif
 }
 
 static uint32_t set_calibration_output(bool on, uint32_t frequency_hz)
@@ -230,7 +243,8 @@ static void handle(const pilyzer_header_t *header, const uint8_t *payload)
         return;
     }
     case OP_INPUT_RANGES:
-        respond(opcode, sequence, ST_OK, input_ranges, sizeof input_ranges, NULL, 0);
+        respond(opcode, sequence, ST_OK, NULL, 0,
+                (const uint8_t *)input_ranges, sizeof input_ranges);
         return;
     case OP_SET_LED:
         if (length < 1) { respond(opcode, sequence, ST_BAD_LENGTH, NULL, 0, NULL, 0); return; }
@@ -244,7 +258,7 @@ static void handle(const pilyzer_header_t *header, const uint8_t *payload)
             respond(opcode, sequence, ST_BAD_ARGUMENT, NULL, 0, NULL, 0);
             return;
         }
-        gpio_put(range_pin(payload[0]), payload[1] != 0);
+        set_input_range(payload[0], payload[1]);
         respond(opcode, sequence, ST_OK, NULL, 0, NULL, 0);
         return;
 
@@ -456,6 +470,11 @@ int main(void)
     for (uint8_t channel = 0; channel < ANALOG_CHANNELS; channel++) {
         gpio_init(range_pin(channel));
         gpio_set_dir(range_pin(channel), GPIO_OUT);
+#if PILYZER_BOARD_ID == 3
+        gpio_init(range_pin(channel) + 1);
+        gpio_set_dir(range_pin(channel) + 1, GPIO_OUT);
+#endif
+        set_input_range(channel, 0);
     }
     set_calibration_output(true, 1000);
 

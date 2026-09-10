@@ -69,7 +69,9 @@ void analog_init(void)
     adc_init();
     adc_gpio_init(PIN_ADC_CH1);
     adc_gpio_init(PIN_ADC_CH2);
+#if ANALOG_CHANNELS > 2
     adc_gpio_init(PIN_ADC_CH3);
+#endif
     raw_dma = dma_claim_unused_channel(true);
     run.state = STATE_IDLE;
 }

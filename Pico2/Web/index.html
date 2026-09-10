@@ -20,7 +20,7 @@
     <section class="workspace" aria-label="Instrument display">
       <div class="workspace-head"><div><p class="eyebrow">YOUR BENCH, IN THE BROWSER</p><h1 id="mode-title">Oscilloscope</h1></div><nav class="modes" aria-label="Instrument mode"><button data-mode="scope" class="selected" aria-pressed="true">Scope</button><button data-mode="spectrum" aria-pressed="false">Spectrum</button><button data-mode="logic" aria-pressed="false">Logic</button><button data-mode="meter" aria-pressed="false">Meter</button></nav></div>
       <div id="error" class="notice error" role="alert" hidden></div>
-      <div id="browser-note" class="notice" hidden>USB connection needs desktop Chrome or Edge. Demo works in this browser.</div>
+      <div id="browser-note" class="notice" hidden>USB connection needs Chrome or Edge, on a computer or on Android. Demo works in this browser.</div>
       <section class="display" aria-label="Waveform">
         <div class="display-top"><div id="legend" class="legend"><span class="trace-label ch1">CH1</span><span class="trace-label ch2">CH2</span><span class="trace-label ch3">CH3</span></div><div class="display-state"><span id="run-dot" class="dot"></span><span id="status" role="status" aria-live="polite">Ready</span></div></div>
         <div class="canvas-wrap"><canvas id="plot" aria-label="Waveform plot"></canvas><div id="empty-state" class="empty-state"><div class="wave-icon" aria-hidden="true">∿</div><h2>A closer look at your signal.</h2><p>Connect your PiLyzer Pico 2, or explore<br/>three channels with the built-in demo.</p><button id="empty-demo" class="button luminous">Start a demo <span aria-hidden="true">→</span></button></div><div id="meter-values" class="meter-values" hidden></div></div>
