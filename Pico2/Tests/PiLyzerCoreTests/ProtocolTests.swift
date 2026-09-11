@@ -94,4 +94,18 @@ struct ProtocolTests {
         #expect(abs(capabilities.minimumConversionPeriod - 2e-6) < 1e-15)
         #expect(abs(capabilities.minimumSamplePeriod(channels: 2) - 4e-6) < 1e-15)
     }
+
+    @Test("The test output pin follows the firmware, and the PL2407AFE's SG OUT")
+    func calibrationOutputPin() {
+        func pin(_ firmware: UInt16, board: UInt32 = 0) -> Int {
+            DeviceIdentity(protocolVersion: 1, firmwareVersion: firmware, boardID: board, name: "").calibrationOutputPin
+        }
+        #expect(pin(0x0102) == 2)
+        #expect(pin(0x0103) == 28)
+        #expect(pin(0x0104) == 28)
+        #expect(pin(0x0105) == 20)
+        #expect(pin(0x0108) == 20)
+        #expect(pin(0x0200) == 20)
+        #expect(pin(0x0108, board: 3) == 22)
+    }
 }

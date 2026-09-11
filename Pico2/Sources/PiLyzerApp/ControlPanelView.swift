@@ -26,6 +26,7 @@ struct ControlPanelView: View {
                     loggerSection
                     verticalSections
                 }
+                if model.capabilities.hasCalibrationOutput { testOutputSection }
                 instrumentSection
                 Text("PiLyzer for macOS")
                     .font(.system(size: 9))
@@ -265,18 +266,35 @@ struct ControlPanelView: View {
         }
     }
 
-    private var instrumentSection: some View {
-        Section("Instrument") {
-            if model.capabilities.hasCalibrationOutput {
-                Toggle("Test output", isOn: $model.settings.calibrationOutputEnabled)
-                if model.settings.calibrationOutputEnabled {
-                    Picker("Frequency", selection: $model.settings.calibrationOutputFrequency) {
-                        ForEach([100, 1000, 10000, 100_000], id: \.self) {
-                            Text(Format.frequency(Double($0))).tag($0)
-                        }
-                    }
+    /// A section of its own, as in the browser, and saying which pin: the
+    /// square wave is only useful to someone who knows where to clip on.
+    private var testOutputSection: some View {
+        Section("Test output") {
+            Toggle("Calibration square wave", isOn: $model.settings.calibrationOutputEnabled)
+            Picker("Frequency", selection: $model.settings.calibrationOutputFrequency) {
+                ForEach([100, 1000, 10000, 100_000], id: \.self) {
+                    Text(Format.frequency(Double($0))).tag($0)
                 }
             }
+            .disabled(!model.settings.calibrationOutputEnabled)
+            Text(testOutputHint)
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private var testOutputHint: String {
+        if model.selectedSource == .simulator && model.isConnected {
+            return "The demo is generated on this Mac. Test output applies to a USB instrument."
+        }
+        guard let identity = model.instrument?.identity else {
+            return "0–3.3 V square wave. Wire the output to an input to measure it."
+        }
+        return "GPIO\(identity.calibrationOutputPin) · 0–3.3 V square wave. "
+            + "Wire the output to an input to measure it."
+    }
+
+    private var instrumentSection: some View {
+        Section("Instrument") {
             Toggle("Cursors", isOn: $model.cursorsEnabled)
             if model.cursorsEnabled {
                 LabeledSlider(title: "A", value: $model.cursorA, range: 0...1,

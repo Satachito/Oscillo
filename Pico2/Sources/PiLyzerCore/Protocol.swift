@@ -134,6 +134,14 @@ public struct DeviceIdentity: Equatable, Sendable {
     /// 0 is a bare Pico 2 with the inputs straight on the converter pins; any
     /// other value is a front end that scales and shifts them.
     public var hasFrontEnd: Bool { boardID != 0 }
+
+    /// The GPIO the test square wave comes out of. It has moved with the
+    /// firmware, and the PL2407AFE puts it where that board's SG OUT is.
+    public var calibrationOutputPin: Int {
+        if boardID == 3 { return 22 }
+        let major = firmwareVersion >> 8, minor = firmwareVersion & 0xFF
+        return major > 1 || minor >= 5 ? 20 : minor >= 3 ? 28 : 2
+    }
 }
 
 public struct DeviceCapabilities: Equatable, Sendable {
