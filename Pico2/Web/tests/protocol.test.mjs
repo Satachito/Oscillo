@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/usb.mjs';
-import { measure, spectrum, csv, decodeUART } from '../src/signal.mjs';
+import { measure, spectrum, spectrumCsv, csv, decodeUART } from '../src/signal.mjs';
 const caps = demoCaps;
 const afe = ranges(1), bare = ranges(0);
 for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, scale and 97-cycle rate floor`, () => {
@@ -79,6 +79,17 @@ test('measurements and FFT agree with a known sine wave', () => {
   const m = measure(samples, 1 / rate), f = spectrum(samples, 1 / rate);
   assert.ok(Math.abs(m.rms - Math.SQRT2) < .001); assert.ok(Math.abs(m.frequency - 1000) < .01);
   assert.equal(f.peak.frequency, 1000); assert.ok(Math.abs(f.peak.rms - Math.SQRT2) < .002);
+});
+test('spectrum shows every channel: an input and its half-level output line up bin for bin', () => {
+  const rate = 32768, sine = a => Float64Array.from({ length: 4096 }, (_, i) => a * Math.sin(2 * Math.PI * 1000 * i / rate));
+  const spectra = [{ index: 0, ...spectrum(sine(2), 1 / rate) }, { index: 2, ...spectrum(sine(1), 1 / rate) }];
+  const lines = spectrumCsv(spectra).trim().split('\n');
+  assert.equal(lines[0], 'frequency_Hz,CH1_rms_V,CH1_dBV,CH3_rms_V,CH3_dBV');
+  assert.equal(lines.length, spectra[0].bins.length + 1);
+  const row = lines.find(line => line.startsWith('1000,')).split(',').map(Number);
+  assert.ok(Math.abs(row[1] - Math.SQRT2) < .002); assert.ok(Math.abs(row[3] - Math.SQRT1_2) < .001);
+  assert.ok(Math.abs(row[2] - row[4] - 20 * Math.log10(2)) < .01, 'the dB difference is the gain');
+  assert.equal(spectrumCsv([]), '');
 });
 test('CSV contains physical CH3 label and time relative to trigger', () => {
   const text = csv({ kind: 'scope', traces: [{ index: 2, samples: new Float64Array([1, 2]) }], period: .001, count: 2, triggerIndex: 1 });

@@ -15,14 +15,23 @@ public enum Export {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    public static func csv(spectrum: Spectrum, scale: SpectrumScale, fullScale: Double) -> String {
-        guard spectrum.count > 0 else { return "" }
-        var lines = ["frequency_Hz,amplitude_Vpeak,level_\(scale.unit)"]
-        for index in 0..<spectrum.count {
-            let frequency = Double(index) * spectrum.binWidth
-            let amplitude = spectrum.amplitudes[index]
-            let level = Spectrum.convert(amplitude: amplitude, scale: scale, fullScale: fullScale)
-            lines.append(String(format: "%.9g,%.7g,%.5g", frequency, amplitude, level))
+    public static func csv(spectra: [ChannelSpectrum], scale: SpectrumScale) -> String {
+        guard let first = spectra.first, first.spectrum.count > 0 else { return "" }
+        var header = ["frequency_Hz"]
+        for entry in spectra {
+            header += ["channel\(entry.channel + 1)_Vpeak", "channel\(entry.channel + 1)_\(scale.unit)"]
+        }
+        var lines = [header.joined(separator: ",")]
+        for index in 0..<first.spectrum.count {
+            var row = [String(format: "%.9g", Double(index) * first.spectrum.binWidth)]
+            for entry in spectra {
+                guard index < entry.spectrum.count else { row += ["", ""]; continue }
+                let amplitude = entry.spectrum.amplitudes[index]
+                row += [String(format: "%.7g", amplitude),
+                        String(format: "%.5g", Spectrum.convert(amplitude: amplitude, scale: scale,
+                                                                fullScale: entry.fullScale))]
+            }
+            lines.append(row.joined(separator: ","))
         }
         return lines.joined(separator: "\n") + "\n"
     }

@@ -166,6 +166,27 @@ public struct Spectrum: Equatable, Sendable {
     }
 }
 
+/// One channel's averaged spectrum, with what the panel needs to show it.
+///
+/// Every enabled channel is transformed from the same record, so their bins
+/// line up and one frequency axis serves them all.
+public struct ChannelSpectrum: Equatable, Sendable, Identifiable {
+    public var channel: Int
+    public var spectrum: Spectrum
+    /// The channel's own full scale, in volts peak, which is what dBFS means.
+    public var fullScale: Double
+    public var quality: SpectrumQuality?
+
+    public var id: Int { channel }
+
+    public init(channel: Int, spectrum: Spectrum, fullScale: Double, quality: SpectrumQuality?) {
+        self.channel = channel
+        self.spectrum = spectrum
+        self.fullScale = fullScale
+        self.quality = quality
+    }
+}
+
 /// Distortion and noise figures, measured from a spectrum with one dominant tone.
 public struct SpectrumQuality: Equatable, Sendable {
     public var fundamental: SpectrumPeak

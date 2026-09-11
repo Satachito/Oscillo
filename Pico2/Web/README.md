@@ -40,7 +40,9 @@ a driver association added by hand. macOS and Linux are unaffected either way.
   advertised timing and actual returned acquisition plan.
 - Auto, Normal and Free run; rising/falling edges, pretrigger position,
   hysteresis, trigger-only LPF when supported by firmware.
-- Spectrum: Hann-window FFT, RMS amplitude in dBV, peak and bin resolution.
+- Spectrum: Hann-window FFT of every enabled channel on one axis, RMS amplitude
+  in dBV, and the peak and bin resolution for each channel. An input and an
+  output overlaid read as a gain directly, the difference in dB.
 - Logic: D0–D7, rate/record selection, hardware edge trigger, UART 8N1 decode.
 - Logger: all ADC inputs, at an interval from 50 ms to 5 minutes, for up to
   20,000 points — two months at the slowest. Each point holds the lowest, mean

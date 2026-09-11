@@ -96,6 +96,30 @@ struct SpectrumTests {
         let averaged = SpectrumAnalyzer.average(spectra)
         #expect(abs(averaged.amplitudes[64] - 1.0) < 0.01)
     }
+
+    @Test("Two channels export side by side, each against its own full scale")
+    func twoChannelExport() throws {
+        // An input and an output at half its level: the filter-measurement case
+        // that is the reason for showing more than one channel at all.
+        let input = SpectrumAnalyzer.transform(tone(amplitude: 1.0, bin: 100),
+                                               sampleRate: sampleRate, window: .hann)
+        let output = SpectrumAnalyzer.transform(tone(amplitude: 0.5, bin: 100),
+                                                sampleRate: sampleRate, window: .hann)
+        let spectra = [ChannelSpectrum(channel: 0, spectrum: input, fullScale: 1, quality: nil),
+                       ChannelSpectrum(channel: 1, spectrum: output, fullScale: 2, quality: nil)]
+        let lines = Export.csv(spectra: spectra, scale: .dBFS).split(separator: "\n")
+
+        #expect(lines.first == "frequency_Hz,channel1_Vpeak,channel1_dBFS,channel2_Vpeak,channel2_dBFS")
+        #expect(lines.count == input.count + 1)
+        let row = lines[101].split(separator: ",").compactMap { Double($0) }
+        #expect(abs(row[0] - 100 * sampleRate / Double(length)) < 1e-6)
+        #expect(abs(row[1] - 1.0) < 0.01)
+        #expect(abs(row[3] - 0.5) < 0.01)
+        // 0.5 V against a 2 V full scale is -12 dBFS, not the -6 dB it is
+        // against the first channel's: dBFS is per channel.
+        #expect(abs(row[2] - 0) < 0.1)
+        #expect(abs(row[4] - -12.04) < 0.1)
+    }
 }
 
 @Suite("Measurements")

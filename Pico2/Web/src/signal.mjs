@@ -13,6 +13,14 @@ export function measure(samples, period) {
   const frequency = crossings.length > 1 ? (crossings.length - 1) / ((crossings.at(-1) - crossings[0]) * period) : null;
   return { min, max, mean, rms, acRms: Math.sqrt(Math.max(0, rms * rms - mean * mean)), pp, frequency };
 }
+// One column pair per channel. Every trace comes from the same record, so the
+// bins line up and one frequency column serves them all.
+export function spectrumCsv(spectra) {
+  if (!spectra?.length || !spectra[0].bins.length) return '';
+  const header = ['frequency_Hz', ...spectra.flatMap(s => [`CH${s.index + 1}_rms_V`, `CH${s.index + 1}_dBV`])];
+  const rows = spectra[0].bins.map((bin, i) => [bin.frequency, ...spectra.flatMap(s => s.bins[i] ? [s.bins[i].rms, s.bins[i].db] : ['', ''])].join(','));
+  return [header.join(','), ...rows].join('\n') + '\n';
+}
 export function spectrum(samples, period) {
   const n = 2 ** Math.floor(Math.log2(samples.length));
   if (n < 8) return { bins: [], peak: null, resolution: 0 };

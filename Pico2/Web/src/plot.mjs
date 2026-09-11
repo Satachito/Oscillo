@@ -6,7 +6,7 @@ export class Plot {
     this.canvas = canvas; this.context = canvas.getContext('2d');
     this.observer = new ResizeObserver(() => this.draw()); this.observer.observe(canvas);
   }
-  update(frame, settings, caps, frontEnd) { this.frame = frame; this.settings = settings; this.caps = caps; this.frontEnd = frontEnd; this.spectrum = frame?.kind === 'scope' && settings.mode === 'spectrum' ? spectrum(frame.traces[0]?.samples || [], frame.period) : null; this.draw(); }
+  update(frame, settings, caps, frontEnd) { this.frame = frame; this.settings = settings; this.caps = caps; this.frontEnd = frontEnd; this.spectra = frame?.kind === 'scope' && settings.mode === 'spectrum' ? frame.traces.map(t => ({ index: t.index, ...spectrum(t.samples, frame.period) })) : null; this.draw(); }
   draw() {
     const { canvas, context: c } = this, width = canvas.clientWidth, height = canvas.clientHeight;
     if (!width || !height) return;
@@ -92,14 +92,18 @@ export class Plot {
     }
     c.stroke();
   }
+  // Every channel on one axis: an input and an output read against each other
+  // is what makes two channels worth having here. Each peak takes its
+  // channel's colour so the dots say which trace they belong to.
   fft(c, box) {
-    const s = this.spectrum; if (!s?.bins.length) return;
-    const max = Math.ceil(Math.max(0, ...s.bins.map(b => b.db)) / 20) * 20;
+    const spectra = (this.spectra || []).filter(s => s.bins.length); if (!spectra.length) return;
+    const max = Math.ceil(Math.max(0, ...spectra.flatMap(s => s.bins.map(b => b.db))) / 20) * 20;
     this.fftMax = max;
-    this.trace(c, s.bins, box, db => box.y + (max - db) / 120 * box.h, COLORS[this.frame.traces[0].index], b => b.db);
-    if (s.peak) {
-      const x = box.x + s.peak.frequency * this.frame.period * 2 * box.w, y = box.y + (max - s.peak.db) / 120 * box.h;
-      c.fillStyle = '#d5e6bf'; c.beginPath(); c.arc(x, y, 3, 0, 2 * Math.PI); c.fill();
+    const y = db => box.y + (max - db) / 120 * box.h;
+    for (const s of spectra) this.trace(c, s.bins, box, y, COLORS[s.index], b => b.db);
+    for (const s of spectra) if (s.peak) {
+      c.fillStyle = spectra.length > 1 ? COLORS[s.index] : '#d5e6bf';
+      c.beginPath(); c.arc(box.x + s.peak.frequency * this.frame.period * 2 * box.w, y(s.peak.db), 3, 0, 2 * Math.PI); c.fill();
     }
   }
   logic(c, box) {
@@ -138,7 +142,7 @@ export class Plot {
       const index = (this.xyMode ? frame.traces[1] : frame.traces[0]).index;
       const map = this.mapping(index, box), offset = this.settings.channels[index].offset;
       for (let r = 0; r <= 8; r += 2) c.fillText(fmt(map.centre + (4 - r - offset) * map.perDiv, 'V'), box.x - 7, box.y + r / 8 * box.h + 3);
-    } else if (this.spectrum) {
+    } else if (this.spectra) {
       for (let r = 0; r <= 8; r += 2) c.fillText(`${(this.fftMax || 0) - r / 8 * 120}`, box.x - 7, box.y + r / 8 * box.h + 3);
       c.fillText('dBV', box.x - 7, box.y - 6);
     } else if (this.meterRange && frame.kind === 'meter') {
@@ -147,7 +151,7 @@ export class Plot {
     c.textAlign = 'center';
     for (let col = 0; col <= columns; col += 2) {
       let label;
-      if (this.spectrum) label = fmt(col / columns / frame.period / 2, 'Hz');
+      if (this.spectra) label = fmt(col / columns / frame.period / 2, 'Hz');
       else if (frame.kind === 'meter') label = fmt(col / columns * (frame.history.at(-1)?.time || 0), 's');
       else if (this.xyMode) { const index = frame.traces[0].index, m = this.mapping(index, box); label = fmt(m.centre + (col - columns / 2 - this.settings.channels[index].offset) * m.perDiv, 'V'); }
       else label = fmt((col / columns * (frame.count - 1) - frame.triggerIndex) * frame.period, 's');

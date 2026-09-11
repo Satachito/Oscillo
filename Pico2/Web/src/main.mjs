@@ -1,7 +1,7 @@
 import { USBInstrument } from './usb.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
 import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel } from './protocol.mjs';
-import { fmt, csv, decodeUART } from './signal.mjs';
+import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
 const NUMERIC_CONTROLS = { timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
@@ -157,8 +157,9 @@ function renderFrame() {
     const card = document.createElement('article'); card.className = 'measurement'; card.style.setProperty('--channel-color', COLORS[trace.index]);
     const title = document.createElement('h2'); title.innerHTML = `<i></i> CHANNEL ${trace.index + 1}`; card.append(title);
     const table = document.createElement('table');
-    const rows = settings.mode === 'spectrum' && trace === frame.traces[0] && plot.spectrum?.peak
-      ? [['Peak', fmt(plot.spectrum.peak.frequency, 'Hz')], ['Level', `${plot.spectrum.peak.db.toFixed(1)} dBV`], ['Resolution', fmt(plot.spectrum.resolution, 'Hz')]]
+    const s = settings.mode === 'spectrum' && plot.spectra?.find(entry => entry.index === trace.index);
+    const rows = s?.peak
+      ? [['Peak', fmt(s.peak.frequency, 'Hz')], ['Level', `${s.peak.db.toFixed(1)} dBV`], ['Resolution', fmt(s.resolution, 'Hz')]]
       : [['Peak to peak', fmt(trace.stats.pp, 'V')], ['Frequency', fmt(trace.stats.frequency, 'Hz')], ['RMS', fmt(trace.stats.rms, 'V')], ['Mean', fmt(trace.stats.mean, 'V')]];
     for (const [label, value] of rows) { const row = table.insertRow(); row.insertCell().textContent = label; const td = row.insertCell(); td.className = 'value'; td.textContent = value; }
     card.append(table); $('measurements').append(card);
@@ -216,7 +217,7 @@ $('single').onclick = () => { showError(); acquisition.start(settings, true); up
 $('clear').onclick = () => { frame = null; acquisition.resetLog(); renderFrame(); };
 $('export').onclick = () => {
   let text = csv(frame), name = `pilyzer-${settings.mode}-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
-  if (settings.mode === 'spectrum' && plot.spectrum) text = 'frequency_Hz,rms_V,level_dBV\n' + plot.spectrum.bins.map(b => `${b.frequency},${b.rms},${b.db}`).join('\n') + '\n';
+  if (settings.mode === 'spectrum' && plot.spectra) text = spectrumCsv(plot.spectra);
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) {

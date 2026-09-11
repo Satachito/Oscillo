@@ -44,7 +44,7 @@ All commands below run from the `Pico2` directory.
 | Analogue | 3 channels, 12 bits, 40 kHz; 495 / 247 / 165 kSa/s per channel with 1 / 2 / 3 enabled |
 | Vertical | ±25 V and ±5 V, switched from the application |
 | Record | up to 16 384 points a channel, with pre-trigger |
-| Spectrum | windowed FFT with averaging, THD, THD+N, SNR, SINAD and ENOB |
+| Spectrum | windowed FFT of every enabled channel, with averaging, THD, THD+N, SNR, SINAD and ENOB for each |
 | Logic | 8 channels, up to 150 MSa/s, 65 536 points, UART / SPI / I²C decoding |
 | Trigger | edge, with hysteresis, on any analogue channel or any logic input |
 
@@ -109,7 +109,7 @@ The firmware has its own build; see [firmware/pilyzer/README.md](firmware/pilyze
 | Screen | |
 | --- | --- |
 | **Scope** | voltage against time, or X/Y; Vpp, mean, RMS, AC RMS, frequency, duty, rise time |
-| **Spectrum** | windowed FFT with peak markers, and the distortion figures |
+| **Spectrum** | every enabled channel on one axis, with peak markers and the distortion figures for each |
 | **Logic** | eight traces, per-channel rate and duty, protocol decoding |
 | **Meter / logger** | all inputs as numbers, and a log at 50 ms to 5 minutes a point — each point the lowest, mean and highest reading of its interval |
 

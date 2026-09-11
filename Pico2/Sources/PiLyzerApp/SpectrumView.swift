@@ -6,6 +6,9 @@ struct SpectrumView: View {
     @ObservedObject var model: ScopeModel
 
     private var settings: SpectrumSettings { model.settings.spectrum }
+    /// Every channel comes from the same record, so any one of them sets the
+    /// frequency axis for all.
+    private var axis: Spectrum { model.spectra.first?.spectrum ?? .empty }
 
     var body: some View {
         Workspace(model: model) {
@@ -15,7 +18,7 @@ struct SpectrumView: View {
                 drawGrid(&context, size: size)
                 drawSpectrum(&context, size: size)
                 if settings.showsPeakMarkers { drawPeaks(&context, size: size) }
-                if model.spectrum.count == 0 {
+                if model.spectra.isEmpty {
                     context.draw(Text("Press Run").font(.system(size: 13)).foregroundColor(Theme.readout),
                                  at: CGPoint(x: size.width / 2, y: size.height / 2))
                 }
@@ -27,16 +30,18 @@ struct SpectrumView: View {
 
     private var legend: some View {
         HStack(spacing: 14) {
-            HStack(spacing: 7) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Theme.channelColor(model.spectrumChannel))
-                    .frame(width: 6, height: 6)
-                Text("CH\(model.spectrumChannel + 1)")
-                    .foregroundStyle(Theme.channelColor(model.spectrumChannel))
+            ForEach(model.spectra) { entry in
+                HStack(spacing: 7) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.channelColor(entry.channel))
+                        .frame(width: 6, height: 6)
+                    Text("CH\(entry.channel + 1)")
+                        .foregroundStyle(Theme.channelColor(entry.channel))
+                }
             }
             Text(settings.window.rawValue).foregroundStyle(Theme.readout)
             Text("\(settings.averaging)× avg").foregroundStyle(Theme.readout)
-            Text("\(Format.frequency(model.spectrum.binWidth)) per bin")
+            Text("\(Format.frequency(axis.binWidth)) per bin")
                 .foregroundStyle(Theme.readout)
         }
         .font(Theme.monoSmall)
@@ -48,7 +53,7 @@ struct SpectrumView: View {
     private var levelRange: ClosedRange<Double> {
         switch settings.scale {
         case .linear:
-            let top = max(model.spectrum.amplitudes.max() ?? 1, 1e-9)
+            let top = max(model.spectra.compactMap { $0.spectrum.amplitudes.max() }.max() ?? 1, 1e-9)
             return 0...top
         case .dBFS:
             return -120...0
@@ -58,9 +63,9 @@ struct SpectrumView: View {
     }
 
     private func x(_ frequency: Double, width: CGFloat) -> CGFloat {
-        let top = max(model.spectrum.nyquist, 1)
+        let top = max(axis.nyquist, 1)
         if settings.logarithmicFrequency {
-            let bottom = max(model.spectrum.binWidth, 1)
+            let bottom = max(axis.binWidth, 1)
             guard frequency > bottom else { return 0 }
             let span = log10(top / bottom)
             guard span > 0 else { return 0 }
@@ -96,7 +101,7 @@ struct SpectrumView: View {
         }
 
         var vertical = Path()
-        let nyquist = max(model.spectrum.nyquist, 1)
+        let nyquist = max(axis.nyquist, 1)
         var marks: [Double] = []
         if settings.logarithmicFrequency {
             var decade = 1.0
@@ -122,66 +127,77 @@ struct SpectrumView: View {
     }
 
     private func drawSpectrum(_ context: inout GraphicsContext, size: CGSize) {
-        let spectrum = model.spectrum
-        guard spectrum.count > 2 else { return }
-        let fullScale = model.fullScaleVolts
-
-        var points: [CGPoint] = []
-        points.reserveCapacity(spectrum.count)
-        for index in 1..<spectrum.count {
-            let frequency = Double(index) * spectrum.binWidth
-            let level = spectrum.value(at: index, scale: settings.scale, fullScale: fullScale)
-            points.append(CGPoint(x: x(frequency, width: size.width), y: y(level, height: size.height)))
+        for entry in model.spectra {
+            let spectrum = entry.spectrum
+            guard spectrum.count > 2 else { continue }
+            var points: [CGPoint] = []
+            points.reserveCapacity(spectrum.count)
+            for index in 1..<spectrum.count {
+                let frequency = Double(index) * spectrum.binWidth
+                let level = spectrum.value(at: index, scale: settings.scale, fullScale: entry.fullScale)
+                points.append(CGPoint(x: x(frequency, width: size.width), y: y(level, height: size.height)))
+            }
+            context.strokeTrace(points, color: Theme.channelColor(entry.channel), width: 1.2)
         }
-        context.strokeTrace(points, color: Theme.channelColor(model.spectrumChannel), width: 1.2)
     }
 
+    /// Marked in each channel's own colour. With more than one channel on
+    /// screen only the strongest two apiece are labelled, or the labels bury
+    /// the traces they describe.
     private func drawPeaks(_ context: inout GraphicsContext, size: CGSize) {
-        let fullScale = model.fullScaleVolts
-        for peak in model.spectrum.peaks(limit: 5) {
-            let position = CGPoint(x: x(peak.frequency, width: size.width),
-                                   y: y(Spectrum.convert(amplitude: peak.amplitude,
-                                                         scale: settings.scale,
-                                                         fullScale: fullScale),
-                                        height: size.height))
-            guard position.x > 1 else { continue }
-            context.stroke(Path(ellipseIn: CGRect(x: position.x - 3, y: position.y - 3,
-                                                  width: 6, height: 6)),
-                           with: .color(Theme.trigger), lineWidth: 1)
-            context.draw(Text(Format.frequency(peak.frequency))
-                .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.trigger),
-                         at: CGPoint(x: position.x, y: max(position.y - 12, 8)))
+        let limit = model.spectra.count > 1 ? 2 : 5
+        for entry in model.spectra {
+            let colour = model.spectra.count > 1 ? Theme.channelColor(entry.channel) : Theme.trigger
+            for peak in entry.spectrum.peaks(limit: limit) {
+                let position = CGPoint(x: x(peak.frequency, width: size.width),
+                                       y: y(Spectrum.convert(amplitude: peak.amplitude,
+                                                             scale: settings.scale,
+                                                             fullScale: entry.fullScale),
+                                            height: size.height))
+                guard position.x > 1 else { continue }
+                context.stroke(Path(ellipseIn: CGRect(x: position.x - 3, y: position.y - 3,
+                                                      width: 6, height: 6)),
+                               with: .color(colour), lineWidth: 1)
+                context.draw(Text(Format.frequency(peak.frequency))
+                    .font(.system(size: 9, design: .monospaced)).foregroundColor(colour),
+                             at: CGPoint(x: position.x, y: max(position.y - 12, 8)))
+            }
         }
     }
 }
 
-/// Distortion and noise, measured from the spectrum on screen.
+/// Distortion and noise, measured from the spectrum on screen: one card for
+/// each channel, and the harmonics beside it when there is only one.
 struct QualityRow: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
         MeasurementStrip {
-            if let quality = model.quality {
-                MeasurementCard(title: "Fundamental", colour: Theme.channelColor(model.spectrumChannel)) {
-                    MeasurementRow("Frequency", Format.frequency(quality.fundamental.frequency))
-                    MeasurementRow("Level", Format.voltage(quality.fundamental.amplitude))
-                }
-                MeasurementCard(title: "Distortion") {
-                    MeasurementRow("THD", Format.percent(quality.thdPercent))
-                    MeasurementRow("THD+N", Format.percent(quality.thdPlusNoise * 100))
-                }
-                MeasurementCard(title: "Noise") {
-                    MeasurementRow("SNR", Format.decibels(quality.signalToNoiseDB))
-                    MeasurementRow("SINAD", Format.decibels(quality.sinadDB))
-                    MeasurementRow("ENOB", String(format: "%.1f bits", quality.effectiveBits))
-                }
-                MeasurementCard(title: "Harmonics") {
-                    ForEach(Array(quality.harmonics.prefix(3).enumerated()), id: \.offset) { index, peak in
-                        MeasurementRow("H\(index + 2)", Format.voltage(peak.amplitude))
+            let measured = model.spectra.filter { $0.quality != nil }
+            if measured.isEmpty {
+                MeasurementPlaceholder(text: "A tone has to be on screen before its distortion can be measured.")
+            } else {
+                ForEach(measured) { entry in
+                    if let quality = entry.quality {
+                        MeasurementCard(title: "Channel \(entry.channel + 1)",
+                                        colour: Theme.channelColor(entry.channel)) {
+                            MeasurementRow("Frequency", Format.frequency(quality.fundamental.frequency))
+                            MeasurementRow("Level", Format.voltage(quality.fundamental.amplitude))
+                            MeasurementRow("THD", Format.percent(quality.thdPercent))
+                            MeasurementRow("THD+N", Format.percent(quality.thdPlusNoise * 100))
+                            MeasurementRow("SNR", Format.decibels(quality.signalToNoiseDB))
+                            MeasurementRow("SINAD", Format.decibels(quality.sinadDB))
+                            MeasurementRow("ENOB", String(format: "%.1f bits", quality.effectiveBits))
+                        }
                     }
                 }
-            } else {
-                MeasurementPlaceholder(text: "A tone has to be on screen before its distortion can be measured.")
+                if measured.count == 1, let quality = measured[0].quality {
+                    MeasurementCard(title: "Harmonics") {
+                        ForEach(Array(quality.harmonics.prefix(5).enumerated()), id: \.offset) { index, peak in
+                            MeasurementRow("H\(index + 2)", Format.voltage(peak.amplitude))
+                        }
+                    }
+                }
             }
         }
     }

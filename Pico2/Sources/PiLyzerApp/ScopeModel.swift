@@ -24,8 +24,8 @@ final class ScopeModel: ObservableObject {
     @Published private(set) var frame = ScopeFrame()
     @Published private(set) var logicFrame = LogicFrame()
     @Published private(set) var meter: MeterReading?
-    @Published private(set) var spectrum = Spectrum.empty
-    @Published private(set) var quality: SpectrumQuality?
+    /// One entry per enabled channel, in channel order.
+    @Published private(set) var spectra: [ChannelSpectrum] = []
     @Published private(set) var plan = AcquisitionPlan.empty
 
     @Published var sources: [(source: DeviceSource, label: String)] = []
@@ -41,7 +41,7 @@ final class ScopeModel: ObservableObject {
     @Published var cursorB = 0.7
 
     private let engine = InstrumentEngine()
-    private var spectrumHistory: [Spectrum] = []
+    private var spectrumHistory: [Int: [Spectrum]] = [:]
     private var deviceTimer: Timer?
     /// Set by --autostart: sweep as soon as the instrument answers.
     private var startsOnConnect = false
@@ -151,9 +151,8 @@ final class ScopeModel: ObservableObject {
     }
 
     private func resetSpectrum() {
-        spectrum = .empty
+        spectra = []
         spectrumHistory.removeAll()
-        quality = nil
     }
 
     /// Grounded-input calibration: whatever all channels read now becomes
@@ -221,25 +220,31 @@ final class ScopeModel: ObservableObject {
         decodeLogic()
     }
 
+    /// Every channel in the record gets its own transform and its own
+    /// averaging history. They come from the same sweep, so the bins agree and
+    /// an input and an output can be read against each other directly.
     private func updateSpectrum(from frame: ScopeFrame) {
-        guard frame.samplePeriod > 0,
-              let trace = frame.traces.first(where: { $0.index == spectrumChannel })
-                ?? frame.traces.first else { return }
-
-        let fresh = SpectrumAnalyzer.transform(trace.samples,
-                                               sampleRate: 1 / frame.samplePeriod,
-                                               window: settings.spectrum.window)
-        spectrumHistory.append(fresh)
+        guard frame.samplePeriod > 0 else { return }
         let depth = max(settings.spectrum.averaging, 1)
-        if spectrumHistory.count > depth { spectrumHistory.removeFirst(spectrumHistory.count - depth) }
+        var fresh: [ChannelSpectrum] = []
+        for trace in frame.traces {
+            var history = spectrumHistory[trace.index, default: []]
+            history.append(SpectrumAnalyzer.transform(trace.samples,
+                                                      sampleRate: 1 / frame.samplePeriod,
+                                                      window: settings.spectrum.window))
+            if history.count > depth { history.removeFirst(history.count - depth) }
+            spectrumHistory[trace.index] = history
 
-        spectrum = SpectrumAnalyzer.average(spectrumHistory)
-        quality = SpectrumAnalyzer.quality(of: spectrum, harmonics: settings.spectrum.harmonicCount)
-    }
-
-    /// The spectrum follows the first channel that is switched on.
-    var spectrumChannel: Int {
-        enabledAnalogChannels.first ?? 0
+            let averaged = SpectrumAnalyzer.average(history)
+            fresh.append(ChannelSpectrum(
+                channel: trace.index, spectrum: averaged,
+                fullScale: scale(for: trace.index).spanVolts / 2,
+                quality: SpectrumAnalyzer.quality(of: averaged,
+                                                  harmonics: settings.spectrum.harmonicCount)))
+        }
+        let present = Set(frame.traces.map(\.index))
+        spectrumHistory = spectrumHistory.filter { present.contains($0.key) }
+        spectra = fresh.sorted { $0.channel < $1.channel }
     }
 
     private func rebuildDecoder() {
@@ -348,8 +353,7 @@ final class ScopeModel: ObservableObject {
         case .scope:
             return ("waveform.csv", Export.csv(scope: frame))
         case .spectrum:
-            return ("spectrum.csv", Export.csv(spectrum: spectrum, scale: settings.spectrum.scale,
-                                               fullScale: fullScaleVolts))
+            return ("spectrum.csv", Export.csv(spectra: spectra, scale: settings.spectrum.scale))
         case .logic:
             if decoderKind == .none {
                 return ("logic.csv", Export.csv(logicTransitions: logicFrame))
@@ -396,11 +400,6 @@ final class ScopeModel: ObservableObject {
         return "Each point holds the lowest, mean and highest reading of its "
             + "interval. \(InstrumentEngine.meterCapacity.formatted()) points fit — \(full) — "
             + "after which the oldest are dropped."
-    }
-
-    var fullScaleVolts: Double {
-        let scale = self.scale(for: spectrumChannel)
-        return scale.spanVolts / 2
     }
 }
 
