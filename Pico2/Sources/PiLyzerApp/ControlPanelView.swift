@@ -311,6 +311,15 @@ struct VerticalSection: View {
     @ObservedObject var model: ScopeModel
     let channel: Int
 
+    /// The zero belongs to the range that is selected, so the field follows
+    /// the Range picker: a front end that biases one range biases them all,
+    /// but by a different number once the gain differs.
+    private var zeroVolts: Binding<Double> {
+        let index = model.settings.channels[channel].rangeIndex
+        return Binding(get: { model.settings.channels[channel].calibration(forRange: index).zero },
+                       set: { model.settings.channels[channel].calibrateZero(to: $0, forRange: index) })
+    }
+
     private var binding: Binding<AnalogChannelSettings> {
         Binding(get: { model.settings.channels[channel] },
                 set: { model.settings.channels[channel] = $0 })
@@ -346,6 +355,19 @@ struct VerticalSection: View {
                           range: -4...4, format: { String(format: "%.1f div", $0) })
 
             Toggle("Remove mean (software AC)", isOn: binding.removesMean)
+
+            HStack(spacing: 6) {
+                Text("Zero").font(.caption)
+                Spacer(minLength: 6)
+                TextField("", value: zeroVolts,
+                          format: .number.precision(.fractionLength(0...4)))
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 80)
+                Text("V").font(.caption).foregroundStyle(.secondary)
+            }
+            Text("Input volts that read as zero — the bias a front end adds. "
+                 + "Type it, or ground the input and measure it.")
+                .font(.caption).foregroundStyle(.secondary)
 
             HStack(spacing: 6) {
                 Button("Zero here") { model.calibrateZero() }

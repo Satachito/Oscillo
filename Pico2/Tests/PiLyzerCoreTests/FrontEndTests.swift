@@ -59,4 +59,24 @@ struct FrontEndTests {
         #expect(abs(scale.lowestVolts) < 1e-12)
         #expect(abs(scale.highestVolts - reference) < 1e-12)
     }
+
+    @Test("A typed zero cancels a front end's bias, on whichever range is selected")
+    func zeroCancelsBias() {
+        // A home-made front end biased to mid rail: grounded in reads 1.65 V.
+        var channel = AnalogChannelSettings()
+        let scale = { channel.scale(reference: 3.3, fullScale: 65520, ranges: FrontEnd.bareBoard) }
+        let code = 65520.0 / 2
+        #expect(abs(scale().volts(code: code) - 1.65) < 0.001)
+
+        channel.calibrateZero(to: 1.65, forRange: 0)
+        #expect(abs(scale().volts(code: code)) < 0.001)
+        #expect(abs(scale().code(forVolts: 0) - code) < 1)
+
+        // The calibration array starts empty, so a range the board only just
+        // reported must still take a zero rather than fall off the end.
+        channel.rangeIndex = 2
+        channel.calibrateZero(to: 0.132, forRange: 2)
+        #expect(channel.calibration(forRange: 2).zero == 0.132)
+        #expect(channel.calibration(forRange: 1).zero == 0)
+    }
 }

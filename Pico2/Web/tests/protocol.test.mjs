@@ -91,6 +91,25 @@ test('spectrum shows every channel: an input and its half-level output line up b
   assert.ok(Math.abs(row[2] - row[4] - 20 * Math.log10(2)) < .01, 'the dB difference is the gain');
   assert.equal(spectrumCsv([]), '');
 });
+test('a typed zero removes a front end\u2019s bias, and a third range is not a hole', () => {
+  // A home-made front end that biases the input to mid rail: grounded in reads
+  // 1.65 V out, and the panel should show 0 V once that is entered.
+  const settings = makeSettings(), bare = ranges(0);
+  const at = volts => Math.round(volts / 3.3 * 65520);
+  assert.equal(Math.round(scaleFor(settings, demoCaps, bare, 0).volts(at(1.65)) * 1000), 1650);
+  settings.channels[0].zero[0] = 1.65;
+  const scale = scaleFor(settings, demoCaps, bare, 0);
+  assert.equal(Math.round(scale.volts(at(1.65)) * 1000), 0);
+  assert.equal(Math.round(scale.volts(at(2.65)) * 1000), 1000);
+  // The level a trigger of 0 V asks for is the biased code, not mid scale.
+  assert.equal(scale.code(0), at(1.65));
+
+  // Boards report three ranges; the stored array holds two.
+  settings.channels[0].range = 2;
+  const third = [...bare, ...ranges(1)];
+  assert.equal(scaleFor(settings, demoCaps, third, 0).zero, 0);
+  assert.ok(Number.isFinite(scaleFor(settings, demoCaps, third, 0).volts(at(1.65))));
+});
 test('CSV contains physical CH3 label and time relative to trigger', () => {
   const text = csv({ kind: 'scope', traces: [{ index: 2, samples: new Float64Array([1, 2]) }], period: .001, count: 2, triggerIndex: 1 });
   assert.match(text, /^time_s,CH3_V\n/); assert.match(text, /-0.001/);

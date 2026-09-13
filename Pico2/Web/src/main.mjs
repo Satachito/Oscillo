@@ -7,8 +7,10 @@ const $ = id => document.getElementById(id);
 const NUMERIC_CONTROLS = { timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
 const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart']];
 const STORAGE_KEY = 'pilyzer.settings.v1';
-// The front panel comes back the way it was left. Per-channel zeroing does not:
-// that belongs to a calibration session, and connecting starts a new one.
+// The front panel comes back the way it was left, the per-channel zero
+// included: it describes the wiring — the bias a front end adds — rather than
+// a moment, and it is visible in a field of its own, which is what makes it
+// safe to restore.
 function loadSettings() {
   const defaults = makeSettings();
   let saved = null;
@@ -20,7 +22,11 @@ function loadSettings() {
   for (const [key, value] of Object.entries(defaults)) {
     if (key === 'channels') for (const [index, channel] of defaults.channels.entries()) {
       const stored = saved.channels?.[index];
-      if (stored) for (const [field, current] of Object.entries(channel)) if (field !== 'zero' && accept(stored[field], current)) channel[field] = stored[field];
+      if (stored) for (const [field, current] of Object.entries(channel)) {
+        if (field === 'zero') {
+          if (Array.isArray(stored.zero)) channel.zero = stored.zero.map(v => Number.isFinite(v) ? v : 0);
+        } else if (accept(stored[field], current)) channel[field] = stored[field];
+      }
     }
     else if (accept(saved[key], value)) defaults[key] = saved[key];
   }
@@ -28,7 +34,7 @@ function loadSettings() {
   return defaults;
 }
 function saveSettings() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, channels: settings.channels.map(({ zero, ...rest }) => rest) })); } catch { /* private windows and disabled storage are fine */ }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch { /* private windows and disabled storage are fine */ }
 }
 // Restores the controls from the settings, which may have come back from an
 // earlier visit rather than from the defaults the markup was written with.
@@ -69,7 +75,7 @@ function channelControls() {
   $('channels').replaceChildren();
   for (let i = 0; i < caps().channels; i++) {
     const ch = settings.channels[i], el = document.createElement('div'); el.className = 'channel-card'; el.style.setProperty('--channel-color', COLORS[i]);
-    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><div class="channel-actions"><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><button class="zero-button" data-zero title="Ground this input and capture a trace before setting zero.">Set zero</button><button class="zero-button" data-reset>Reset</button></div>`;
+    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="field">Zero <span class="unit">V</span><input data-bias type="number" step="0.01" aria-label="CH${i + 1} zero volts"/></label><p class="hint">Input volts that read as zero — the bias a front end adds. Type it, or ground the input and measure it.</p><div class="channel-actions"><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><button class="zero-button" data-zero title="Ground this input and capture a trace before setting zero.">Set zero</button><button class="zero-button" data-reset>Reset</button></div>`;
     const range = el.querySelector('[data-field=range]'); frontEnd().forEach((r, j) => range.add(option(j, r.name))); range.disabled = frontEnd().length < 2;
     const scale = el.querySelector('[data-field=scale]'); [[0, 'Full range'], ...[.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20].map(v => [v, fmt(v, 'V')])].forEach(([v, t]) => scale.add(option(v, t)));
     for (const control of el.querySelectorAll('[data-field]')) {
@@ -87,6 +93,13 @@ function channelControls() {
         synchronize(); changed();
       });
     }
+    const bias = el.querySelector('[data-bias]');
+    bias.value = Number((ch.zero[ch.range] ?? 0).toPrecision(6));
+    bias.addEventListener('change', () => {
+      const value = Number(bias.value);
+      if (!Number.isFinite(value)) { bias.value = Number((ch.zero[ch.range] ?? 0).toPrecision(6)); return; }
+      ch.zero[ch.range] = value; synchronize(); changed();
+    });
     el.querySelector('[data-zero]').disabled = !frame || frame.kind !== 'scope';
     el.querySelector('[data-zero]').onclick = () => {
       const trace = frame?.traces?.find(t => t.index === i); if (!trace) { showError(`Capture CH${i + 1} first.`); return; }

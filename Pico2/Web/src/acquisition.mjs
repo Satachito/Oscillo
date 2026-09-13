@@ -115,7 +115,7 @@ export class Acquisition {
   async capture(instrument, settings, actual, token) {
     if (settings.mode === 'meter') {
       let values;
-      if (instrument.demo) values = Array.from({ length: instrument.caps.channels }, (_, c) => (tone(c, performance.now() / 1000) - settings.channels[c].zero[settings.channels[c].range]) * settings.channels[c].probe);
+      if (instrument.demo) values = Array.from({ length: instrument.caps.channels }, (_, c) => (tone(c, performance.now() / 1000) - (settings.channels[c].zero[settings.channels[c].range] ?? 0)) * settings.channels[c].probe);
       else {
         const bytes = await instrument.command(OP.sample, new Uint8Array([64, 0]));
         if (bytes.length !== instrument.caps.channels * 2) throw new Error('Incomplete meter reading');
