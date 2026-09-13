@@ -307,12 +307,11 @@ PIO state machine rather than by the processor — at 150 MS/s nothing else can
 keep up. The processor then finds the exact edge in the captured data, so the
 trigger position is sample-accurate rather than interrupt-latency-accurate.
 
-## Firmware 1.5 pin allocation and channel count
+## Pin allocation and channel count
 
 CH1/CH2/CH3 use GPIO26/27/28. Logic D0–D7 use GPIO8–15, the range controls are
 GPIO4/5/6, `setCalibrationOutput` controls GPIO20 and the generator has
-GPIO16–19. GPIO0–3 and GPIO7 are free. Firmware 1.3/1.4 used GPIO28 for test
-output, and 1.2 used GPIO2.
+GPIO16–19. GPIO0–3 and GPIO7 are free.
 
 A PL2407AFE is laid out differently throughout: CH1/CH2 on GPIO26/27, two range
 pins a channel on GPIO2–5, logic on GPIO6–13, SG OUT on GPIO22, and the

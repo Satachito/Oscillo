@@ -217,8 +217,8 @@ function synchronize() {
   for (const op of $('logic-rate').options) op.disabled = Number(op.value) > caps().logicClock;
   for (const op of $('logic-record').options) op.disabled = Number(op.value) > caps().logicMaxRecord;
   if (instrument) {
-    const [major, minor] = instrument.identity.firmware.split('.').map(Number);
-    const pin = instrument.identity.board === 3 ? 22 : major > 1 || minor >= 5 ? 20 : minor >= 3 ? 28 : 2;
+    // GPIO20, except on a PL2407AFE, where it is that board's own SG OUT pin.
+    const pin = instrument.identity.board === 3 ? 22 : 20;
     $('test-pin').textContent = instrument.demo ? 'Demo is generated in this browser. Test output controls apply to a USB instrument.' : `GPIO${pin} · 0–3.3 V square wave. Wire the output to an input to measure it.`;
     $('signal-pins').textContent = `GPIO${SIGNAL_BASE_PIN} sine, GPIO${SIGNAL_BASE_PIN + 1} white, GPIO${SIGNAL_BASE_PIN + 2} pink, GPIO${SIGNAL_BASE_PIN + 3} brown — PWM at 586 kHz, so each pin wants an RC (1 kΩ and 100 nF) to come out as a voltage.`;
   }

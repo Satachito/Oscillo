@@ -95,18 +95,13 @@ struct ProtocolTests {
         #expect(abs(capabilities.minimumSamplePeriod(channels: 2) - 4e-6) < 1e-15)
     }
 
-    @Test("The test output pin follows the firmware, and the PL2407AFE's SG OUT")
+    @Test("The test output comes out of the PL2407AFE's SG OUT, and GPIO20 elsewhere")
     func calibrationOutputPin() {
-        func pin(_ firmware: UInt16, board: UInt32 = 0) -> Int {
-            DeviceIdentity(protocolVersion: 1, firmwareVersion: firmware, boardID: board, name: "").calibrationOutputPin
+        func pin(board: UInt32) -> Int {
+            DeviceIdentity(protocolVersion: 1, firmwareVersion: 0x010B, boardID: board, name: "").calibrationOutputPin
         }
-        #expect(pin(0x0102) == 2)
-        #expect(pin(0x0103) == 28)
-        #expect(pin(0x0104) == 28)
-        #expect(pin(0x0105) == 20)
-        #expect(pin(0x0108) == 20)
-        #expect(pin(0x0200) == 20)
-        #expect(pin(0x0108, board: 3) == 22)
+        for board: UInt32 in [0, 1, 2] { #expect(pin(board: board) == 20) }
+        #expect(pin(board: 3) == 22)
     }
 
     @Test("The signal generator is asked for by opcode 8, and offered by bit 5")

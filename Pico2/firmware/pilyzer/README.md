@@ -83,9 +83,6 @@ channel still supports a 16,384-point record with trigger history and tail room.
 `analogSample` returns one 16-bit word per advertised analogue channel (six
 bytes on firmware 1.5). Configuration and capability packet layouts are unchanged.
 
-Firmware 1.2 used logic GPIO6–13, ranges GPIO14/15 and test output GPIO2;
-firmware 1.3/1.4 used test output GPIO28. Update wiring before installing 1.5.
-
 ### Driverless on Windows too (firmware 1.6, working from 1.8)
 
 A vendor-specific interface is what makes this driverless on macOS and Linux:
