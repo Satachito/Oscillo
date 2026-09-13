@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { fitScale, midRailVolts, referenceBias, signalBasePin, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/usb.mjs';
 import { measure, spectrum, spectrumCsv, csv, decodeUART } from '../src/signal.mjs';
@@ -352,4 +352,10 @@ test('the log drops its oldest points rather than growing without limit', async 
   engine.pointDue = 0;
   const frame = await engine.capture(engine.instrument, settings, null, engine.token);
   assert.equal(frame.history.length, LOG_CAPACITY);
+});
+
+test('the generator moves off the PL2407AFE range switches', () => {
+  // GPIO2-5 switch that board's ranges, so its four start at 16 instead.
+  assert.equal(signalBasePin(3), 16);
+  for (const board of [0, 1, 2]) assert.equal(signalBasePin(board), 0);
 });

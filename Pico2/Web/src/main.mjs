@@ -1,6 +1,6 @@
 import { USBInstrument } from './usb.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SCALE_STEPS, fitScale } from './protocol.mjs';
+import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, signalBasePin, SCALE_STEPS, fitScale } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -208,8 +208,8 @@ function synchronize() {
   $('level').disabled = logic; $('xy').disabled = settings.mode !== 'scope' || active.length < 2;
   $('test-controls').hidden = instrument && !(caps().flags & 2);
   $('test-frequency').disabled = !settings.testEnabled;
-  // The board says whether it has one: a PL2407AFE switches its ranges on the
-  // pins this would use, and answers that it has none.
+  // Every board has one, but not on the same pins: a PL2407AFE switches its
+  // ranges on GPIO2-5, so its generator starts above them.
   $('signal-controls').hidden = !instrument || !(caps().flags & 32);
   $('signal-sine').disabled = !settings.signalsEnabled;
   $('lpf').disabled = instrument && !(caps().flags & 8);
@@ -220,6 +220,8 @@ function synchronize() {
     const [major, minor] = instrument.identity.firmware.split('.').map(Number);
     const pin = instrument.identity.board === 3 ? 22 : major > 1 || minor >= 5 ? 20 : minor >= 3 ? 28 : 2;
     $('test-pin').textContent = instrument.demo ? 'Demo is generated in this browser. Test output controls apply to a USB instrument.' : `GPIO${pin} · 0–3.3 V square wave. Wire the output to an input to measure it.`;
+    const base = signalBasePin(instrument.identity.board);
+    $('signal-pins').textContent = `GPIO${base} sine, GPIO${base + 1} white, GPIO${base + 2} pink, GPIO${base + 3} brown — PWM at 586 kHz, so each pin wants an RC (1 kΩ and 100 nF) to come out as a voltage.`;
   }
   $('mode-title').textContent = { scope: 'Oscilloscope', spectrum: 'Spectrum analyser', logic: 'Logic analyser', meter: 'Voltage meter' }[settings.mode];
   document.body.classList.toggle('meter-mode', meter);

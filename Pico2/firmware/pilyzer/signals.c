@@ -12,6 +12,17 @@
 // frequency exact, and eight times over the audio band.
 #define SAMPLE_RATE_HZ 50000
 
+// The four pins are two PWM slices, driven as an A/B pair each, so the first
+// has to be an even GPIO — and neither slice may be the one the calibration
+// square wave already owns, because a slice has one wrap for both channels.
+// A board that moves the generator gets told here rather than on a bench.
+#define SIGNAL_SLICE(pin) (((pin) >> 1u) & 7u)
+_Static_assert(PIN_SIGNAL_BASE % 2 == 0,
+    "the generator's first pin must be the A channel of a PWM slice");
+_Static_assert(SIGNAL_SLICE(PIN_CALIBRATION_OUT) != SIGNAL_SLICE(PIN_SIGNAL_BASE)
+            && SIGNAL_SLICE(PIN_CALIBRATION_OUT) != SIGNAL_SLICE(PIN_SIGNAL_BASE + 2),
+    "the generator and the calibration output would share a PWM slice");
+
 static signal_source_t source;
 static repeating_timer_t timer;
 static bool running;

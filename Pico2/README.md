@@ -66,7 +66,7 @@ swift run PiLyzer --list       # what is on the USB bus, and why it is not an in
 swift run PiLyzer --selftest   # walk the whole command set against a real board
 swift run PiLyzer --timing     # measure the time axis against the calibration output
 swift run PiLyzer --testout 1000   # drive that output, or "off"
-swift run PiLyzer --signals 440    # sine on GPIO0, noise on GPIO1-3, or "off"
+swift run PiLyzer --signals 440    # sine and the three noises on the board's own pins, or "off"
 swift run PiLyzer --bootsel    # restart it in its bootloader to load new firmware
 ```
 

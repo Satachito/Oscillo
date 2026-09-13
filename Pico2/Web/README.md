@@ -49,9 +49,11 @@ a driver association added by hand. macOS and Linux are unaffected either way.
   and highest reading of its own interval rather than one instant, so a slow log
   still shows what happened between the points; the chart draws the mean as a
   line with that spread shaded behind it, and the CSV has all three.
-- Adjustable calibration square wave, and the instrument's own generator when
-  the board has one: a sine on GPIO0 with white, pink and brown noise beside
-  it. Each of those pins is a PWM carrier and wants an RC to be a voltage.
+- Adjustable calibration square wave, and the instrument's own generator: a
+  sine with white, pink and brown noise on the three pins beside it. The panel
+  names them, because they follow the board — GPIO0–3 on a bare Pico 2, and
+  GPIO16–19 on a PL2407AFE, whose range switches sit where the others start.
+  Each of those pins is a PWM carrier and wants an RC to be a voltage.
 - Per-channel bias and gain. The bias is where a front end holds the input with
   nothing on it: it is **drawn** as a dotted line, with a triangle marking what
   a grounded input actually read, and never taken out of a reading — what the

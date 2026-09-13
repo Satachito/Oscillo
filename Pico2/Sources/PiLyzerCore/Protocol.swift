@@ -143,6 +143,12 @@ public struct DeviceIdentity: Equatable, Sendable {
         let major = firmwareVersion >> 8, minor = firmwareVersion & 0xFF
         return major > 1 || minor >= 5 ? 20 : minor >= 3 ? 28 : 2
     }
+
+    /// The first of the four pins the generator drives; the sine is here and
+    /// white, pink and brown noise follow it. A PL2407AFE switches its ranges
+    /// on GPIO2-5, so there it starts at the first four consecutive pins that
+    /// board leaves alone instead.
+    public var signalBasePin: Int { boardID == 3 ? 16 : 0 }
 }
 
 public struct DeviceCapabilities: Equatable, Sendable {

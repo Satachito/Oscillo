@@ -72,6 +72,10 @@ export const fitScale = scale => {
 // The input that reads mid scale: what a passive front end biased to the middle
 // of the converter's range leaves on a grounded input. A board that reports its
 // own offset has taken it out already, and this comes back at about zero.
+// The first of the four pins the generator drives; the sine is here and white,
+// pink and brown noise follow it. A PL2407AFE switches its ranges on GPIO2-5,
+// so there it starts at the first four consecutive pins that board leaves free.
+export const signalBasePin = board => board === 3 ? 16 : 0;
 export const midRailVolts = (caps, range) => (caps.reference / 2 - range.offset) / range.gain;
 // What this channel reads with nothing on the input: measured if anybody has,
 // otherwise what the bias was set to. Both calibrations are measured from it.

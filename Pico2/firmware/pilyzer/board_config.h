@@ -12,14 +12,16 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0109   // 1.9: sine and noise generator on GPIO0-3; 1.8 made WinUSB bind on Windows
+#define PILYZER_FIRMWARE_VERSION 0x010A   // 1.10: the PL2407AFE gets the generator too, on GPIO16-19; 1.9 gave every other board one on GPIO0-3
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
 #include "../../../Scoppy/firmware/board_config.h"
-// GPIO2-5 switch that board's ranges, so there is nowhere to put the
-// generator; the host is told it has none rather than being lied to.
-#define PILYZER_HAS_SIGNALS 0
+// GPIO2-5 switch that board's ranges, so the generator cannot start at 0 as it
+// does elsewhere. GPIO16-19 are the four consecutive pins this board leaves
+// alone, and they fall on PWM slices of their own, clear of SG OUT on 22.
+#define PIN_SIGNAL_BASE     16
+#define PILYZER_HAS_SIGNALS 1
 #else
 #define PIN_CALIBRATION_OUT 20    // adjustable calibration square wave
 // A sine and three noises, one per pin from here up. GPIO0-7 are unused on

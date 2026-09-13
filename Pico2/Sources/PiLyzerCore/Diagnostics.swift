@@ -188,9 +188,10 @@ public enum Diagnostics {
                 return "This instrument has no signal generator."
             }
             let actual = try instrument.setSignals(enabled: sineHz > 0, sineHz: max(sineHz, 0))
+            let base = instrument.identity.signalBasePin
             return sineHz > 0
-                ? "Generator on: GPIO0 sine at \(Format.frequency(Double(actual))), "
-                    + "GPIO1 white, GPIO2 pink, GPIO3 brown."
+                ? "Generator on: GPIO\(base) sine at \(Format.frequency(Double(actual))), "
+                    + "GPIO\(base + 1) white, GPIO\(base + 2) pink, GPIO\(base + 3) brown."
                 : "Generator off."
         } catch {
             return "Could not reach the instrument: "
@@ -199,8 +200,8 @@ public enum Diagnostics {
     }
 
     /// Measures the instrument's own generator back through an input, for
-    /// when GPIO0 has been wired to one: the sine's frequency and swing, and
-    /// what the three noises are doing beside it.
+    /// when the sine pin has been wired to one: the sine's frequency and swing,
+    /// and what the three noises are doing beside it.
     ///
     /// Every pin needs an RC to be a voltage rather than a carrier, so a
     /// channel that reads a flat 1.65 V with the generator running is usually
