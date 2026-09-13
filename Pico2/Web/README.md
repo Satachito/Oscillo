@@ -49,19 +49,28 @@ a driver association added by hand. macOS and Linux are unaffected either way.
   and highest reading of its own interval rather than one instant, so a slow log
   still shows what happened between the points; the chart draws the mean as a
   line with that spread shaded behind it, and the CSV has all three.
-- Adjustable calibration square wave and per-channel Set zero / Reset.
-  Ground the selected input and capture it before using Set zero. Calibration
-  is session-local; changing devices starts a new calibration session.
+- Adjustable calibration square wave, and the instrument's own generator when
+  the board has one: a sine on GPIO0 with white, pink and brown noise beside
+  it. Each of those pins is a PWM carrier and wants an RC to be a voltage.
+- Per-channel bias and gain. The bias is where a front end holds the input with
+  nothing on it: it is **drawn** as a dotted line, with a triangle marking what
+  a grounded input actually read, and never taken out of a reading — what the
+  screen shows is what reached the converter. The gain is a real correction,
+  measured from one known voltage against the bias, and shown as a percentage
+  because a correction nobody can see is one nobody can question. Both refuse a
+  capture that is moving, and a gain past a tenth is refused outright: 1% parts
+  are out by two, so more than that is the wrong reading.
 - Light and dark follow the system. Only the paper around the instrument
   changes: the screen stays dark, because that is what an oscilloscope's face
   is under any lighting and the trace colours are chosen against it.
-- Local CSV export for scope, spectrum, logic and meter records. Remove mean is
-  a display choice; exported scope files hold the voltages as measured.
-- The front panel is remembered in this browser between visits. Per-channel
-  zeroing is not: that belongs to a calibration session, and connecting an
-  instrument starts a new one.
-- A trigger level left behind by a range change is moved back inside the range,
-  since a level on the rail never fires and reads as a broken trigger.
+- Local CSV export for scope, spectrum, logic and meter records. A scope file
+  is what the screen shows — centred where Remove mean is on — and says in a
+  comment which column had its mean taken out, and how much came off.
+- The front panel is remembered in this browser between visits, the bias and
+  the gain included: they describe the wiring rather than a moment.
+- A trigger level is left exactly where it was set, even where nothing will
+  cross it, and the panel says so. One that cannot fire on the channel it
+  watches starts at that channel's bias when an instrument answers.
 - Independent 3-channel demo; no instrument required.
 
 Demo waveforms are generated in the browser and are not measurements. The

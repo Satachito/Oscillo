@@ -141,6 +141,13 @@ export class USBInstrument {
     const bytes = new Uint8Array(5); bytes[0] = +on; view(bytes).setUint32(1, frequency, true);
     return view(await this.command(OP.test, bytes)).getUint32(0, true);
   }
+  /// The instrument's own generator: a sine on GPIO0 and white, pink and brown
+  /// noise on the three pins above it. Answers with the sine frequency it
+  /// settled on.
+  async setSignals(on, sineHz) {
+    const bytes = new Uint8Array(5); bytes[0] = +on; view(bytes).setUint32(1, sineHz, true);
+    return view(await this.command(OP.signals, bytes)).getUint32(0, true);
+  }
   async abort() { await this.command(OP.analogAbort); await this.command(OP.logicAbort); }
   close() { return this.transport.close(); }
 }

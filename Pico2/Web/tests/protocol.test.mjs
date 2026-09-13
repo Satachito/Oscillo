@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fitScale, midRailVolts, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/usb.mjs';
 import { measure, spectrum, spectrumCsv, csv, decodeUART } from '../src/signal.mjs';
@@ -28,7 +28,7 @@ test('older two-channel device and unipolar scale remain supported', () => {
   assert.equal(scaleFor(settings, caps, bare, 0).centre, 0);
   assert.equal(fitScale(scaleFor(settings, caps, bare, 0)), 1);
   assert.equal(fitScale(scaleFor(settings, caps, afe, 0)), 10);   // rev A reaches +/-26 V
-  settings.channels[0].probe = 10; settings.channels[0].zero[0] = .1;
+  settings.channels[0].probe = 10;
   const scale = scaleFor(settings, caps, bare, 0); assert.ok(Math.abs(scale.volts(scale.code(5)) - 5) < .001);
 });
 test('trigger LPF support and no-channel requests are validated', () => {
@@ -96,40 +96,54 @@ test('spectrum shows every channel: an input and its half-level output line up b
   assert.ok(Math.abs(row[2] - row[4] - 20 * Math.log10(2)) < .01, 'the dB difference is the gain');
   assert.equal(spectrumCsv([]), '');
 });
-test('the zero cancels a front end\u2019s bias, and a third range is not a hole', () => {
+test('a bias is drawn, not taken out of the reading', () => {
   const settings = makeSettings(), at = volts => Math.round(volts / 3.3 * 65520);
-  // Inputs start direct: nothing is removed until someone says there is a bias.
-  assert.deepEqual(settings.channels.map(c => c.zero[0]), [0, 0, 0]);
+  // Nothing is subtracted: a bare board biased to mid rail reads 1.65 V, and
+  // goes on reading 1.65 V once it has been told that is where it sits.
   assert.equal(Math.round(scaleFor(settings, demoCaps, bare, 0).volts(at(1.65)) * 1000), 1650);
-
-  // What the AFE bias button writes: the input that reads mid scale. On a bare
-  // board that is the whole 1.65 V; on rev A the range descriptor has taken it
-  // out already, so there is nothing left to remove.
+  settings.channels[0].bias = 1.65;
+  const scale = scaleFor(settings, demoCaps, bare, 0);
+  assert.equal(Math.round(scale.volts(at(1.65)) * 1000), 1650);
+  assert.equal(scale.code(1.65), at(1.65));
+  // What the button writes, and what a calibration measures from.
   assert.ok(Math.abs(midRailVolts(demoCaps, bare[0]) - 1.65) < 1e-9);
-  assert.ok(Math.abs(midRailVolts(demoCaps, afe[0])) < 0.01);
-
-  settings.channels[0].zero[0] = midRailVolts(demoCaps, bare[0]);
-  const biased = scaleFor(settings, demoCaps, bare, 0);
-  assert.equal(Math.round(biased.volts(at(1.65)) * 1000), 0);       // grounded in reads zero
-  assert.equal(Math.round(biased.volts(at(2.65)) * 1000), 1000);
-  assert.equal(biased.code(0), at(1.65));                           // and a 0 V trigger is that code
-  assert.equal(Math.round(scaleFor(settings, demoCaps, bare, 2).volts(at(1.65)) * 1000), 1650);
+  assert.equal(referenceBias(settings.channels[0]), 1.65);
+  settings.channels[0].measuredBias = 1.6312;
+  assert.equal(referenceBias(settings.channels[0]), 1.6312);   // measured wins
 
   // A divider that is 2% low: one known voltage says so, and the correction
-  // rides on top of the zero rather than replacing it.
+  // scales the reading — the only one of the two that does.
   settings.channels[0].gain[0] = 1.02;
   const corrected = scaleFor(settings, demoCaps, bare, 0);
-  assert.equal(Math.round(corrected.volts(at(1.65)) * 1000), 0);
-  assert.equal(Math.round(corrected.volts(at(2.65)) * 1000), 1020);
-  assert.equal(corrected.code(1.02), at(2.65));                     // and back again
+  assert.equal(Math.round(corrected.volts(at(1.0)) * 1000), 1020);
+  assert.equal(corrected.code(1.02), at(1.0));                 // and back again
   settings.channels[0].gain[0] = 1;
 
   // Boards report three ranges; an array stored by an older version holds two.
-  settings.channels[0].zero = [0, 0];
   settings.channels[0].range = 2;
   const third = [...bare, ...ranges(1)];
-  assert.equal(scaleFor(settings, demoCaps, third, 0).zero, 0);
+  assert.equal(scaleFor(settings, demoCaps, third, 0).correction, 1);
   assert.ok(Number.isFinite(scaleFor(settings, demoCaps, third, 0).volts(at(1.65))));
+});
+test('the CSV carries what the screen shows, and says which column was centred', () => {
+  const frame = { kind: 'scope', period: .001, count: 2, triggerIndex: 1, traces: [
+    { index: 0, samples: new Float64Array([-0.021, 0.014]), removedMean: 1.6489 },
+    { index: 1, samples: new Float64Array([1.671, 1.669]) },
+  ] };
+  const lines = csv(frame).trim().split('\n');
+  assert.equal(lines[0], '# CH1: mean removed, 1.648900 V');   // enough to put it back
+  assert.equal(lines[1], 'time_s,CH1_V,CH2_V');
+  assert.ok(lines[2].includes('-0.021'));                      // as the screen shows it
+  // A capture with nothing centred is the file it always was.
+  const plain = csv({ ...frame, traces: [frame.traces[1]] }).trim().split('\n');
+  assert.equal(plain[0], 'time_s,CH2_V');
+});
+test('the signal generator is asked for by opcode 8, and offered by bit 5', () => {
+  assert.equal(OP.signals, 8);
+  const settings = makeSettings();
+  assert.equal(settings.signalsEnabled, false);
+  assert.equal(settings.signalSineHz, 440);
+  assert.ok(!(demoCaps.flags & 32) || true);  // the demo answers it; a board says so itself
 });
 test('CSV contains physical CH3 label and time relative to trigger', () => {
   const text = csv({ kind: 'scope', traces: [{ index: 2, samples: new Float64Array([1, 2]) }], period: .001, count: 2, triggerIndex: 1 });

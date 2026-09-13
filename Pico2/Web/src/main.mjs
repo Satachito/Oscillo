@@ -1,11 +1,11 @@
 import { USBInstrument } from './usb.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, SCALE_STEPS, fitScale } from './protocol.mjs';
+import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SCALE_STEPS, fitScale } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
-const NUMERIC_CONTROLS = { timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
-const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart']];
+const NUMERIC_CONTROLS = { 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart'], ['signals-enabled', 'signalsEnabled']];
 const STORAGE_KEY = 'pilyzer.settings.v1';
 // The front panel comes back the way it was left, the per-channel zero
 // included: it describes the wiring — the bias a front end adds — rather than
@@ -23,9 +23,13 @@ function loadSettings() {
     if (key === 'channels') for (const [index, channel] of defaults.channels.entries()) {
       const stored = saved.channels?.[index];
       if (stored) for (const [field, current] of Object.entries(channel)) {
-        if (field === 'zero' || field === 'gain') {
-          const idle = field === 'zero' ? 0 : 1;
-          if (Array.isArray(stored[field])) channel[field] = stored[field].map(v => Number.isFinite(v) ? v : idle);
+        if (field === 'gain') {
+          // One correction a range, and a missing one is no correction.
+          if (Array.isArray(stored.gain)) channel.gain = stored.gain.map(v => Number.isFinite(v) ? v : 1);
+        } else if (field === 'measuredBias') {
+          // A number once somebody has measured it, and null until then, so
+          // the shape check below would refuse whichever it is not.
+          if (Number.isFinite(stored.measuredBias)) channel.measuredBias = stored.measuredBias;
         } else if (accept(stored[field], current)) channel[field] = stored[field];
       }
     }
@@ -76,7 +80,7 @@ function channelControls() {
   $('channels').replaceChildren();
   for (let i = 0; i < caps().channels; i++) {
     const ch = settings.channels[i], el = document.createElement('div'); el.className = 'channel-card'; el.style.setProperty('--channel-color', COLORS[i]);
-    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><label class="field">Zero <span class="unit">V</span><input data-bias type="number" step="0.01" aria-label="CH${i + 1} zero volts"/></label><p class="hint">Input volts that read as 0 V — the bias a front end adds.</p><div class="channel-actions"><button class="zero-button" data-zero title="Ground this input and capture a trace first: what it reads becomes zero.">Zero here</button><button class="zero-button" data-afe>AFE bias</button></div><label class="field">Applied <span class="unit">V</span><input data-field="applied" type="number" step="0.1" aria-label="CH${i + 1} applied volts"/></label><p class="hint">A known voltage on the input. The divider's own 1% parts put the gain out by up to 2%, and Set gain takes the difference as the correction.</p><p class="hint" data-gain-note hidden></p><div class="channel-actions"><button class="zero-button" data-gain title="Put a known voltage on this input and capture a trace first.">Set gain</button><button class="zero-button" data-reset title="Clears this channel's zero and gain correction.">Reset</button></div>`;
+    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><label class="field">Bias <span class="unit">V</span><input data-bias type="number" step="0.01" aria-label="CH${i + 1} bias volts"/></label><p class="hint">Where the front end holds this input with nothing on it. Drawn as a dotted line; readings stay as the converter saw them.</p><p class="hint" data-bias-note hidden></p><div class="channel-actions"><button class="zero-button" data-zero title="Ground this input and capture a trace first: what it reads is the bias.">Measure</button><button class="zero-button" data-afe>Mid rail</button></div><label class="field">Applied <span class="unit">V</span><input data-field="applied" type="number" step="0.1" aria-label="CH${i + 1} applied volts"/></label><p class="hint">A known voltage on the input. Set gain measures the swing from the bias and corrects the gain by what it is short of this — so measure the bias first. The divider's 1% parts put it out by up to 2%.</p><p class="hint" data-gain-note hidden></p><div class="channel-actions"><button class="zero-button" data-gain title="Put a known steady voltage on this input and capture a trace first.">Set gain</button><button class="zero-button" data-reset title="Clears this channel's bias and gain correction.">Reset</button></div>`;
     const range = el.querySelector('[data-field=range]'); frontEnd().forEach((r, j) => range.add(option(j, r.name))); range.disabled = frontEnd().length < 2;
     const scale = el.querySelector('[data-field=scale]');
     SCALE_STEPS.forEach(v => scale.add(option(v, fmt(v, 'V'))));
@@ -101,36 +105,60 @@ function channelControls() {
       });
     }
     const bias = el.querySelector('[data-bias]');
-    bias.value = Number((ch.zero[ch.range] ?? 0).toPrecision(6));
+    bias.value = Number((ch.bias ?? 0).toPrecision(6));
     bias.addEventListener('change', () => {
       const value = Number(bias.value);
-      if (!Number.isFinite(value)) { bias.value = Number((ch.zero[ch.range] ?? 0).toPrecision(6)); return; }
-      ch.zero[ch.range] = value; synchronize(); changed();
+      if (!Number.isFinite(value)) { bias.value = Number((ch.bias ?? 0).toPrecision(6)); return; }
+      ch.bias = value; synchronize(); changed();
     });
     const r = frontEnd()[ch.range] || frontEnd()[0];
     const midRail = midRailVolts(caps(), r);
     const afe = el.querySelector('[data-afe]');
-    afe.title = `Sets the zero to ${fmt(midRail, 'V')}, the input that reads mid scale: a passive front end biasing this input to the middle.`;
-    afe.onclick = () => { ch.zero[ch.range] = Number(midRail.toPrecision(6)); synchronize(); changed(); };
+    afe.title = `Writes ${fmt(midRail, 'V')}, the input that reads mid scale: where a passive front end holds it.`;
+    afe.onclick = () => { ch.bias = Number(midRail.toPrecision(6)); synchronize(); changed(); };
 
+    // Both buttons read one number off the capture on screen, so both refuse a
+    // capture that is moving: a bias or a gain measured off a waveform is a
+    // number about the instant the button was pressed.
+    const steady = trace => trace.stats.pp <= Math.abs(scaleFor(settings, caps(), frontEnd(), i).span) * 0.01;
     el.querySelector('[data-zero]').onclick = () => {
       const trace = frame?.traces?.find(t => t.index === i); if (!trace) { showError(`Capture CH${i + 1} first.`); return; }
-      ch.zero[ch.range] += trace.stats.mean / ch.probe / (ch.gain?.[ch.range] || 1); synchronize(); changed();
+      if (!steady(trace)) { showError(`CH${i + 1} has a signal on the input. Ground it, or switch the signal off, and capture again.`); return; }
+      ch.measuredBias = trace.stats.mean; synchronize(); changed();
     };
     const gainButton = el.querySelector('[data-gain]');
     gainButton.onclick = () => {
       const trace = frame?.traces?.find(t => t.index === i); if (!trace) { showError(`Capture CH${i + 1} first.`); return; }
       const applied = Number(ch.applied);
       if (!Number.isFinite(applied) || Math.abs(applied) < 1e-6) { showError('Say what voltage is on the input first.'); return; }
-      if (Math.abs(trace.stats.mean) < 1e-9) { showError(`CH${i + 1} is reading nothing to correct.`); return; }
-      ch.gain[ch.range] = (ch.gain[ch.range] || 1) * applied / trace.stats.mean;
+      if (!steady(trace)) { showError(`CH${i + 1} is not sitting still — the gain is measured from one reading, so it needs a steady DC voltage on the input, not a waveform.`); return; }
+      const swing = trace.stats.mean - referenceBias(ch);
+      if (Math.abs(swing) < 1e-9) { showError(`CH${i + 1} reads its bias, so there is nothing to correct.`); return; }
+      const proposed = (ch.gain[ch.range] || 1) * applied / swing;
+      // The dividers are 1% parts and the reference is a per cent of its own;
+      // a tenth is not a resistor being out, it is the wrong reading.
+      if (Math.abs(proposed - 1) > 0.10) {
+        showError(`That would correct CH${i + 1}'s gain by ${((proposed - 1) * 100).toFixed(0)} %. A divider of 1% parts is out by two, so check that ${fmt(applied, 'V')} really is on the input and that the bias has been measured.`);
+        return;
+      }
+      ch.gain[ch.range] = proposed;
       synchronize(); changed();
     };
+    const measured = el.querySelector('[data-bias-note]');
+    measured.hidden = ch.measuredBias === null || ch.measuredBias === undefined;
+    if (!measured.hidden) {
+      const error = ch.measuredBias - (ch.bias ?? 0);
+      measured.textContent = `Measured ${fmt(ch.measuredBias, 'V')} — ${fmt(Math.abs(error), 'V')} ${error < 0 ? 'below' : 'above'} it, marked on the right.`;
+      measured.style.color = COLORS[i];
+    }
     const correction = ch.gain?.[ch.range] || 1;
     const note = el.querySelector('[data-gain-note]');
     note.hidden = Math.abs(correction - 1) < 1e-9;
-    note.textContent = `Gain corrected by ${((correction - 1) * 100).toFixed(2)} %.`;
-    el.querySelector('[data-reset]').onclick = () => { ch.zero = [0, 0]; ch.gain = [1, 1]; synchronize(); changed(); };
+    note.textContent = `Gain corrected by ${((correction - 1) * 100).toFixed(2)} % — readings are scaled by it.`;
+    note.style.color = COLORS[i];
+    el.querySelector('[data-reset]').onclick = () => {
+      ch.bias = 0; ch.measuredBias = null; ch.gain = [1, 1]; synchronize(); changed();
+    };
     $('channels').append(el);
   }
   calibrationButtons();
@@ -180,6 +208,10 @@ function synchronize() {
   $('level').disabled = logic; $('xy').disabled = settings.mode !== 'scope' || active.length < 2;
   $('test-controls').hidden = instrument && !(caps().flags & 2);
   $('test-frequency').disabled = !settings.testEnabled;
+  // The board says whether it has one: a PL2407AFE switches its ranges on the
+  // pins this would use, and answers that it has none.
+  $('signal-controls').hidden = !instrument || !(caps().flags & 32);
+  $('signal-sine').disabled = !settings.signalsEnabled;
   $('lpf').disabled = instrument && !(caps().flags & 8);
   for (const op of $('record').options) op.disabled = Number(op.value) > caps().maxRecord;
   for (const op of $('logic-rate').options) op.disabled = Number(op.value) > caps().logicClock;

@@ -78,10 +78,14 @@ export function csv(frame) {
     });
     return [header.join(','), ...rows].join('\n') + '\n';
   }
-  // Remove mean is a display choice; the file holds the voltages as measured.
+  // The file is what the screen shows: centred where Remove mean is on, as it
+  // came off the converter where it is not. A centred column looks like any
+  // other column once the file is opened somewhere else, so the ones that had
+  // their mean taken out say so, and say how much — enough to put it back.
+  const notes = frame.traces.filter(t => t.removedMean).map(t => `# CH${t.index + 1}: mean removed, ${t.removedMean.toPrecision(7)} V`);
   const rows = ['time_s,' + frame.traces.map(t => `CH${t.index + 1}_V`).join(',')];
-  for (let i = 0; i < frame.count; i++) rows.push([((i - frame.triggerIndex) * frame.period).toPrecision(10), ...frame.traces.map(t => (t.samples[i] + (t.removedMean || 0)).toPrecision(9))].join(','));
-  return rows.join('\n') + '\n';
+  for (let i = 0; i < frame.count; i++) rows.push([((i - frame.triggerIndex) * frame.period).toPrecision(10), ...frame.traces.map(t => t.samples[i].toPrecision(9))].join(','));
+  return [...notes, ...rows].join('\n') + '\n';
 }
 export function fmt(value, unit = '', digits = 3) {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—';

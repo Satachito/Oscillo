@@ -1,6 +1,6 @@
 // PiLyzer protocol v1. Keep this in step with ../../docs/protocol.md.
 export const USB_IDS = { vendorId: 0x1209, productId: 0x0001 };
-export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, inputRanges: 7, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
+export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, inputRanges: 7, signals: 8, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
 export const MAX_PAYLOAD = 8192;
 export const view = bytes => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 export function request(opcode, sequence, payload = new Uint8Array()) {
@@ -73,22 +73,27 @@ export const fitScale = scale => {
 // of the converter's range leaves on a grounded input. A board that reports its
 // own offset has taken it out already, and this comes back at about zero.
 export const midRailVolts = (caps, range) => (caps.reference / 2 - range.offset) / range.gain;
+// What this channel reads with nothing on the input: measured if anybody has,
+// otherwise what the bias was set to. Both calibrations are measured from it.
+export const referenceBias = ch => ch.measuredBias ?? ch.bias ?? 0;
 // `frontEnd` is the instrument's own range list, from inputRanges() or from the
 // fallback table. Nothing below this line knows what board it is talking to.
 export function scaleFor(settings, caps, frontEnd, channel) {
   const ch = settings.channels[channel], r = frontEnd[ch.range] || frontEnd[0];
-  const zero = ch.zero?.[ch.range] || 0;
   // The divider's own tolerance: 1% parts put the gain out by up to 2%, which
-  // no range descriptor can know. One known voltage measures it away.
+  // no range descriptor can know. One known voltage measures it away. There is
+  // deliberately no offset beside it — what the converter saw is what the
+  // screen shows, and a front end's bias is drawn as a line rather than taken
+  // out of the numbers.
   const correction = ch.gain?.[ch.range] || 1;
-  const volts = code => ((code / caps.fullScale * caps.reference - r.offset) / r.gain - zero) * correction * ch.probe;
-  const code = volts => Math.max(0, Math.min(caps.fullScale, Math.round(((volts / ch.probe / correction + zero) * r.gain + r.offset) / caps.reference * caps.fullScale)));
+  const volts = code => (code / caps.fullScale * caps.reference - r.offset) / r.gain * correction * ch.probe;
+  const code = volts => Math.max(0, Math.min(caps.fullScale, Math.round((volts / ch.probe / correction * r.gain + r.offset) / caps.reference * caps.fullScale)));
   const low = volts(0), high = volts(caps.fullScale), span = high - low;
   // Zero is the centre line on every range. A range that reaches only one side
   // of zero used to centre on its own midpoint so that it filled the grid, and
   // the cost was a centre line reading 1.65 V: a trace at 3.3 V then looks
   // like it is at 1.65 unless every division is counted from the legend.
-  return { volts, code, low, high, span, centre: 0, zero, correction, r };
+  return { volts, code, low, high, span, centre: 0, correction, r };
 }
 // A trigger level sitting on the rail never fires, which looks exactly like a
 // broken trigger rather than a level left behind by a range change. Keep it
@@ -165,4 +170,4 @@ export function splitAnalog(bytes, channels) {
   const v = view(bytes), count = bytes.length / channels / 2;
   return Array.from({ length: channels }, (_, c) => Float64Array.from({ length: count }, (_, i) => v.getUint16((i * channels + c) * 2, true)));
 }
-export const demoCaps = Object.freeze({ channels: 3, bits: 12, logicChannels: 8, ranges: 2, clock: 48000000, minCycles: 97, maxRecord: 16384, maxPretrigger: 16383, logicClock: 150000000, logicMaxRecord: 65536, logicMaxPretrigger: 65535, reference: 3.3, flags: 11, fullScale: 65520 });
+export const demoCaps = Object.freeze({ channels: 3, bits: 12, logicChannels: 8, ranges: 2, clock: 48000000, minCycles: 97, maxRecord: 16384, maxPretrigger: 16383, logicClock: 150000000, logicMaxRecord: 65536, logicMaxPretrigger: 65535, reference: 3.3, flags: 11 | 32, fullScale: 65520 });

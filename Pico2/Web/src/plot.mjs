@@ -72,13 +72,49 @@ export class Plot {
     c.stroke();
   }
   scope(c, box) {
+    this.bias(c, box);
     for (const trace of this.frame.traces) this.trace(c, trace.samples, box, this.mapping(trace.index, box).y, COLORS[trace.index]);
     if (this.settings.trigger !== 0) {
       const x = box.x + this.frame.triggerIndex / Math.max(this.frame.count - 1, 1) * box.w;
-      c.strokeStyle = '#a3cd87'; c.lineWidth = .8; c.setLineDash([3, 5]); c.beginPath(); c.moveTo(x, box.y); c.lineTo(x, box.y + box.h); c.stroke();
+      c.strokeStyle = '#a3cd87'; c.lineWidth = .8; c.setLineDash([3, 5]); c.beginPath(); c.moveTo(x, box.y); c.lineTo(x, box.y + box.h); c.stroke(); c.setLineDash([]);
+      // An arrow on the left edge rather than a line across the screen: the
+      // bias lines are horizontal too, and two dashed rules at similar heights
+      // are hard to tell apart. It marks a height without covering the trace.
       const t = this.frame.traces.find(t => t.index === this.settings.source) || this.frame.traces[0];
       const y = this.mapping(t.index, box).y(this.settings.level - t.removedMean);
-      c.beginPath(); c.moveTo(box.x, y); c.lineTo(box.x + box.w, y); c.stroke(); c.setLineDash([]);
+      this.arrow(c, box.x, Math.min(Math.max(y, box.y + 5), box.y + box.h - 5), 1,
+                 '#a3cd87', y < box.y || y > box.y + box.h);
+    }
+  }
+  /// A triangle pointing `direction` (1 right, -1 left), filled while the thing
+  /// it marks is on screen and hollow when it is only pointing the way.
+  arrow(c, x, y, direction, colour, hollow) {
+    c.beginPath();
+    c.moveTo(x, y - 5); c.lineTo(x + 9 * direction, y); c.lineTo(x, y + 5); c.closePath();
+    if (hollow) { c.strokeStyle = colour; c.lineWidth = 1; c.stroke(); }
+    else { c.fillStyle = colour; c.fill(); }
+  }
+  // Where each channel's front end holds its input with nothing on it, and —
+  // once somebody has measured it — what it actually read. The gap between the
+  // two is that channel's offset error. Neither is taken out of a reading.
+  bias(c, box) {
+    for (const trace of this.frame.traces) {
+      const channel = this.settings.channels[trace.index], map = this.mapping(trace.index, box);
+      if (channel.bias) {
+        const y = map.y(channel.bias);
+        if (y >= box.y && y <= box.y + box.h) {
+          c.strokeStyle = COLORS[trace.index]; c.globalAlpha = .55; c.lineWidth = 1;
+          c.setLineDash([3, 3]); c.beginPath(); c.moveTo(box.x, y); c.lineTo(box.x + box.w, y); c.stroke();
+          c.setLineDash([]); c.globalAlpha = .9; c.textAlign = 'right'; c.fillStyle = COLORS[trace.index];
+          c.fillText(`CH${trace.index + 1} bias`, box.x + box.w - 8, Math.max(y - 4, box.y + 9));
+          c.globalAlpha = 1; c.textAlign = 'left';
+        }
+      }
+      if (channel.measuredBias !== null && channel.measuredBias !== undefined) {
+        const y = map.y(channel.measuredBias);
+        this.arrow(c, box.x + box.w, Math.min(Math.max(y, box.y + 5), box.y + box.h - 5), -1,
+                   COLORS[trace.index], y < box.y || y > box.y + box.h);
+      }
     }
   }
   xy(c, box) {

@@ -4,11 +4,12 @@ export const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 // Points kept before the oldest are dropped: at half a second that is nearly
 // three hours, at five minutes a little over two months.
 export const LOG_CAPACITY = 20000;
-export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, zero: [0, 0], gain: [1, 1], applied: 1 })), testEnabled: true, testFrequency: 1000, logInterval: .5, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
+export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, bias: 0, measuredBias: null, gain: [1, 1], applied: 1 })), testEnabled: true, testFrequency: 1000, signalsEnabled: false, signalSineHz: 440, logInterval: .5, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
 const tone = (channel, t) => channel === 0 ? 2 * Math.sin(2 * Math.PI * 1000 * t) + .02 * Math.sin(2 * Math.PI * 3000 * t) : channel === 1 ? (Math.sin(2 * Math.PI * 500 * t) >= 0 ? 1 : -1) + .25 : 1.5 * Math.sin(2 * Math.PI * 194 * t);
 export class DemoInstrument {
   constructor() { this.demo = true; this.identity = { name: 'Demo signal', board: 1, firmware: '1.7' }; this.caps = demoCaps; this.ranges = ranges(1); }
   async abort() {} async close() {} async setRange() {} async setTest(on, hz) { return hz; }
+  async setSignals(on, hz) { return on ? hz : 0; }
 }
 function columnsToFrame(columns, request, settings, instrument, actual, triggered, triggerIndex) {
   const traces = request.active.map((index, slot) => {
@@ -82,6 +83,7 @@ export class Acquisition {
       await instrument.abort();
       for (let c = 0; c < instrument.caps.channels; c++) await instrument.setRange(c, instrument.ranges[snapshot.channels[c].range]?.switchPosition ?? 0);
       if (instrument.caps.flags & 2) await instrument.setTest(snapshot.testEnabled, snapshot.testFrequency);
+      if (instrument.caps.flags & 32) await instrument.setSignals(snapshot.signalsEnabled, snapshot.signalSineHz);
     });
     return this.pending;
   }
@@ -92,6 +94,7 @@ export class Acquisition {
       await instrument.abort();
       for (let c = 0; c < instrument.caps.channels; c++) await instrument.setRange(c, instrument.ranges[settings.channels[c].range]?.switchPosition ?? 0);
       if (instrument.caps.flags & 2) await instrument.setTest(settings.testEnabled, settings.testFrequency);
+      if (instrument.caps.flags & 32) await instrument.setSignals(settings.signalsEnabled, settings.signalSineHz);
       let prepared;
       if (!instrument.demo && settings.mode !== 'meter') {
         prepared = settings.mode === 'logic'
@@ -115,7 +118,7 @@ export class Acquisition {
   async capture(instrument, settings, actual, token) {
     if (settings.mode === 'meter') {
       let values;
-      if (instrument.demo) values = Array.from({ length: instrument.caps.channels }, (_, c) => (tone(c, performance.now() / 1000) - (settings.channels[c].zero[settings.channels[c].range] ?? 0)) * (settings.channels[c].gain?.[settings.channels[c].range] ?? 1) * settings.channels[c].probe);
+      if (instrument.demo) values = Array.from({ length: instrument.caps.channels }, (_, c) => tone(c, performance.now() / 1000) * (settings.channels[c].gain?.[settings.channels[c].range] ?? 1) * settings.channels[c].probe);
       else {
         const bytes = await instrument.command(OP.sample, new Uint8Array([64, 0]));
         if (bytes.length !== instrument.caps.channels * 2) throw new Error('Incomplete meter reading');
