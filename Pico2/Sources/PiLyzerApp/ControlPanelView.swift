@@ -310,8 +310,6 @@ struct ControlPanelView: View {
 struct VerticalSection: View {
     @ObservedObject var model: ScopeModel
     let channel: Int
-    /// What is really on the input, for the second calibration point.
-    @State private var appliedVolts = 1.0
 
     /// The zero belongs to the range that is selected, so the field follows
     /// the Range picker: a front end that biases one range biases them all,
@@ -376,6 +374,8 @@ struct VerticalSection: View {
 
             Toggle("Remove mean (software AC)", isOn: binding.removesMean)
 
+            // Each button sits under the field it writes, and Reset — which
+            // clears both of them — stands on its own.
             HStack(spacing: 6) {
                 Text("Zero").font(.caption)
                 Spacer(minLength: 6)
@@ -385,40 +385,41 @@ struct VerticalSection: View {
                     .frame(width: 80)
                 Text("V").font(.caption).foregroundStyle(.secondary)
             }
-            Text("Input volts that read as zero — the bias a front end adds. "
-                 + "Type it, or ground the input and measure it.")
+            Text("Input volts that read as zero — the bias a front end adds.")
                 .font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                Button("Zero here") { model.calibrateZero() }
+                    .help("Ground all inputs first: what they read now becomes zero.")
+                    .disabled(!model.isConnected)
+                Button("AFE bias") { zeroVolts.wrappedValue = midRailVolts }
+                    .help("Writes \(Format.voltage(midRailVolts)), the input that reads mid "
+                          + "scale: a passive front end biasing this input to the middle.")
+            }
 
             HStack(spacing: 6) {
                 Text("Applied").font(.caption)
                 Spacer(minLength: 6)
-                TextField("", value: $appliedVolts,
+                TextField("", value: binding.appliedVolts,
                           format: .number.precision(.fractionLength(0...4)))
                     .multilineTextAlignment(.trailing)
                     .frame(width: 80)
                 Text("V").font(.caption).foregroundStyle(.secondary)
             }
-            Text("The gain is the divider's, and 1% parts put it out by up to 2%. "
-                 + "Put a known voltage in, say what it is, and Set gain corrects the rest.")
+            Text("A known voltage on the input. The divider's own 1% parts put the gain "
+                 + "out by up to 2%, and Set gain takes the difference as the correction.")
                 .font(.caption).foregroundStyle(.secondary)
-
             HStack(spacing: 6) {
-                Button("AFE bias") { zeroVolts.wrappedValue = midRailVolts }
-                    .help("Sets the zero to \(Format.voltage(midRailVolts)), the input that reads "
-                          + "mid scale: a passive front end biasing this input to the middle.")
-                Button("Zero here") { model.calibrateZero() }
-                    .help("Ground all inputs first: what they read now becomes zero.")
-            }
-            .disabled(!model.isConnected)
-
-            HStack(spacing: 6) {
-                Button("Set gain") { model.calibrateGain(channel: channel, appliedVolts: appliedVolts) }
-                    .help("Reads this input now and takes the difference from the applied "
-                          + "voltage as the channel's gain error.")
-                    .disabled(abs(appliedVolts) < 1e-6)
+                Button("Set gain") {
+                    model.calibrateGain(channel: channel,
+                                        appliedVolts: model.settings.channels[channel].appliedVolts)
+                }
+                .help("Reads this input now and takes the difference from the applied voltage.")
+                .disabled(!model.isConnected
+                          || abs(model.settings.channels[channel].appliedVolts) < 1e-6)
+                Spacer()
                 Button("Reset") { model.resetCalibration() }
+                    .help("Clears the zero and the gain correction on every channel.")
             }
-            .disabled(!model.isConnected)
 
             if model.settings.channels[channel].calibration(forRange:
                 model.settings.channels[channel].rangeIndex).scale != 1 {

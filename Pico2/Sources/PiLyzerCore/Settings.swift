@@ -23,10 +23,15 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     /// the rest of the zooming is done here.
     public var voltsPerDivision: Double
     public var calibration: [ChannelCalibration]
+    /// What is really on the input, for the second calibration point. Kept
+    /// with the channel because the voltage someone calibrates against is
+    /// usually the same one next time.
+    public var appliedVolts: Double
 
     public init(isEnabled: Bool = true, rangeIndex: Int = 0, probeAttenuation: Double = 1,
                 positionDivisions: Double = 0, removesMean: Bool = false,
-                voltsPerDivision: Double = 0, calibration: [ChannelCalibration] = []) {
+                voltsPerDivision: Double = 0, calibration: [ChannelCalibration] = [],
+                appliedVolts: Double = 1) {
         self.isEnabled = isEnabled
         self.rangeIndex = rangeIndex
         self.probeAttenuation = probeAttenuation
@@ -34,6 +39,33 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         self.removesMean = removesMean
         self.voltsPerDivision = voltsPerDivision
         self.calibration = calibration
+        self.appliedVolts = appliedVolts
+    }
+
+    /// A panel saved by an older version has fewer keys than this one, and a
+    /// channel that fails to decode takes every other channel's calibration
+    /// with it — the whole array falls back at once. So each field stands on
+    /// its own default.
+    private enum CodingKeys: String, CodingKey {
+        case isEnabled, rangeIndex, probeAttenuation, positionDivisions
+        case removesMean, voltsPerDivision, calibration, appliedVolts
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let fallback = AnalogChannelSettings()
+        isEnabled = try values.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? fallback.isEnabled
+        rangeIndex = try values.decodeIfPresent(Int.self, forKey: .rangeIndex) ?? fallback.rangeIndex
+        probeAttenuation = try values.decodeIfPresent(Double.self, forKey: .probeAttenuation)
+            ?? fallback.probeAttenuation
+        positionDivisions = try values.decodeIfPresent(Double.self, forKey: .positionDivisions)
+            ?? fallback.positionDivisions
+        removesMean = try values.decodeIfPresent(Bool.self, forKey: .removesMean) ?? fallback.removesMean
+        voltsPerDivision = try values.decodeIfPresent(Double.self, forKey: .voltsPerDivision)
+            ?? fallback.voltsPerDivision
+        calibration = try values.decodeIfPresent([ChannelCalibration].self, forKey: .calibration)
+            ?? fallback.calibration
+        appliedVolts = try values.decodeIfPresent(Double.self, forKey: .appliedVolts) ?? fallback.appliedVolts
     }
 
     /// What a division is worth. A channel that has never been set lands on
