@@ -38,7 +38,7 @@ struct ThreeChannelTests {
     func oldDevice() {
         var settings = ScopeSettings()
         settings.ensureAnalogChannels(3)
-        settings.channels[2].setCalibration(.init(zero: 0.1, scale: 1.02), forRange: 0)
+        settings.channels[2].setCalibration(.init(scale: 1.02), forRange: 0)
         var caps = SimulatedInstrument().capabilities
         caps.analogChannels = 2
         let config = settings.analogConfiguration(capabilities: caps, scales: [])

@@ -75,7 +75,7 @@ struct PiLyzerApp: App {
                     .disabled(!model.isConnected || model.isRunning)
                 Button("Clear") { model.clear() }
                 Divider()
-                Button("Calibrate Zero") { model.calibrateZero() }
+                Button("Measure Bias") { model.measureBias() }
                     .disabled(!model.isConnected)
                 Button("Reset Calibration") { model.resetCalibration() }
             }

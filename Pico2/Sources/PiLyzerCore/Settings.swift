@@ -27,11 +27,15 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     /// with the channel because the voltage someone calibrates against is
     /// usually the same one next time.
     public var appliedVolts: Double
+    /// Where the front end sits with nothing on the input — mid rail on a
+    /// passive one. The screen draws a line there rather than subtracting it,
+    /// so what is displayed is always what arrived at the converter.
+    public var biasVolts: Double
 
     public init(isEnabled: Bool = true, rangeIndex: Int = 0, probeAttenuation: Double = 1,
                 positionDivisions: Double = 0, removesMean: Bool = false,
                 voltsPerDivision: Double = 0, calibration: [ChannelCalibration] = [],
-                appliedVolts: Double = 1) {
+                appliedVolts: Double = 1, biasVolts: Double = 0) {
         self.isEnabled = isEnabled
         self.rangeIndex = rangeIndex
         self.probeAttenuation = probeAttenuation
@@ -40,6 +44,7 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         self.voltsPerDivision = voltsPerDivision
         self.calibration = calibration
         self.appliedVolts = appliedVolts
+        self.biasVolts = biasVolts
     }
 
     /// A panel saved by an older version has fewer keys than this one, and a
@@ -48,7 +53,7 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     /// its own default.
     private enum CodingKeys: String, CodingKey {
         case isEnabled, rangeIndex, probeAttenuation, positionDivisions
-        case removesMean, voltsPerDivision, calibration, appliedVolts
+        case removesMean, voltsPerDivision, calibration, appliedVolts, biasVolts
     }
 
     public init(from decoder: Decoder) throws {
@@ -66,6 +71,19 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         calibration = try values.decodeIfPresent([ChannelCalibration].self, forKey: .calibration)
             ?? fallback.calibration
         appliedVolts = try values.decodeIfPresent(Double.self, forKey: .appliedVolts) ?? fallback.appliedVolts
+        if let bias = try values.decodeIfPresent(Double.self, forKey: .biasVolts) {
+            biasVolts = bias
+        } else {
+            // A bias typed into an older version lived in the calibration it
+            // was subtracted through, so it is carried across rather than lost.
+            let legacy = (try? values.decodeIfPresent([LegacyCalibration].self, forKey: .calibration)) ?? nil
+            biasVolts = legacy?.first(where: { $0.zero != 0 })?.zero ?? fallback.biasVolts
+        }
+    }
+
+    /// Only the field that moved; the gain beside it decodes as it always did.
+    private struct LegacyCalibration: Decodable {
+        var zero: Double = 0
     }
 
     /// What a division is worth. A channel that has never been set lands on
@@ -132,11 +150,9 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         setCalibration(correction, forRange: index)
     }
 
-    public mutating func calibrateZero(to uncalibratedVolts: Double, forRange index: Int) {
-        var correction = calibration(forRange: index)
-        correction.zero = uncalibratedVolts
-        setCalibration(correction, forRange: index)
-    }
+    /// Where the front end holds this input with nothing on it, in the volts
+    /// the screen shows. Drawn as a line; never taken out of a reading.
+    public mutating func setBias(_ volts: Double) { biasVolts = volts }
 
     public func scale(reference: Double, fullScale: Double, ranges: [InputRange]) -> VoltageScale {
         let index = min(max(rangeIndex, 0), ranges.count - 1)

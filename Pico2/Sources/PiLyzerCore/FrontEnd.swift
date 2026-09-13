@@ -83,35 +83,24 @@ public enum FrontEnd {
     }
 }
 
-/// Per channel, per range: the correction a two-point calibration leaves
-/// behind. The resistors are ordinary 1% parts, so this is where their
-/// tolerance goes instead of into a trimmer.
+/// Per channel, per range: the gain correction a known voltage leaves behind.
+/// The resistors are ordinary 1% parts, so this is where their tolerance goes
+/// instead of into a trimmer.
+///
+/// There is deliberately no offset here. What the converter saw is what the
+/// screen shows — a front end's bias is drawn as a line rather than taken out
+/// of the numbers, so a reading can always be checked against the pin.
 public struct ChannelCalibration: Codable, Equatable, Sendable {
-    /// Volts at the input that read as zero.
-    public var zero: Double
     /// Correction to the nominal gain.
     public var scale: Double
 
-    public init(zero: Double = 0, scale: Double = 1) {
-        self.zero = zero
+    public init(scale: Double = 1) {
         self.scale = scale
     }
 
-    public var isDefault: Bool { zero == 0 && scale == 1 }
+    public var isDefault: Bool { scale == 1 }
 
-    /// Solves for both constants from two measured points.
-    ///
-    /// `low` and `high` are what the instrument read with `lowTrue` and
-    /// `highTrue` actually applied.
-    public static func from(low: Double, lowTrue: Double,
-                            high: Double, highTrue: Double) -> ChannelCalibration? {
-        let measuredSpan = high - low
-        guard abs(measuredSpan) > 1e-9 else { return nil }
-        let scale = (highTrue - lowTrue) / measuredSpan
-        return ChannelCalibration(zero: low - lowTrue / scale, scale: scale)
-    }
-
-    public func apply(_ volts: Double) -> Double { (volts - zero) * scale }
+    public func apply(_ volts: Double) -> Double { volts * scale }
 }
 
 /// Converts converter readings to volts at the probe tip.
@@ -137,8 +126,7 @@ public struct VoltageScale: Equatable, Sendable {
         calibration.apply(uncalibratedVolts(code: code)) * probe
     }
 
-    /// Input volts before calibration and probe multiplication. A grounded
-    /// reading in this space replaces ChannelCalibration.zero directly.
+    /// Input volts before the gain correction and the probe multiplication.
     public func uncalibratedVolts(code: Double) -> Double {
         (code / fullScale * reference - range.offset) / range.gain
     }
@@ -146,7 +134,7 @@ public struct VoltageScale: Equatable, Sendable {
     /// The reading a given input voltage would produce, which is how the
     /// trigger level reaches the instrument.
     public func code(forVolts volts: Double) -> Double {
-        let uncorrected = volts / probe / calibration.scale + calibration.zero
+        let uncorrected = volts / probe / calibration.scale
         let converter = uncorrected * range.gain + range.offset
         return converter / reference * fullScale
     }

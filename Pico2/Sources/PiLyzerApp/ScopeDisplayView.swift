@@ -20,6 +20,7 @@ struct ScopeDisplayView: View {
                 } else {
                     let grid = ScopeGrid(columns: columns, rows: rows)
                     grid.draw(in: &context, size: size)
+                    drawBias(&context, size: size)
                     drawTraces(&context, size: size)
                     drawTriggerMarkers(&context, size: size)
                     drawVerticalScale(&context, size: size)
@@ -82,6 +83,36 @@ struct ScopeDisplayView: View {
         // half of the screen.
         let divisions = (volts - centre(channel)) / perDivision + position
         return height / 2 - CGFloat(divisions) * height / CGFloat(rows)
+    }
+
+    /// Where each channel's front end holds its input with nothing on it.
+    ///
+    /// The readings are what the converter saw, bias and all — a number on
+    /// screen can always be checked against the pin — so the bias is drawn
+    /// rather than subtracted, and a signal is read against this line.
+    private func drawBias(_ context: inout GraphicsContext, size: CGSize) {
+        for channel in model.enabledAnalogChannels where channel < model.settings.channels.count {
+            let bias = model.settings.channels[channel].biasVolts
+            guard bias != 0 else { continue }
+            let y = self.y(bias, channel: channel, height: size.height)
+            guard y.isFinite, y >= 0, y <= size.height else { continue }
+            var line = Path()
+            line.move(to: CGPoint(x: 0, y: y))
+            line.addLine(to: CGPoint(x: size.width, y: y))
+            context.stroke(line, with: .color(Theme.channelColor(channel).opacity(0.55)),
+                           style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            let label = Text("CH\(channel + 1) bias")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(Theme.channelColor(channel).opacity(0.9))
+            let measured = context.resolve(label).measure(in: CGSize(width: 200, height: 20))
+            let centre = CGPoint(x: size.width - 8 - measured.width / 2, y: max(y - 9, 7))
+            context.fill(Path(roundedRect: CGRect(x: centre.x - measured.width / 2 - 2,
+                                                  y: centre.y - measured.height / 2 - 1,
+                                                  width: measured.width + 4,
+                                                  height: measured.height + 2), cornerRadius: 2),
+                         with: .color(Theme.screen.opacity(0.8)))
+            context.draw(label, at: centre)
+        }
     }
 
     /// The voltage scale down the left edge, every second line.

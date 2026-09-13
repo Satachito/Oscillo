@@ -84,7 +84,7 @@ struct ReviewRegressionTests {
         settings.channels[0].isEnabled = false
         settings.channels[1].rangeIndex = 1
         settings.channels[1].probeAttenuation = 10
-        settings.channels[1].setCalibration(ChannelCalibration(zero: 0.025, scale: 1.04), forRange: 1)
+        settings.channels[1].setCalibration(ChannelCalibration(scale: 1.04), forRange: 1)
         settings.trigger.levelVolts = 1
         let scales = settings.channels.map {
             $0.scale(reference: capabilities.referenceVolts,
@@ -96,7 +96,7 @@ struct ReviewRegressionTests {
         #expect(abs(scales[1].volts(config.triggerLevel) - 1) < 0.002)
     }
 
-    @Test("Repeated zero calibration replaces the offset in input units")
+    @Test("Measuring the bias records it without moving the reading")
     func repeatedZero() throws {
         let device = SimulatedInstrument()
         device.noise = 0
@@ -109,28 +109,30 @@ struct ReviewRegressionTests {
         var settings = ScopeSettings(mode: .meter)
         settings.ensureAnalogChannels(device.capabilities.analogChannels)
         settings.channels[0].probeAttenuation = 10
-        settings.channels[0].setCalibration(ChannelCalibration(zero: 0.1, scale: 1.04), forRange: 0)
-        settings.channels[0].setCalibration(ChannelCalibration(zero: 0.2, scale: 0.98), forRange: 1)
+        settings.channels[0].setCalibration(ChannelCalibration(scale: 1.04), forRange: 0)
+        settings.channels[0].setCalibration(ChannelCalibration(scale: 0.98), forRange: 1)
         engine.connect(to: .simulator, settings: settings)
         defer { engine.disconnect() }
         try #require(ready.wait(timeout: .now() + 2) == .success)
         for _ in 0..<2 {
             let zero = DispatchSemaphore(value: 0)
             var values: [Double] = []
-            engine.calibrateZero { values = $0; zero.signal() }
+            engine.measureBias { values = $0; zero.signal() }
             try #require(zero.wait(timeout: .now() + 2) == .success)
-            #expect(abs(values[0] - 0.025) < 0.01)
-            for index in values.indices {
-                settings.channels[index].calibrateZero(to: values[index], forRange: 0)
-            }
+            // The probe is 10:1 and the gain correction 1.04, so the bias is
+            // recorded in the volts the panel draws, not converter volts.
+            #expect(abs(values[0] - 0.025 * 10 * 1.04) < 0.05)
+            for index in values.indices { settings.channels[index].setBias(values[index]) }
             engine.update(settings: settings)
             let read = DispatchSemaphore(value: 0)
             engine.readNow { values = $0; read.signal() }
             try #require(read.wait(timeout: .now() + 2) == .success)
-            #expect(values.allSatisfy { abs($0) < 1e-9 })
+            // Measuring it again reads the same thing: recording a bias does
+            // not move what the converter reports.
+            #expect(abs(values[0] - settings.channels[0].biasVolts) < 1e-9)
         }
         #expect(settings.channels[0].calibration(forRange: 0).scale == 1.04)
-        #expect(settings.channels[0].calibration(forRange: 1) == ChannelCalibration(zero: 0.2, scale: 0.98))
+        #expect(settings.channels[0].calibration(forRange: 1) == ChannelCalibration(scale: 0.98))
     }
 }
 
@@ -156,7 +158,7 @@ struct SpectrumHistoryRegressionTests {
         changed.channels[0].isEnabled = false
         #expect(!changed.hasSameSpectrumInput(as: original))
         changed = original
-        changed.channels[0].calibrateZero(to: 0.025, forRange: 0)
+        changed.channels[0].setCalibration(ChannelCalibration(scale: 1.02), forRange: 0)
         #expect(!changed.hasSameSpectrumInput(as: original))
         changed = original
         changed.spectrum.window = .flatTop

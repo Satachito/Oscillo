@@ -157,23 +157,23 @@ final class ScopeModel: ObservableObject {
         spectrumHistory.removeAll()
     }
 
-    /// Grounded-input calibration: whatever all channels read now becomes
-    /// zero for the range each one is on.
-    func calibrateZero() {
-        let measuredRanges = settings.channels.map(\.rangeIndex)
-        engine.calibrateZero { [weak self] volts in
+    /// Measures the bias: with nothing on the inputs, whatever each channel
+    /// reads is where its front end holds it. The reading is not corrected by
+    /// it — the screen draws a line there instead.
+    func measureBias() {
+        engine.measureBias { [weak self] volts in
             guard let self else { return }
             for (index, value) in volts.enumerated() where index < self.settings.channels.count {
-                let range = measuredRanges[index]
-                self.settings.channels[index].calibrateZero(to: value, forRange: range)
+                self.settings.channels[index].setBias(value)
             }
-            self.statusText = "Zero calibrated"
+            self.statusText = "Bias measured"
         }
     }
 
     func resetCalibration() {
         for index in settings.channels.indices {
             settings.channels[index].calibration = []
+            settings.channels[index].biasVolts = 0
         }
         statusText = "Calibration cleared"
     }

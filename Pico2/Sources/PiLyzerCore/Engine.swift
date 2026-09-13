@@ -265,9 +265,10 @@ public final class InstrumentEngine {
         }
     }
 
-    /// Grounded-input zero calibration: whatever the instrument reads with
-    /// nothing applied becomes the new zero for the range each channel is on.
-    public func calibrateZero(samples: Int = 32, completion: @escaping ([Double]) -> Void) {
+    /// Measures the bias: with nothing on the inputs, what each channel reads
+    /// is where its front end holds it. In the volts the panel shows, since
+    /// that is where the line goes — nothing is subtracted from a reading.
+    public func measureBias(samples: Int = 32, completion: @escaping ([Double]) -> Void) {
         queue.async { [self] in
             guard let instrument, let connected else { return }
             do {
@@ -277,10 +278,10 @@ public final class InstrumentEngine {
                     let scale = settings.channels[index].scale(reference: connected.capabilities.referenceVolts,
                                                                fullScale: connected.capabilities.analogFullScale,
                                                                ranges: connected.ranges)
-                    return scale.uncalibratedVolts(code: Double(code))
+                    return scale.volts(code: Double(code))
                 }
                 callbackQueue.async { completion(volts) }
-                report(status: "Zero: " + volts.map { Format.voltage($0) }.joined(separator: ", "))
+                report(status: "Bias: " + volts.map { Format.voltage($0) }.joined(separator: ", "))
             } catch {
                 handle(error)
             }

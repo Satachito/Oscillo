@@ -314,13 +314,9 @@ struct VerticalSection: View {
     @ObservedObject var model: ScopeModel
     let channel: Int
 
-    /// The zero belongs to the range that is selected, so the field follows
-    /// the Range picker: a front end that biases one range biases them all,
-    /// but by a different number once the gain differs.
-    private var zeroVolts: Binding<Double> {
-        let index = model.settings.channels[channel].rangeIndex
-        return Binding(get: { model.settings.channels[channel].calibration(forRange: index).zero },
-                       set: { model.settings.channels[channel].calibrateZero(to: $0, forRange: index) })
+    private var biasVolts: Binding<Double> {
+        Binding(get: { model.settings.channels[channel].biasVolts },
+                set: { model.settings.channels[channel].setBias($0) })
     }
 
     /// The input voltage that reads mid scale right now — what a passive front
@@ -380,23 +376,24 @@ struct VerticalSection: View {
             // Each button sits under the field it writes, and Reset — which
             // clears both of them — stands on its own.
             HStack(spacing: 6) {
-                Text("Zero").font(.caption)
+                Text("Bias").font(.caption)
                 Spacer(minLength: 6)
-                TextField("", value: zeroVolts,
+                TextField("", value: biasVolts,
                           format: .number.precision(.fractionLength(0...4)))
                     .multilineTextAlignment(.trailing)
                     .frame(width: 80)
                 Text("V").font(.caption).foregroundStyle(.secondary)
             }
-            Text("Input volts that read as zero — the bias a front end adds.")
+            Text("Where the front end holds this input with nothing on it. Drawn as a "
+                 + "dotted line; readings stay as the converter saw them.")
                 .font(.caption).foregroundStyle(.secondary)
             HStack(spacing: 6) {
-                Button("Zero here") { model.calibrateZero() }
-                    .help("Ground all inputs first: what they read now becomes zero.")
+                Button("Measure") { model.measureBias() }
+                    .help("Ground all inputs first: what they read now is the bias.")
                     .disabled(!model.isConnected)
-                Button("AFE bias") { zeroVolts.wrappedValue = midRailVolts }
+                Button("Mid rail") { biasVolts.wrappedValue = midRailVolts }
                     .help("Writes \(Format.voltage(midRailVolts)), the input that reads mid "
-                          + "scale: a passive front end biasing this input to the middle.")
+                          + "scale: where a passive front end holds it.")
             }
 
             HStack(spacing: 6) {

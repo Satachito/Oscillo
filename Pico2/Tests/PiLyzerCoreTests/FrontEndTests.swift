@@ -30,25 +30,13 @@ struct FrontEndTests {
 
     @Test("Volts and codes are inverses of each other")
     func roundTrip() {
-        let calibration = ChannelCalibration(zero: 0.037, scale: 1.014)
+        let calibration = ChannelCalibration(scale: 1.014)
         let scale = VoltageScale(reference: reference, fullScale: fullScale,
                                  range: FrontEnd.revA[1], calibration: calibration, probe: 10)
         for volts in stride(from: -40.0, through: 40.0, by: 3.7) {
             let code = scale.code(forVolts: volts)
             #expect(abs(scale.volts(code: code) - volts) < 1e-9)
         }
-    }
-
-    @Test("A two-point calibration recovers the line it was measured on")
-    func twoPoint() {
-        // The instrument reads 4% high and 25 mV off zero.
-        func measured(_ truth: Double) -> Double { truth * 1.04 + 0.025 }
-        let calibration = ChannelCalibration.from(low: measured(0), lowTrue: 0,
-                                                  high: measured(5), highTrue: 5)
-        let corrected = try! #require(calibration)
-        #expect(abs(corrected.apply(measured(0)) - 0) < 1e-9)
-        #expect(abs(corrected.apply(measured(5)) - 5) < 1e-9)
-        #expect(abs(corrected.apply(measured(2.5)) - 2.5) < 1e-9)
     }
 
     @Test("A bare Pico 2 has one range and no offset")
@@ -60,24 +48,21 @@ struct FrontEndTests {
         #expect(abs(scale.highestVolts - reference) < 1e-12)
     }
 
-    @Test("A typed zero cancels a front end's bias, on whichever range is selected")
-    func zeroCancelsBias() {
-        // A home-made front end biased to mid rail: grounded in reads 1.65 V.
+    @Test("A bias is drawn, not taken out of the reading")
+    func biasIsNotSubtracted() {
+        // A home-made front end biased to mid rail: grounded in reads 1.65 V,
+        // and goes on reading 1.65 V once it has been told so. What arrived at
+        // the converter is what the panel shows; the bias is a line on it.
         var channel = AnalogChannelSettings()
         let scale = { channel.scale(reference: 3.3, fullScale: 65520, ranges: FrontEnd.bareBoard) }
         let code = 65520.0 / 2
         #expect(abs(scale().volts(code: code) - 1.65) < 0.001)
 
-        channel.calibrateZero(to: 1.65, forRange: 0)
-        #expect(abs(scale().volts(code: code)) < 0.001)
-        #expect(abs(scale().code(forVolts: 0) - code) < 1)
-
-        // The calibration array starts empty, so a range the board only just
-        // reported must still take a zero rather than fall off the end.
-        channel.rangeIndex = 2
-        channel.calibrateZero(to: 0.132, forRange: 2)
-        #expect(channel.calibration(forRange: 2).zero == 0.132)
-        #expect(channel.calibration(forRange: 1).zero == 0)
+        channel.setBias(1.65)
+        #expect(abs(scale().volts(code: code) - 1.65) < 0.001)
+        #expect(channel.biasVolts == 1.65)
+        // And a trigger level still means the volts the converter will see.
+        #expect(abs(scale().code(forVolts: 1.65) - code) < 1)
     }
 
     @Test("A known voltage corrects the gain the divider's tolerance got wrong")
@@ -94,10 +79,10 @@ struct FrontEndTests {
         channel.calibrateGain(measured: 1.01, applied: 1.0, forRange: 0)
         #expect(abs(channel.calibration(forRange: 0).scale - 1.0 / 0.98 / 1.01) < 1e-9)
 
-        // The zero is a separate correction and survives.
-        channel.calibrateZero(to: 1.65, forRange: 0)
+        // The bias is a separate number and survives.
+        channel.setBias(1.65)
         channel.calibrateGain(measured: 2, applied: 2, forRange: 0)
-        #expect(channel.calibration(forRange: 0).zero == 1.65)
+        #expect(channel.biasVolts == 1.65)
 
         // Nothing on the input, or nothing claimed, leaves it alone.
         let before = channel.calibration(forRange: 0)
@@ -123,10 +108,11 @@ struct FrontEndTests {
             #expect(scale.triggerWindow?.contains(0) == true)
         }
 
-        // And a channel told what its bias is reads zero in the middle.
+        // And a channel told what its bias is still reads what came in: the
+        // seed and the line agree because both are the mid-scale voltage.
         var channel = AnalogChannelSettings()
-        channel.calibrateZero(to: 1.65, forRange: 0)
-        let corrected = channel.scale(reference: 3.3, fullScale: 65520, ranges: FrontEnd.bareBoard)
-        #expect(abs(corrected.biasVolts) < 1e-3)
+        channel.setBias(1.65)
+        let told = channel.scale(reference: 3.3, fullScale: 65520, ranges: FrontEnd.bareBoard)
+        #expect(abs(told.biasVolts - channel.biasVolts) < 1e-3)
     }
 }

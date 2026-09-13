@@ -23,7 +23,8 @@ struct TriggerFilterTests {
     func legacyPreferences() throws {
         var original = ScopeSettings()
         original.trigger.levelVolts = 1.65
-        original.channels[0].calibrateZero(to: 0.025, forRange: 0)
+        original.channels[0].setBias(0.025)
+        original.channels[0].setCalibration(ChannelCalibration(scale: 1.02), forRange: 0)
         var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) as? [String: Any])
         var trigger = try #require(json["trigger"] as? [String: Any])
         trigger.removeValue(forKey: "lowPassHz")
