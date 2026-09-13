@@ -149,6 +149,39 @@ struct EngineTests {
         engine.disconnect()
     }
 
+    @Test("A reading says how far it moved, so a calibration can refuse a signal")
+    func steadyReadings() throws {
+        // Channel one holds still at a volt; channel two is a sine. Both
+        // calibrations — where the bias is, how far the gain is out — are one
+        // reading, and a reading off the second channel is about the instant
+        // it was taken.
+        let device = SimulatedInstrument()
+        device.noise = 0
+        device.tones = [.init(frequency: 0, amplitude: 0, offset: 1.0),
+                        .init(frequency: 1000, amplitude: 1.0, offset: 0),
+                        .init(frequency: 0, amplitude: 0, offset: 0)]
+        let engine = InstrumentEngine(makeInstrument: { _ in device })
+        engine.callbackQueue = DispatchQueue(label: "test.steady")
+        let ready = DispatchSemaphore(value: 0)
+        engine.onStateChange = { if $0.isConnected { ready.signal() } }
+        engine.connect(to: .simulator, settings: ScopeSettings())
+        defer { engine.disconnect() }
+        try #require(ready.wait(timeout: .now() + 5) == .success)
+
+        var volts: [Double] = [], spread: [Double] = []
+        let done = DispatchSemaphore(value: 0)
+        engine.measureSteady { readings, movement in
+            volts = readings; spread = movement; done.signal()
+        }
+        try #require(done.wait(timeout: .now() + 5) == .success)
+
+        #expect(abs(volts[0] - 1.0) < 0.05)
+        // A hundredth of the range is the line the panel draws between the two.
+        let limit = 3.3 * 0.01
+        #expect(spread[0] < limit)
+        #expect(spread[1] > limit)
+    }
+
     @Test("The CSV carries what the screen shows, mean removed only where it is on")
     func csvFollowsRemoveMean() throws {
         // The demo's channels sit on offsets of their own, so a channel with

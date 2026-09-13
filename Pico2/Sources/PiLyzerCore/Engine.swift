@@ -270,23 +270,38 @@ public final class InstrumentEngine {
         }
     }
 
-    /// Measures the bias: with nothing on the inputs, what each channel reads
-    /// is where its front end holds it. In the volts the panel shows, since
-    /// that is where the line goes — nothing is subtracted from a reading.
-    public func measureBias(samples: Int = 32, completion: @escaping ([Double]) -> Void) {
+    /// Three averaged readings, a few milliseconds apart: what each channel
+    /// reads, and how far it moved between them.
+    ///
+    /// Both things a channel can be told about itself — where its bias is and
+    /// how far its gain is out — are measured from a reading, and a reading
+    /// taken off a signal that is moving says only when the button was pressed.
+    /// The spread is what lets the caller refuse.
+    public func measureSteady(samples: Int = 32,
+                              completion: @escaping (_ volts: [Double], _ spread: [Double]) -> Void) {
         queue.async { [self] in
             guard let instrument, let connected else { return }
             do {
-                let readings = try instrument.sampleAnalog(averages: samples)
-                let volts = readings.enumerated().map { index, code -> Double in
-                    guard index < settings.channels.count else { return 0 }
-                    let scale = settings.channels[index].scale(reference: connected.capabilities.referenceVolts,
-                                                               fullScale: connected.capabilities.analogFullScale,
-                                                               ranges: connected.ranges)
-                    return scale.volts(code: Double(code))
+                var rounds: [[Double]] = []
+                for round in 0..<3 {
+                    if round > 0 { Thread.sleep(forTimeInterval: 0.007) }
+                    let readings = try instrument.sampleAnalog(averages: samples)
+                    rounds.append(readings.enumerated().map { index, code -> Double in
+                        guard index < settings.channels.count else { return 0 }
+                        let scale = settings.channels[index].scale(reference: connected.capabilities.referenceVolts,
+                                                                   fullScale: connected.capabilities.analogFullScale,
+                                                                   ranges: connected.ranges)
+                        return scale.volts(code: Double(code))
+                    })
                 }
-                callbackQueue.async { completion(volts) }
-                report(status: "Bias: " + volts.map { Format.voltage($0) }.joined(separator: ", "))
+                let count = rounds.map(\.count).min() ?? 0
+                let volts = (0..<count).map { index in rounds.reduce(0) { $0 + $1[index] } / Double(rounds.count) }
+                let spread = (0..<count).map { index -> Double in
+                    let values = rounds.map { $0[index] }
+                    return (values.max() ?? 0) - (values.min() ?? 0)
+                }
+                callbackQueue.async { completion(volts, spread) }
+                report(status: "Read: " + volts.map { Format.voltage($0) }.joined(separator: ", "))
             } catch {
                 handle(error)
             }

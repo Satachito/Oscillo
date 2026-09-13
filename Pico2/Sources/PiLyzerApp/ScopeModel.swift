@@ -157,16 +157,38 @@ final class ScopeModel: ObservableObject {
         spectrumHistory.removeAll()
     }
 
+    /// How far a reading may move between three passes and still count as the
+    /// one thing both calibrations need: a steady input. One percent of what
+    /// the channel can read, far above its noise and far below any signal
+    /// worth measuring.
+    private func steadyLimit(_ channel: Int) -> Double {
+        abs(scale(for: channel).spanVolts) * 0.01
+    }
+
     /// Measures the bias: with nothing on the inputs, whatever each channel
     /// reads is where its front end holds it. The reading is not corrected by
     /// it — the screen draws a line there instead.
     func measureBias() {
-        engine.measureBias { [weak self] volts in
+        engine.measureSteady { [weak self] volts, spread in
             guard let self else { return }
+            var moved: [Int] = []
             for (index, value) in volts.enumerated() where index < self.settings.channels.count {
+                guard index < spread.count, spread[index] <= self.steadyLimit(index) else {
+                    moved.append(index + 1)
+                    continue
+                }
                 self.settings.channels[index].recordMeasuredBias(value)
             }
-            self.statusText = "Bias measured"
+            if moved.isEmpty {
+                self.statusText = "Bias measured"
+                return
+            }
+            // A bias read off a moving input is a number about the instant the
+            // button was pressed, so those channels keep what they had.
+            let names = moved.map { "CH\($0)" }.joined(separator: ", ")
+            self.errorText = "\(names) had a signal on the input, so the bias was not measured there. "
+                + "Ground the input, or switch the signal off, and try again."
+            self.statusText = moved.count == volts.count ? "Bias not measured" : "Bias measured"
         }
     }
 

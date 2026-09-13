@@ -117,7 +117,7 @@ struct ReviewRegressionTests {
         for _ in 0..<2 {
             let zero = DispatchSemaphore(value: 0)
             var values: [Double] = []
-            engine.measureBias { values = $0; zero.signal() }
+            engine.measureSteady { readings, _ in values = readings; zero.signal() }
             try #require(zero.wait(timeout: .now() + 2) == .success)
             // The probe is 10:1 and the gain correction 1.04, so the bias is
             // recorded in the volts the panel draws, not converter volts.
