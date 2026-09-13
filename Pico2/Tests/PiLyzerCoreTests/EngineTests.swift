@@ -149,6 +149,44 @@ struct EngineTests {
         engine.disconnect()
     }
 
+    @Test("The CSV carries what the screen shows, mean removed only where it is on")
+    func csvFollowsRemoveMean() throws {
+        // The demo's channels sit on offsets of their own, so a channel with
+        // the mean taken out and one without are plainly different columns.
+        var settings = ScopeSettings()
+        settings.secondsPerDivision = 1e-3
+        settings.recordLength = 512
+        settings.ensureAnalogChannels(3)
+        settings.channels[0].removesMean = true
+        settings.channels[1].removesMean = false
+        let (engine, _) = connected(settings)
+        defer { engine.disconnect() }
+
+        var frame: ScopeFrame?
+        let arrived = DispatchSemaphore(value: 0)
+        engine.onScopeFrame = { frame = $0; arrived.signal() }
+        engine.single()
+        #expect(arrived.wait(timeout: .now() + 5) == .success)
+        let captured = try #require(frame)
+
+        // Only the channel it is switched on for is centred, and the trace
+        // says how much came off so the two can be told apart.
+        let ac = try #require(captured.trace(0)), dc = try #require(captured.trace(1))
+        #expect(ac.removedMean != 0)
+        #expect(dc.removedMean == 0)
+        #expect(abs(Measurements.of(ac.samples, samplePeriod: captured.samplePeriod).mean) < 1e-9)
+        #expect(abs(Measurements.of(dc.samples, samplePeriod: captured.samplePeriod).mean) > 1e-6)
+
+        // And the file is those same numbers, column for column.
+        let rows = Export.csv(scope: captured).split(separator: "\n")
+        #expect(rows.first == "time_s,channel1_V,channel2_V,channel3_V")
+        for (index, row) in rows.dropFirst().enumerated() {
+            let columns = row.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+            #expect(abs(Double(columns[1])! - ac.samples[index]) < 1e-6)
+            #expect(abs(Double(columns[2])! - dc.samples[index]) < 1e-6)
+        }
+    }
+
     @Test("The trigger holds a repetitive signal in the same place twice running")
     func triggerIsStable() {
         var settings = ScopeSettings()
