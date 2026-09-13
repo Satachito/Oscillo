@@ -62,6 +62,24 @@ public enum Diagnostics {
         return lines.joined(separator: "\n")
     }
 
+    /// Opens an instrument for a diagnostic, and stops whatever the last host
+    /// left running. A device refuses to be configured while an acquisition is
+    /// armed, so a command that ended early — or an application that went away
+    /// — would otherwise lock out everything after it.
+    private static func openForDiagnostic(_ locationID: UInt32) throws -> USBInstrument {
+        let instrument = try USBInstrument(locationID: locationID)
+        try? instrument.abortAnalog()
+        try? instrument.abortLogic()
+        return instrument
+    }
+
+    /// Hands it back stopped, for the same reason.
+    private static func finish(_ instrument: Instrument) {
+        try? instrument.abortAnalog()
+        try? instrument.abortLogic()
+        instrument.close()
+    }
+
     /// Walks the whole command set against a real instrument and reports what
     /// came back. This is the thing to run first when a board is new, or when
     /// something on the front panel looks wrong and it is not obvious whether
@@ -70,13 +88,13 @@ public enum Diagnostics {
         var lines: [String] = []
         func say(_ text: String) { lines.append(text) }
 
-        let instrument: Instrument
+        let instrument: USBInstrument
         do {
-            instrument = try USBInstrument(locationID: locationID)
+            instrument = try openForDiagnostic(locationID)
         } catch {
             return "Could not open the instrument: \((error as? LocalizedError)?.errorDescription ?? "\(error)")"
         }
-        defer { instrument.close() }
+        defer { finish(instrument) }
 
         let identity = instrument.identity
         let capabilities = instrument.capabilities
@@ -129,8 +147,8 @@ public enum Diagnostics {
     /// loaded without reaching for the BOOTSEL button.
     public static func rebootToBootloader(locationID: UInt32 = 0) -> String {
         do {
-            let instrument = try USBInstrument(locationID: locationID)
-            defer { instrument.close() }
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
             try instrument.rebootToBootloader()
             return "The instrument is restarting in its bootloader."
         } catch {
@@ -143,8 +161,8 @@ public enum Diagnostics {
     /// signal. `frequency` of zero switches it off.
     public static func setTestOutput(_ frequency: Int, locationID: UInt32 = 0) -> String {
         do {
-            let instrument = try USBInstrument(locationID: locationID)
-            defer { instrument.close() }
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
             guard instrument.capabilities.hasCalibrationOutput else {
                 return "This instrument has no calibration output."
             }
@@ -164,8 +182,8 @@ public enum Diagnostics {
     /// window open.
     public static func setSignals(_ sineHz: Int, locationID: UInt32 = 0) -> String {
         do {
-            let instrument = try USBInstrument(locationID: locationID)
-            defer { instrument.close() }
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
             guard instrument.capabilities.hasSignalGenerator else {
                 return "This instrument has no signal generator."
             }
@@ -189,8 +207,8 @@ public enum Diagnostics {
     /// a missing capacitor rather than a missing signal.
     public static func signalCheck(sineHz: Int = 440, locationID: UInt32 = 0) -> String {
         do {
-            let instrument = try USBInstrument(locationID: locationID)
-            defer { instrument.close() }
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
             let capabilities = instrument.capabilities
             guard capabilities.hasSignalGenerator else {
                 return "This instrument has no signal generator."
@@ -249,8 +267,8 @@ public enum Diagnostics {
     public static func timingCheck(frequencies: [Int] = [100, 1_000, 10_000],
                                    locationID: UInt32 = 0) -> String {
         do {
-            let instrument = try USBInstrument(locationID: locationID)
-            defer { instrument.close() }
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
             let capabilities = instrument.capabilities
             guard capabilities.hasCalibrationOutput else {
                 return "This instrument has no calibration output to measure."
