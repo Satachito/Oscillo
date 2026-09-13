@@ -48,12 +48,6 @@ struct ScopeDisplayView: View {
                     if model.settings.channels[channel].removesMean {
                         Text("· AC").foregroundStyle(Theme.readout)
                     }
-                    // Say where the centre line is whenever it is not zero, or
-                    // the offset looks like a fault rather than a choice.
-                    if abs(centre(channel)) > 1e-6 {
-                        Text("· mid " + Format.voltage(centre(channel)))
-                            .foregroundStyle(Theme.readout)
-                    }
                     if trace?.clipped == true {
                         Text("· CLIP").foregroundStyle(Theme.clip).bold()
                     }
@@ -71,15 +65,10 @@ struct ScopeDisplayView: View {
     }
 
     /// The voltage on the centre line for a channel, before its own shift.
+    /// Zero, on every range and whether or not the mean has been removed —
+    /// which is what makes the two agree without a special case.
     private func centre(_ channel: Int) -> Double {
-        // With the mean removed the samples already sit about zero, so zero is
-        // where the centre line belongs. Centring such a channel on the middle
-        // of its input range instead would push the trace a whole half-range
-        // below the grid — off the bottom of the screen on a front end that
-        // does not reach below zero.
-        if channel < model.settings.channels.count,
-           model.settings.channels[channel].removesMean { return 0 }
-        return model.scale(for: channel).screenCentreVolts
+        model.scale(for: channel).screenCentreVolts
     }
 
     private func y(_ volts: Double, channel: Int, height: CGFloat) -> CGFloat {

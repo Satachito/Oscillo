@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { midRailVolts, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { fitScale, midRailVolts, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/usb.mjs';
 import { measure, spectrum, spectrumCsv, csv, decodeUART } from '../src/signal.mjs';
@@ -22,7 +22,12 @@ test('older two-channel device and unipolar scale remain supported', () => {
   const actual = analogRequest(settings, { ...caps, channels: 2, minCycles: 96 }, bare);
   assert.equal(actual.mask, 3); assert.equal(actual.source, 0);
   assert.ok(Math.abs(view(actual.payload).getUint16(4, true) - 32760) < 1);
-  assert.equal(scaleFor(settings, caps, bare, 0).centre, 1.65);
+  // Zero is the centre line even on a range that never goes below it, and the
+  // step a channel starts on is the finest that still shows the whole of it:
+  // 0-3.3 V needs 825 mV a division, so 1 V is the one to land on.
+  assert.equal(scaleFor(settings, caps, bare, 0).centre, 0);
+  assert.equal(fitScale(scaleFor(settings, caps, bare, 0)), 1);
+  assert.equal(fitScale(scaleFor(settings, caps, afe, 0)), 10);   // rev A reaches +/-26 V
   settings.channels[0].probe = 10; settings.channels[0].zero[0] = .1;
   const scale = scaleFor(settings, caps, bare, 0); assert.ok(Math.abs(scale.volts(scale.code(5)) - 5) < .001);
 });

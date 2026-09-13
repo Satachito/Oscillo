@@ -36,13 +36,21 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         self.calibration = calibration
     }
 
-    /// What a division is actually worth, once "show the whole range" is
-    /// resolved against the range that is selected.
+    /// What a division is worth. A channel that has never been set lands on
+    /// the finest step of the ladder that still shows the whole range, so the
+    /// menu can offer volts per division and nothing else: there is no "fit
+    /// everything" entry to explain, and what is selected is always a number.
     public func effectiveVoltsPerDivision(reference: Double, ranges: [InputRange],
                                           divisions: Int) -> Double {
         if voltsPerDivision > 0 { return voltsPerDivision }
-        let span = range(from: ranges).span(reference: reference) * probeAttenuation
-        return span / Double(divisions)
+        let selected = range(from: ranges)
+        let needed = selected.voltsPerDivision(reference: reference, probe: probeAttenuation,
+                                               divisions: divisions)
+        let steps = Self.verticalSteps(span: selected.span(reference: reference) * probeAttenuation,
+                                       divisions: divisions)
+        // The ladder runs coarsest first, so the last step still coarse enough
+        // is the finest one that fits.
+        return steps.last { $0 >= needed * 0.999 } ?? steps.first ?? needed
     }
 
     /// The 1–2–5 choices offered for this range, from the whole span down to a

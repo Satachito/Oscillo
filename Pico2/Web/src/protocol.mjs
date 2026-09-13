@@ -60,6 +60,15 @@ export function inputRanges(bytes) {
 // still compiles in a constant about a particular board, and it exists only for
 // those older devices.
 export const ranges = board => board === 0 ? [{ name: '0 – 3.3 V', gain: 1, offset: 0, switchPosition: 0 }] : [{ name: '±25 V', gain: .062645, offset: 1.650515, switchPosition: 0 }, { name: '±5 V', gain: .297269, offset: 1.652442, switchPosition: 1 }];
+// Volts per division a channel can be set to, and the finest of them that
+// still shows the whole range with zero on the centre line — half the grid has
+// to hold whichever end is further from zero. This is what a channel nobody has
+// set uses, so the menu offers volts per division and nothing else.
+export const SCALE_STEPS = [.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20];
+export const fitScale = scale => {
+  const needed = 2 * Math.max(Math.abs(scale.low), Math.abs(scale.high)) / 8;
+  return SCALE_STEPS.find(step => step >= needed * 0.999) ?? SCALE_STEPS.at(-1);
+};
 // The input that reads mid scale: what a passive front end biased to the middle
 // of the converter's range leaves on a grounded input. A board that reports its
 // own offset has taken it out already, and this comes back at about zero.
@@ -75,9 +84,11 @@ export function scaleFor(settings, caps, frontEnd, channel) {
   const volts = code => ((code / caps.fullScale * caps.reference - r.offset) / r.gain - zero) * correction * ch.probe;
   const code = volts => Math.max(0, Math.min(caps.fullScale, Math.round(((volts / ch.probe / correction + zero) * r.gain + r.offset) / caps.reference * caps.fullScale)));
   const low = volts(0), high = volts(caps.fullScale), span = high - low;
-  let centre = (low + high) / 2;
-  if (Math.abs(centre) < Math.abs(span) / 1000) centre = 0;
-  return { volts, code, low, high, span, centre, zero, correction, r };
+  // Zero is the centre line on every range. A range that reaches only one side
+  // of zero used to centre on its own midpoint so that it filled the grid, and
+  // the cost was a centre line reading 1.65 V: a trace at 3.3 V then looks
+  // like it is at 1.65 unless every division is counted from the legend.
+  return { volts, code, low, high, span, centre: 0, zero, correction, r };
 }
 // A trigger level sitting on the rail never fires, which looks exactly like a
 // broken trigger rather than a level left behind by a range change. Keep it

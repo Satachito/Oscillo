@@ -50,9 +50,13 @@ public struct InputRange: Codable, Hashable, Sendable, Identifiable {
         highestInput(reference: reference) - lowestInput
     }
 
-    /// Volts per division, if the whole converter span is drawn over the grid.
+    /// Volts per division that fits the whole range on the grid with zero on
+    /// the centre line: half the grid has to hold whichever end is further
+    /// from zero. A range about zero is unaffected — half a grid holds half a
+    /// symmetric span — and a 0–3.3 V rail draws in the top half.
     public func voltsPerDivision(reference: Double, probe: Double, divisions: Int) -> Double {
-        span(reference: reference) * probe / Double(divisions)
+        let reach = max(abs(lowestInput), abs(highestInput(reference: reference)))
+        return 2 * reach * probe / Double(divisions)
     }
 }
 
@@ -152,18 +156,17 @@ public struct VoltageScale: Equatable, Sendable {
     public var centreVolts: Double { (lowestVolts + highestVolts) / 2 }
     public var spanVolts: Double { highestVolts - lowestVolts }
 
-    /// The voltage the screen's centre line carries when a channel is not
-    /// shifted: the middle of what this channel can actually measure.
+    /// The voltage on the centre line when a channel is not shifted: zero,
+    /// on every range.
     ///
-    /// A range that straddles zero puts zero there — snapped exactly, so the
-    /// centre line is zero volts and not the few millivolts of asymmetry that
-    /// ordinary resistors leave. A range that reaches only one side of zero
-    /// puts its own midpoint there instead, so a 0–3.3 V rail uses the whole
-    /// screen rather than the half above the middle.
-    public var screenCentreVolts: Double {
-        let centre = centreVolts
-        return abs(centre) < abs(spanVolts) / 1000 ? 0 : centre
-    }
+    /// A range that reaches only one side of zero used to put its own midpoint
+    /// here instead, so that a 0–3.3 V rail filled the grid. It cost more than
+    /// it bought: the centre line then read 1.65 V, every division had to be
+    /// counted from a number in the legend, and a trace at 3.3 V looked like
+    /// it was at 1.65. Ground is where a reader expects the middle of an
+    /// oscilloscope to be. A unipolar range pays for it by using half the
+    /// grid, which `voltsPerDivision` accounts for.
+    public var screenCentreVolts: Double { 0 }
 
     /// True when zero volts is inside the range rather than at its edge.
     public var straddlesZero: Bool { lowestVolts < 0 && highestVolts > 0 }

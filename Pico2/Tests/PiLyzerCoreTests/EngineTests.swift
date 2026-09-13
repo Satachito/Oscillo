@@ -281,11 +281,40 @@ struct ScreenCentreTests {
         }
     }
 
-    @Test("A range that stops at zero centres on its own midpoint")
-    func unipolarCentresOnMidpoint() {
+    @Test("Zero is the centre line on a range that never goes below it, too")
+    func unipolarAlsoCentresOnZero() {
         let scale = scale(FrontEnd.bareBoard[0])
         #expect(!scale.straddlesZero)
-        #expect(abs(scale.screenCentreVolts - reference / 2) < 1e-9)
+        #expect(scale.screenCentreVolts == 0)
+        // It costs half the grid, which is the trade: ground where a reader
+        // expects it, against a rail drawn in the top half.
+        #expect(abs(scale.centreVolts - reference / 2) < 1e-9)
+    }
+
+    @Test("A channel nobody has set shows the whole of its range")
+    func defaultStepFitsTheRange() {
+        let divisions = ScopeSettings.verticalDivisions
+        for ranges in [FrontEnd.bareBoard, FrontEnd.revA] {
+            for index in ranges.indices {
+                var channel = AnalogChannelSettings()
+                channel.rangeIndex = index
+                let step = channel.effectiveVoltsPerDivision(reference: reference, ranges: ranges,
+                                                             divisions: divisions)
+                let scale = scale(ranges[index])
+                // Both ends inside the grid, measured from zero on the centre.
+                for volts in [scale.lowestVolts, scale.highestVolts] {
+                    #expect(abs(volts) / step <= Double(divisions) / 2)
+                }
+                // And it is a step the menu actually offers, since there is no
+                // longer a "fit everything" entry for it to hide behind.
+                let steps = AnalogChannelSettings.verticalSteps(
+                    span: ranges[index].span(reference: reference), divisions: divisions)
+                #expect(steps.contains { abs($0 - step) < 1e-12 })
+            }
+        }
+        // 0-3.3 V needs 825 mV a division; the ladder's answer is 1 V.
+        #expect(abs(AnalogChannelSettings().effectiveVoltsPerDivision(
+            reference: reference, ranges: FrontEnd.bareBoard, divisions: divisions) - 1) < 1e-12)
     }
 
     @Test("The whole of a rail fits on screen once the centre moves")
@@ -355,22 +384,17 @@ struct AcCouplingTests {
         engine.disconnect()
     }
 
-    @Test("Removing the mean and centring on the range midpoint do not fight")
+    @Test("Removing the mean leaves the trace where the centre line already is")
     func acTraceStaysOnScreen() {
-        // A bare board reaches 0–3.3 V, so its centre line is 1.65 V. A trace
-        // whose mean has been taken out sits about zero — a whole half-range
-        // below that line, and off the bottom of the grid, unless the display
-        // centres such a channel on zero instead.
+        // This used to be a conflict: the centre line sat at 1.65 V on a bare
+        // board, and a mean-removed trace sits about zero — half a range below
+        // it, off the bottom of the grid — so the display had to special-case
+        // such a channel. With zero on the centre line for every range there
+        // is nothing left to special-case.
         let scale = VoltageScale(reference: 3.3, fullScale: 65520,
                                  range: FrontEnd.bareBoard[0])
-        let divisions = Double(ScopeSettings.verticalDivisions)
-        let perDivision = 3.3 / divisions
-
-        let ifCentredOnRange = abs(0 - scale.screenCentreVolts) / perDivision
-        #expect(ifCentredOnRange >= divisions / 2)   // the fault this guards against
-
-        let ifCentredOnZero = abs(0 - 0) / perDivision
-        #expect(ifCentredOnZero < divisions / 2)
+        #expect(scale.screenCentreVolts == 0)
+        #expect(abs(0 - scale.screenCentreVolts) / (3.3 / 8) < Double(ScopeSettings.verticalDivisions) / 2)
     }
 }
 

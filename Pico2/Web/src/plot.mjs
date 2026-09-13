@@ -1,4 +1,4 @@
-import { scaleFor } from './protocol.mjs';
+import { scaleFor, fitScale } from './protocol.mjs';
 import { fmt, spectrum } from './signal.mjs';
 export const COLORS = ['#e9c96b', '#79cdd8', '#c0a1ef', '#9ed190', '#d8ad7f', '#a6bcec', '#d592b9', '#afbf7a'];
 export class Plot {
@@ -49,8 +49,8 @@ export class Plot {
   }
   mapping(index, box) {
     const settings = this.settings.channels[index], scale = scaleFor(this.settings, this.caps, this.frontEnd, index);
-    const centre = settings.ac ? 0 : scale.centre;
-    const perDiv = settings.scale || scale.span / 8;
+    const centre = 0;
+    const perDiv = settings.scale || fitScale(scale);
     return { centre, perDiv, y: v => box.y + box.h / 2 - ((v - centre) / perDiv + settings.offset) * box.h / 8 };
   }
   // `map` reads one value out of whatever the caller holds, so a logic record

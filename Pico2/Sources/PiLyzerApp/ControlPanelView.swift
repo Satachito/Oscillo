@@ -332,6 +332,15 @@ struct VerticalSection: View {
         return value.isFinite ? value : 0
     }
 
+    /// Reads through the resolved step rather than the stored zero, so a
+    /// channel nobody has set still shows a number in the menu.
+    private var voltsPerDivision: Binding<Double> {
+        Binding(get: { model.settings.channels[channel].effectiveVoltsPerDivision(
+                    reference: model.capabilities.referenceVolts, ranges: model.ranges,
+                    divisions: ScopeSettings.verticalDivisions) },
+                set: { model.settings.channels[channel].voltsPerDivision = $0 })
+    }
+
     private var binding: Binding<AnalogChannelSettings> {
         Binding(get: { model.settings.channels[channel] },
                 set: { model.settings.channels[channel] = $0 })
@@ -353,8 +362,7 @@ struct VerticalSection: View {
                 }
             }
 
-            Picker("Scale", selection: binding.voltsPerDivision) {
-                Text("Full range").tag(0.0)
+            Picker("Scale", selection: voltsPerDivision) {
                 ForEach(verticalSteps, id: \.self) { Text(Format.voltage($0) + "/div").tag($0) }
             }
 
