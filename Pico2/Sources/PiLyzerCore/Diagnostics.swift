@@ -159,6 +159,27 @@ public enum Diagnostics {
         }
     }
 
+    /// Switches the instrument's own generator on or off from a shell, for
+    /// the same reason `--testout` exists: a bench check should not need the
+    /// window open.
+    public static func setSignals(_ sineHz: Int, locationID: UInt32 = 0) -> String {
+        do {
+            let instrument = try USBInstrument(locationID: locationID)
+            defer { instrument.close() }
+            guard instrument.capabilities.hasSignalGenerator else {
+                return "This instrument has no signal generator."
+            }
+            let actual = try instrument.setSignals(enabled: sineHz > 0, sineHz: max(sineHz, 0))
+            return sineHz > 0
+                ? "Generator on: GPIO0 sine at \(Format.frequency(Double(actual))), "
+                    + "GPIO1 white, GPIO2 pink, GPIO3 brown."
+                : "Generator off."
+        } catch {
+            return "Could not reach the instrument: "
+                + ((error as? LocalizedError)?.errorDescription ?? "\(error)")
+        }
+    }
+
     /// Measures the instrument's own calibration output back through the
     /// converter, at several frequencies and several sample rates.
     ///

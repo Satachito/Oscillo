@@ -49,6 +49,11 @@ struct PiLyzerApp: App {
                 exit(1)
             }
         }
+        if let index = CommandLine.arguments.firstIndex(of: "--signals") {
+            let argument = index + 1 < CommandLine.arguments.count ? CommandLine.arguments[index + 1] : "440"
+            print(Diagnostics.setSignals(argument == "off" ? 0 : Int(argument) ?? 440))
+            exit(0)
+        }
         if CommandLine.arguments.contains("--bootsel") {
             print(Diagnostics.rebootToBootloader())
             exit(0)
