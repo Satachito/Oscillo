@@ -23,14 +23,28 @@ private let instrumentIsFree: Bool = {
 
 @Suite("Hardware", .serialized, .enabled(if: instrumentIsFree))
 struct HardwareTests {
+    /// Opens, and stops whatever the last host left running. A device is
+    /// refused a new configuration while an acquisition is armed, so a test
+    /// that ended early — or a session that went away — would otherwise fail
+    /// every test after it, and the application next.
     private func open() throws -> USBInstrument {
-        try USBInstrument()
+        let instrument = try USBInstrument()
+        try? instrument.abortAnalog()
+        try? instrument.abortLogic()
+        return instrument
+    }
+
+    /// Closing alone leaves an armed instrument armed for whoever comes next.
+    private func finish(_ instrument: USBInstrument) {
+        try? instrument.abortAnalog()
+        try? instrument.abortLogic()
+        instrument.close()
     }
 
     @Test("The instrument identifies itself and its protocol version matches")
     func identity() throws {
         let instrument = try open()
-        defer { instrument.close() }
+        defer { finish(instrument) }
         #expect(instrument.identity.protocolVersion == Wire.version)
         #expect(instrument.identity.name.contains("PiLyzer"))
         #expect(instrument.capabilities.analogChannels >= 1)
@@ -40,7 +54,7 @@ struct HardwareTests {
     @Test("Full scale follows the converter's own resolution, not sixteen bits")
     func fullScale() throws {
         let instrument = try open()
-        defer { instrument.close() }
+        defer { finish(instrument) }
         let capabilities = instrument.capabilities
         // Samples are left-aligned, so a 12-bit converter tops out at 65520.
         let expected = Double(((1 << capabilities.analogBits) - 1) << (16 - capabilities.analogBits))
@@ -60,7 +74,7 @@ struct HardwareTests {
     @Test("A free-running record comes back the length that was planned")
     func record() throws {
         let instrument = try open()
-        defer { instrument.close() }
+        defer { finish(instrument) }
 
         let plan = try instrument.configureAnalog(AnalogConfiguration(
             channelMask: 0b11, triggerMode: .freeRun, samplePeriod: 4e-6,
@@ -84,7 +98,7 @@ struct HardwareTests {
     @Test("The edge really is at the index the instrument reported")
     func triggerIndexIsExact() throws {
         let instrument = try open()
-        defer { instrument.close() }
+        defer { finish(instrument) }
 
         let level = UInt16(instrument.capabilities.analogFullScale / 2)
         let plan = try instrument.configureAnalog(AnalogConfiguration(
@@ -110,7 +124,7 @@ struct HardwareTests {
     @Test("A logic capture returns one byte a sample")
     func logicRecord() throws {
         let instrument = try open()
-        defer { instrument.close() }
+        defer { finish(instrument) }
 
         let plan = try instrument.configureLogic(LogicConfiguration(
             triggerMode: .freeRun, samplePeriod: 1e-7,

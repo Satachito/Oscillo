@@ -160,6 +160,13 @@ public final class InstrumentEngine {
 
             do {
                 let device = try makeInstrument(source)
+                // Whatever was here before may have left an acquisition armed
+                // — a host that quit mid-sweep, a test that stopped early —
+                // and the device refuses to be configured while one is running.
+                // Only one host can hold the interface, so anything still going
+                // belongs to a session that is over.
+                try? device.abortAnalog()
+                try? device.abortLogic()
                 let ranges = device.resolvedInputRanges()
                 instrument = device
                 settings.ensureAnalogChannels(device.capabilities.analogChannels)
@@ -349,7 +356,7 @@ public final class InstrumentEngine {
         let configuration = settings.analogConfiguration(capabilities: connected.capabilities,
                                                          scales: scales)
         if configuration != appliedAnalog {
-            analogPlan = try instrument.configureAnalog(configuration)
+            analogPlan = try configureAnalog(instrument, configuration)
             appliedAnalog = configuration
             let plan = analogPlan
             callbackQueue.async { [weak self, onPlan] in
@@ -402,6 +409,29 @@ public final class InstrumentEngine {
                           triggerIndex: triggerIndex, triggered: triggered)
     }
 
+    /// Configures, and treats "an acquisition is already running" as
+    /// something to clear rather than something to report: this host holds the
+    /// interface alone, so a sweep it did not start is a leftover.
+    private func configureAnalog(_ instrument: Instrument,
+                                 _ configuration: AnalogConfiguration) throws -> AcquisitionPlan {
+        do {
+            return try instrument.configureAnalog(configuration)
+        } catch InstrumentError.rejected(_, .busy) {
+            try? instrument.abortAnalog()
+            return try instrument.configureAnalog(configuration)
+        }
+    }
+
+    private func configureLogic(_ instrument: Instrument,
+                                _ configuration: LogicConfiguration) throws -> AcquisitionPlan {
+        do {
+            return try instrument.configureLogic(configuration)
+        } catch InstrumentError.rejected(_, .busy) {
+            try? instrument.abortLogic()
+            return try instrument.configureLogic(configuration)
+        }
+    }
+
     private struct Capture {
         var columns: [[UInt16]]
         var triggered: Bool
@@ -429,7 +459,7 @@ public final class InstrumentEngine {
         guard let connected else { throw InstrumentError.notConnected }
         let configuration = settings.logic.configuration(capabilities: connected.capabilities)
         if configuration != appliedLogic {
-            logicPlan = try instrument.configureLogic(configuration)
+            logicPlan = try configureLogic(instrument, configuration)
             appliedLogic = configuration
             let plan = logicPlan
             callbackQueue.async { [weak self, onPlan] in

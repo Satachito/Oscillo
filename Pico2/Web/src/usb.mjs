@@ -111,6 +111,10 @@ export class USBInstrument {
       const instrument = new USBInstrument(new BulkTransport(device, input.endpointNumber, output.endpointNumber));
       instrument.identity = identity(await instrument.transport.synchronize());
       instrument.caps = capabilities(await instrument.command(OP.capabilities));
+      // A host that went away mid-sweep leaves the instrument armed, and an
+      // armed instrument refuses to be configured. Only one host holds the
+      // interface, so anything still running belongs to a session that is over.
+      await instrument.abort().catch(() => {});
       instrument.ranges = await instrument.frontEnd();
       return instrument;
     } catch (error) {
