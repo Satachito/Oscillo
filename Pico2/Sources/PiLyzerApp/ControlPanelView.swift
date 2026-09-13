@@ -358,6 +358,11 @@ struct VerticalSection: View {
                 set: { model.settings.channels[channel].voltsPerDivision = $0 })
     }
 
+    private var gainCorrection: Double {
+        let channel = model.settings.channels[self.channel]
+        return channel.calibration(forRange: channel.rangeIndex).scale
+    }
+
     private var binding: Binding<AnalogChannelSettings> {
         Binding(get: { model.settings.channels[channel] },
                 set: { model.settings.channels[channel] = $0 })
@@ -448,9 +453,12 @@ struct VerticalSection: View {
                     .help("Clears the zero and the gain correction on every channel.")
             }
 
-            if model.settings.channels[channel].calibration(forRange:
-                model.settings.channels[channel].rangeIndex).scale != 1 {
-                Text("Gain calibrated").font(.caption).foregroundStyle(.secondary)
+            // A correction nobody can see is one nobody can question, and a
+            // reading past what the converter can reach is always one of these.
+            if abs(gainCorrection - 1) > 1e-9 {
+                Text(String(format: "Gain corrected by %+.2f%% — readings are scaled by it.",
+                            (gainCorrection - 1) * 100))
+                    .font(.caption).foregroundStyle(Theme.channelColor(channel))
             }
         }
     }
