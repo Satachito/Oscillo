@@ -186,13 +186,14 @@ final class ScopeModel: ObservableObject {
         engine.readNow { [weak self] volts in
             guard let self, channel < volts.count else { return }
             let range = self.settings.channels[channel].rangeIndex
+            let bias = self.settings.channels[channel].referenceBiasVolts
             let measured = volts[channel]
-            guard abs(measured) > 1e-9 else {
-                self.statusText = "Channel \(channel + 1) is reading nothing to correct"
+            guard abs(measured - bias) > 1e-9 else {
+                self.statusText = "Channel \(channel + 1) reads its bias, so there is nothing to correct"
                 return
             }
             self.settings.channels[channel].calibrateGain(measured: measured, applied: appliedVolts,
-                                                          forRange: range)
+                                                          bias: bias, forRange: range)
             self.statusText = String(format: "Channel %d gain calibrated", channel + 1)
         }
     }

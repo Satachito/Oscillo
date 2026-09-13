@@ -411,8 +411,9 @@ struct VerticalSection: View {
                     .frame(width: 80)
                 Text("V").font(.caption).foregroundStyle(.secondary)
             }
-            Text("A known voltage on the input. The divider's own 1% parts put the gain "
-                 + "out by up to 2%, and Set gain takes the difference as the correction.")
+            Text("A known voltage on the input. Set gain measures the swing from the bias "
+                 + "and corrects the gain by what it is short of this — so measure the bias "
+                 + "first. The divider's 1% parts put it out by up to 2%.")
                 .font(.caption).foregroundStyle(.secondary)
             HStack(spacing: 6) {
                 Button("Set gain") {

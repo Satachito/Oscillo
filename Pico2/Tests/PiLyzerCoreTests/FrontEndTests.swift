@@ -79,10 +79,19 @@ struct FrontEndTests {
         channel.calibrateGain(measured: 1.01, applied: 1.0, forRange: 0)
         #expect(abs(channel.calibration(forRange: 0).scale - 1.0 / 0.98 / 1.01) < 1e-9)
 
-        // The bias is a separate number and survives.
+        // The bias is a separate number, survives, and is where the gain is
+        // measured from: 1.65 V of mid rail plus a volt reading 0.98 V of
+        // swing is a 2% error, not a 65% one.
+        channel = AnalogChannelSettings()
         channel.setBias(1.65)
-        channel.calibrateGain(measured: 2, applied: 2, forRange: 0)
+        channel.calibrateGain(measured: 1.65 + 0.98, applied: 1.0,
+                              bias: channel.referenceBiasVolts, forRange: 0)
         #expect(channel.biasVolts == 1.65)
+        #expect(abs(channel.calibration(forRange: 0).scale - 1.0 / 0.98) < 1e-9)
+
+        // A measured bias is the one it uses, when there is one.
+        channel.recordMeasuredBias(1.63)
+        #expect(channel.referenceBiasVolts == 1.63)
 
         // Nothing on the input, or nothing claimed, leaves it alone.
         let before = channel.calibration(forRange: 0)

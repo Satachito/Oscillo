@@ -150,14 +150,25 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     }
 
     /// The second calibration point: what was really on the input against what
-    /// was read. The correction multiplies whatever is there already, so
-    /// calibrating twice converges rather than fighting itself.
-    public mutating func calibrateGain(measured: Double, applied: Double, forRange index: Int) {
-        guard abs(measured) > 1e-9, abs(applied) > 1e-6, measured.isFinite, applied.isFinite else { return }
+    /// was read, measured from the first point rather than from zero.
+    ///
+    /// The first point is the bias — where the input sits with nothing on it —
+    /// because a reading is no longer corrected by it. Leaving it out would
+    /// charge the whole of a front end's mid rail to the gain. The correction
+    /// multiplies whatever is there already, so calibrating twice converges
+    /// rather than fighting itself.
+    public mutating func calibrateGain(measured: Double, applied: Double,
+                                       bias: Double = 0, forRange index: Int) {
+        let swing = measured - bias
+        guard abs(swing) > 1e-9, abs(applied) > 1e-6, swing.isFinite, applied.isFinite else { return }
         var correction = calibration(forRange: index)
-        correction.scale *= applied / measured
+        correction.scale *= applied / swing
         setCalibration(correction, forRange: index)
     }
+
+    /// What this channel reads with nothing on the input: measured if anybody
+    /// has, otherwise what the bias was set to.
+    public var referenceBiasVolts: Double { measuredBiasVolts ?? biasVolts }
 
     /// Where the front end holds this input with nothing on it, in the volts
     /// the screen shows. Drawn as a line; never taken out of a reading.
