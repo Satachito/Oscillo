@@ -164,7 +164,7 @@ final class ScopeModel: ObservableObject {
         engine.measureBias { [weak self] volts in
             guard let self else { return }
             for (index, value) in volts.enumerated() where index < self.settings.channels.count {
-                self.settings.channels[index].setBias(value)
+                self.settings.channels[index].recordMeasuredBias(value)
             }
             self.statusText = "Bias measured"
         }
@@ -174,6 +174,7 @@ final class ScopeModel: ObservableObject {
         for index in settings.channels.indices {
             settings.channels[index].calibration = []
             settings.channels[index].biasVolts = 0
+            settings.channels[index].measuredBiasVolts = nil
         }
         statusText = "Calibration cleared"
     }

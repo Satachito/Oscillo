@@ -113,6 +113,25 @@ struct ScopeDisplayView: View {
                          with: .color(Theme.screen.opacity(0.8)))
             context.draw(label, at: centre)
         }
+
+        // What a grounded input actually read, against the line that says
+        // where it should have. The gap is the channel's offset error.
+        for channel in model.enabledAnalogChannels where channel < model.settings.channels.count {
+            guard let measured = model.settings.channels[channel].measuredBiasVolts else { continue }
+            let y = self.y(measured, channel: channel, height: size.height)
+            guard y.isFinite else { continue }
+            let clamped = min(max(y, 5), size.height - 5)
+            var arrow = Path()
+            arrow.move(to: CGPoint(x: size.width, y: clamped - 5))
+            arrow.addLine(to: CGPoint(x: size.width - 9, y: clamped))
+            arrow.addLine(to: CGPoint(x: size.width, y: clamped + 5))
+            arrow.closeSubpath()
+            if y < 0 || y > size.height {
+                context.stroke(arrow, with: .color(Theme.channelColor(channel)), lineWidth: 1)
+            } else {
+                context.fill(arrow, with: .color(Theme.channelColor(channel)))
+            }
+        }
     }
 
     /// The voltage scale down the left edge, every second line.

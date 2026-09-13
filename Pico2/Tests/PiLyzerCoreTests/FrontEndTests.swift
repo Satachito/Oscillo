@@ -115,4 +115,31 @@ struct FrontEndTests {
         let told = channel.scale(reference: 3.3, fullScale: 65520, ranges: FrontEnd.bareBoard)
         #expect(abs(told.biasVolts - channel.biasVolts) < 1e-3)
     }
+
+    @Test("Measuring a bias leaves the expected one alone, and the gap is the error")
+    func offsetErrorIsTheGap() throws {
+        var channel = AnalogChannelSettings()
+        #expect(channel.offsetErrorVolts == nil)          // nothing measured yet
+
+        channel.setBias(1.65)                             // what it should read
+        channel.recordMeasuredBias(1.6312)                // what it does read
+        #expect(channel.biasVolts == 1.65)
+        #expect(abs(try #require(channel.offsetErrorVolts) + 0.0188) < 1e-9)
+
+        // Measuring again replaces only the measurement.
+        channel.recordMeasuredBias(1.67)
+        #expect(channel.biasVolts == 1.65)
+        #expect(abs(try #require(channel.offsetErrorVolts) - 0.02) < 1e-9)
+
+        // Both survive a round trip through the panel's storage, and a panel
+        // saved before either existed decodes without them.
+        let encoded = try #require(try? JSONEncoder().encode(channel))
+        let back = try #require(try? JSONDecoder().decode(AnalogChannelSettings.self, from: encoded))
+        #expect(back.biasVolts == 1.65)
+        #expect(back.measuredBiasVolts == 1.67)
+        let older = try #require(try? JSONDecoder().decode(
+            AnalogChannelSettings.self, from: Data(#"{"isEnabled":true}"#.utf8)))
+        #expect(older.biasVolts == 0)
+        #expect(older.measuredBiasVolts == nil)
+    }
 }

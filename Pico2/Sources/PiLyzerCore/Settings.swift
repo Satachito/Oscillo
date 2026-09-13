@@ -31,11 +31,17 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     /// passive one. The screen draws a line there rather than subtracting it,
     /// so what is displayed is always what arrived at the converter.
     public var biasVolts: Double
+    /// What a grounded input actually read, the last time it was measured.
+    /// The distance from `biasVolts` is this channel's offset error, and the
+    /// screen marks it so the two can be seen against each other. Nothing is
+    /// corrected by it.
+    public var measuredBiasVolts: Double?
 
     public init(isEnabled: Bool = true, rangeIndex: Int = 0, probeAttenuation: Double = 1,
                 positionDivisions: Double = 0, removesMean: Bool = false,
                 voltsPerDivision: Double = 0, calibration: [ChannelCalibration] = [],
-                appliedVolts: Double = 1, biasVolts: Double = 0) {
+                appliedVolts: Double = 1, biasVolts: Double = 0,
+                measuredBiasVolts: Double? = nil) {
         self.isEnabled = isEnabled
         self.rangeIndex = rangeIndex
         self.probeAttenuation = probeAttenuation
@@ -45,6 +51,7 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         self.calibration = calibration
         self.appliedVolts = appliedVolts
         self.biasVolts = biasVolts
+        self.measuredBiasVolts = measuredBiasVolts
     }
 
     /// A panel saved by an older version has fewer keys than this one, and a
@@ -54,6 +61,7 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case isEnabled, rangeIndex, probeAttenuation, positionDivisions
         case removesMean, voltsPerDivision, calibration, appliedVolts, biasVolts
+        case measuredBiasVolts
     }
 
     public init(from decoder: Decoder) throws {
@@ -79,6 +87,7 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
             let legacy = (try? values.decodeIfPresent([LegacyCalibration].self, forKey: .calibration)) ?? nil
             biasVolts = legacy?.first(where: { $0.zero != 0 })?.zero ?? fallback.biasVolts
         }
+        measuredBiasVolts = try values.decodeIfPresent(Double.self, forKey: .measuredBiasVolts)
     }
 
     /// Only the field that moved; the gain beside it decodes as it always did.
@@ -153,6 +162,15 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     /// Where the front end holds this input with nothing on it, in the volts
     /// the screen shows. Drawn as a line; never taken out of a reading.
     public mutating func setBias(_ volts: Double) { biasVolts = volts }
+
+    /// What a grounded input read. Kept beside the bias rather than replacing
+    /// it: the gap between the two is the offset error, and it is only visible
+    /// while both numbers are.
+    public mutating func recordMeasuredBias(_ volts: Double) { measuredBiasVolts = volts }
+
+    /// How far this channel reads from where its bias says it should, once
+    /// somebody has measured it.
+    public var offsetErrorVolts: Double? { measuredBiasVolts.map { $0 - biasVolts } }
 
     public func scale(reference: Double, fullScale: Double, ranges: [InputRange]) -> VoltageScale {
         let index = min(max(rangeIndex, 0), ranges.count - 1)

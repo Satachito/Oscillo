@@ -387,6 +387,12 @@ struct VerticalSection: View {
             Text("Where the front end holds this input with nothing on it. Drawn as a "
                  + "dotted line; readings stay as the converter saw them.")
                 .font(.caption).foregroundStyle(.secondary)
+            if let measured = model.settings.channels[channel].measuredBiasVolts,
+               let error = model.settings.channels[channel].offsetErrorVolts {
+                Text("Measured \(Format.voltage(measured)) — \(Format.voltage(abs(error))) "
+                     + (error < 0 ? "below" : "above") + " it, marked on the right.")
+                    .font(.caption).foregroundStyle(Theme.channelColor(channel))
+            }
             HStack(spacing: 6) {
                 Button("Measure") { model.measureBias() }
                     .help("Ground all inputs first: what they read now is the bias.")
