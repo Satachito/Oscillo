@@ -116,9 +116,11 @@ descriptor set is 162 bytes rather than 178.
 The bytes were self-consistent all along, which is why a host-side probe that
 asked for the descriptor and checked its lengths reported it correct. Only
 Windows could tell that they were in the wrong place.
-The diminished-chord generator remains a standalone program for a separate
-Pico 2 in [`tools/pico2-chord`](../../tools/pico2-chord). GPIO0–7 are unused on
-the instrument, and the carrier has no J8.
+Signal generators for a *separate* Pico 2 live in `tools`: the diminished chord
+in [`tools/pico2-chord`](../../tools/pico2-chord), and a 440 Hz sine with white,
+pink and brown noise in [`tools/pico2-noise`](../../tools/pico2-noise). Both use
+GPIO0 upwards, which are unused on the instrument — but they are whole programs,
+so a board runs one of them or PiLyzer, never two. The carrier has no J8.
 
 ## Building
 
