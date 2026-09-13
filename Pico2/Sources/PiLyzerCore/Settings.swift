@@ -82,6 +82,16 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         calibration[index] = value
     }
 
+    /// The second calibration point: what was really on the input against what
+    /// was read. The correction multiplies whatever is there already, so
+    /// calibrating twice converges rather than fighting itself.
+    public mutating func calibrateGain(measured: Double, applied: Double, forRange index: Int) {
+        guard abs(measured) > 1e-9, abs(applied) > 1e-6, measured.isFinite, applied.isFinite else { return }
+        var correction = calibration(forRange: index)
+        correction.scale *= applied / measured
+        setCalibration(correction, forRange: index)
+    }
+
     public mutating func calibrateZero(to uncalibratedVolts: Double, forRange index: Int) {
         var correction = calibration(forRange: index)
         correction.zero = uncalibratedVolts

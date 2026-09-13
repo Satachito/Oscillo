@@ -110,6 +110,15 @@ test('the zero cancels a front end\u2019s bias, and a third range is not a hole'
   assert.equal(biased.code(0), at(1.65));                           // and a 0 V trigger is that code
   assert.equal(Math.round(scaleFor(settings, demoCaps, bare, 2).volts(at(1.65)) * 1000), 1650);
 
+  // A divider that is 2% low: one known voltage says so, and the correction
+  // rides on top of the zero rather than replacing it.
+  settings.channels[0].gain[0] = 1.02;
+  const corrected = scaleFor(settings, demoCaps, bare, 0);
+  assert.equal(Math.round(corrected.volts(at(1.65)) * 1000), 0);
+  assert.equal(Math.round(corrected.volts(at(2.65)) * 1000), 1020);
+  assert.equal(corrected.code(1.02), at(2.65));                     // and back again
+  settings.channels[0].gain[0] = 1;
+
   // Boards report three ranges; an array stored by an older version holds two.
   settings.channels[0].zero = [0, 0];
   settings.channels[0].range = 2;

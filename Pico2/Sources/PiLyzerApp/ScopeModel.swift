@@ -183,11 +183,13 @@ final class ScopeModel: ObservableObject {
         engine.readNow { [weak self] volts in
             guard let self, channel < volts.count else { return }
             let range = self.settings.channels[channel].rangeIndex
-            var calibration = self.settings.channels[channel].calibration(forRange: range)
             let measured = volts[channel]
-            guard abs(measured) > 1e-9 else { return }
-            calibration.scale *= appliedVolts / measured
-            self.settings.channels[channel].setCalibration(calibration, forRange: range)
+            guard abs(measured) > 1e-9 else {
+                self.statusText = "Channel \(channel + 1) is reading nothing to correct"
+                return
+            }
+            self.settings.channels[channel].calibrateGain(measured: measured, applied: appliedVolts,
+                                                          forRange: range)
             self.statusText = String(format: "Channel %d gain calibrated", channel + 1)
         }
     }

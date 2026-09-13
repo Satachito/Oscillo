@@ -69,12 +69,15 @@ export const midRailVolts = (caps, range) => (caps.reference / 2 - range.offset)
 export function scaleFor(settings, caps, frontEnd, channel) {
   const ch = settings.channels[channel], r = frontEnd[ch.range] || frontEnd[0];
   const zero = ch.zero?.[ch.range] || 0;
-  const volts = code => ((code / caps.fullScale * caps.reference - r.offset) / r.gain - zero) * ch.probe;
-  const code = volts => Math.max(0, Math.min(caps.fullScale, Math.round(((volts / ch.probe + zero) * r.gain + r.offset) / caps.reference * caps.fullScale)));
+  // The divider's own tolerance: 1% parts put the gain out by up to 2%, which
+  // no range descriptor can know. One known voltage measures it away.
+  const correction = ch.gain?.[ch.range] || 1;
+  const volts = code => ((code / caps.fullScale * caps.reference - r.offset) / r.gain - zero) * correction * ch.probe;
+  const code = volts => Math.max(0, Math.min(caps.fullScale, Math.round(((volts / ch.probe / correction + zero) * r.gain + r.offset) / caps.reference * caps.fullScale)));
   const low = volts(0), high = volts(caps.fullScale), span = high - low;
   let centre = (low + high) / 2;
   if (Math.abs(centre) < Math.abs(span) / 1000) centre = 0;
-  return { volts, code, low, high, span, centre, zero, r };
+  return { volts, code, low, high, span, centre, zero, correction, r };
 }
 // A trigger level sitting on the rail never fires, which looks exactly like a
 // broken trigger rather than a level left behind by a range change. Keep it

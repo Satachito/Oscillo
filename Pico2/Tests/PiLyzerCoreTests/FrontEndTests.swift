@@ -79,4 +79,30 @@ struct FrontEndTests {
         #expect(channel.calibration(forRange: 2).zero == 0.132)
         #expect(channel.calibration(forRange: 1).zero == 0)
     }
+
+    @Test("A known voltage corrects the gain the divider's tolerance got wrong")
+    func gainCalibration() {
+        // 1% parts put this divider out by up to 2%, which no range descriptor
+        // can know: 1 V applied, 0.98 V read.
+        var channel = AnalogChannelSettings()
+        channel.calibrateGain(measured: 0.98, applied: 1.0, forRange: 0)
+        let scale = channel.scale(reference: 3.3, fullScale: 65520, ranges: FrontEnd.bareBoard)
+        #expect(abs(channel.calibration(forRange: 0).scale - 1.0 / 0.98) < 1e-9)
+        #expect(abs(scale.volts(code: 65520 * 0.98 / 3.3) - 1.0) < 0.001)
+
+        // It multiplies what is there, so a second pass converges.
+        channel.calibrateGain(measured: 1.01, applied: 1.0, forRange: 0)
+        #expect(abs(channel.calibration(forRange: 0).scale - 1.0 / 0.98 / 1.01) < 1e-9)
+
+        // The zero is a separate correction and survives.
+        channel.calibrateZero(to: 1.65, forRange: 0)
+        channel.calibrateGain(measured: 2, applied: 2, forRange: 0)
+        #expect(channel.calibration(forRange: 0).zero == 1.65)
+
+        // Nothing on the input, or nothing claimed, leaves it alone.
+        let before = channel.calibration(forRange: 0)
+        channel.calibrateGain(measured: 0, applied: 1, forRange: 0)
+        channel.calibrateGain(measured: 1, applied: 0, forRange: 0)
+        #expect(channel.calibration(forRange: 0) == before)
+    }
 }
