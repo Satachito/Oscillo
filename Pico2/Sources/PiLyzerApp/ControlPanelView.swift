@@ -320,6 +320,16 @@ struct VerticalSection: View {
                        set: { model.settings.channels[channel].calibrateZero(to: $0, forRange: index) })
     }
 
+    /// The input voltage that reads mid scale right now — what a passive front
+    /// end biased to the middle of the converter's range leaves on a grounded
+    /// input. On a board that reports its own offset it is already nearly zero,
+    /// and the button then does nothing worth doing, which is the honest answer.
+    private var midRailVolts: Double {
+        let scale = model.scale(for: channel)
+        let value = scale.uncalibratedVolts(code: model.capabilities.analogFullScale / 2)
+        return value.isFinite ? value : 0
+    }
+
     private var binding: Binding<AnalogChannelSettings> {
         Binding(get: { model.settings.channels[channel] },
                 set: { model.settings.channels[channel] = $0 })
@@ -370,6 +380,9 @@ struct VerticalSection: View {
                 .font(.caption).foregroundStyle(.secondary)
 
             HStack(spacing: 6) {
+                Button("AFE bias") { zeroVolts.wrappedValue = midRailVolts }
+                    .help("Sets the zero to \(Format.voltage(midRailVolts)), the input that reads "
+                          + "mid scale: a passive front end biasing this input to the middle.")
                 Button("Zero here") { model.calibrateZero() }
                     .help("Ground all inputs first: what they read now becomes zero.")
                 Button("Reset") { model.resetCalibration() }

@@ -36,20 +36,6 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         self.calibration = calibration
     }
 
-    /// What this bench is wired like: CH1 and CH2 arrive through a front end
-    /// that biases them to mid rail, CH3 goes straight to the converter. A
-    /// front end that reports its own offset — rev A, Lite, the PL2407AFE —
-    /// carries it in its range descriptor and wants nothing here, so this is
-    /// a starting point to be typed over, not a constant of the instrument.
-    public static let defaultZeroVolts: [Double] = [1.65, 1.65, 0]
-
-    /// Enough entries for every range any board reports; the rest read as zero.
-    public static func standard(channel: Int, ranges: Int = 3) -> AnalogChannelSettings {
-        let zero = channel < defaultZeroVolts.count ? defaultZeroVolts[channel] : 0
-        return AnalogChannelSettings(
-            calibration: Array(repeating: ChannelCalibration(zero: zero), count: max(ranges, 1)))
-    }
-
     /// What a division is actually worth, once "show the whole range" is
     /// resolved against the range that is selected.
     public func effectiveVoltsPerDivision(reference: Double, ranges: [InputRange],
@@ -226,8 +212,7 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
     public var logIntervalSeconds: Double
 
     public init(mode: WorkMode = .scope,
-                channels: [AnalogChannelSettings] = [AnalogChannelSettings.standard(channel: 0),
-                                                     AnalogChannelSettings.standard(channel: 1)],
+                channels: [AnalogChannelSettings] = [AnalogChannelSettings(), AnalogChannelSettings()],
                 secondsPerDivision: Double = 1e-3, recordLength: Int = 2048,
                 trigger: AnalogTriggerSettings = AnalogTriggerSettings(), averaging: Int = 1,
                 logic: LogicSettings = LogicSettings(), spectrum: SpectrumSettings = SpectrumSettings(),
@@ -298,7 +283,7 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
     /// Keep saved calibration for hidden channels when connecting an older device.
     public mutating func ensureAnalogChannels(_ count: Int) {
         while channels.count < min(max(count, 0), 8) {
-            channels.append(AnalogChannelSettings.standard(channel: channels.count))
+            channels.append(AnalogChannelSettings())
         }
     }
 

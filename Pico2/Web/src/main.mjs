@@ -1,6 +1,6 @@
 import { USBInstrument } from './usb.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel } from './protocol.mjs';
+import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, midRailVolts } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -75,7 +75,7 @@ function channelControls() {
   $('channels').replaceChildren();
   for (let i = 0; i < caps().channels; i++) {
     const ch = settings.channels[i], el = document.createElement('div'); el.className = 'channel-card'; el.style.setProperty('--channel-color', COLORS[i]);
-    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="field">Zero <span class="unit">V</span><input data-bias type="number" step="0.01" aria-label="CH${i + 1} zero volts"/></label><p class="hint">Input volts that read as zero — the bias a front end adds. Type it, or ground the input and measure it.</p><div class="channel-actions"><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><button class="zero-button" data-zero title="Ground this input and capture a trace before setting zero.">Set zero</button><button class="zero-button" data-reset>Reset</button></div>`;
+    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="field">Zero <span class="unit">V</span><input data-bias type="number" step="0.01" aria-label="CH${i + 1} zero volts"/></label><p class="hint">Input volts that read as zero — the bias a front end adds. Type it, or ground the input and measure it.</p><div class="channel-actions"><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><button class="zero-button" data-afe>AFE bias</button><button class="zero-button" data-zero title="Ground this input and capture a trace before setting zero.">Set zero</button><button class="zero-button" data-reset>Reset</button></div>`;
     const range = el.querySelector('[data-field=range]'); frontEnd().forEach((r, j) => range.add(option(j, r.name))); range.disabled = frontEnd().length < 2;
     const scale = el.querySelector('[data-field=scale]'); [[0, 'Full range'], ...[.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20].map(v => [v, fmt(v, 'V')])].forEach(([v, t]) => scale.add(option(v, t)));
     for (const control of el.querySelectorAll('[data-field]')) {
@@ -100,6 +100,11 @@ function channelControls() {
       if (!Number.isFinite(value)) { bias.value = Number((ch.zero[ch.range] ?? 0).toPrecision(6)); return; }
       ch.zero[ch.range] = value; synchronize(); changed();
     });
+    const r = frontEnd()[ch.range] || frontEnd()[0];
+    const midRail = midRailVolts(caps(), r);
+    const afe = el.querySelector('[data-afe]');
+    afe.title = `Sets the zero to ${fmt(midRail, 'V')}, the input that reads mid scale: a passive front end biasing this input to the middle.`;
+    afe.onclick = () => { ch.zero[ch.range] = Number(midRail.toPrecision(6)); synchronize(); changed(); };
     el.querySelector('[data-zero]').disabled = !frame || frame.kind !== 'scope';
     el.querySelector('[data-zero]').onclick = () => {
       const trace = frame?.traces?.find(t => t.index === i); if (!trace) { showError(`Capture CH${i + 1} first.`); return; }

@@ -60,6 +60,10 @@ export function inputRanges(bytes) {
 // still compiles in a constant about a particular board, and it exists only for
 // those older devices.
 export const ranges = board => board === 0 ? [{ name: '0 – 3.3 V', gain: 1, offset: 0, switchPosition: 0 }] : [{ name: '±25 V', gain: .062645, offset: 1.650515, switchPosition: 0 }, { name: '±5 V', gain: .297269, offset: 1.652442, switchPosition: 1 }];
+// The input that reads mid scale: what a passive front end biased to the middle
+// of the converter's range leaves on a grounded input. A board that reports its
+// own offset has taken it out already, and this comes back at about zero.
+export const midRailVolts = (caps, range) => (caps.reference / 2 - range.offset) / range.gain;
 // `frontEnd` is the instrument's own range list, from inputRanges() or from the
 // fallback table. Nothing below this line knows what board it is talking to.
 export function scaleFor(settings, caps, frontEnd, channel) {

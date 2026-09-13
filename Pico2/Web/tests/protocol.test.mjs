@@ -1,13 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { midRailVolts, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/usb.mjs';
 import { measure, spectrum, spectrumCsv, csv, decodeUART } from '../src/signal.mjs';
 const caps = demoCaps;
-// Settings for inputs wired straight to the converter, for the tests that are
-// about scaling itself rather than about a front end's bias.
-const direct = () => { const s = makeSettings(); s.channels.forEach(c => c.zero = [0, 0, 0]); return s; };
 const afe = ranges(1), bare = ranges(0);
 for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, scale and 97-cycle rate floor`, () => {
   const settings = makeSettings(); settings.timebase = 50e-6; settings.source = 2;
@@ -21,7 +18,7 @@ for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, 
   assert.ok(actual.pretrigger < actual.count);
 });
 test('older two-channel device and unipolar scale remain supported', () => {
-  const settings = direct(); settings.source = 2; settings.level = 1.65;
+  const settings = makeSettings(); settings.source = 2; settings.level = 1.65;
   const actual = analogRequest(settings, { ...caps, channels: 2, minCycles: 96 }, bare);
   assert.equal(actual.mask, 3); assert.equal(actual.source, 0);
   assert.ok(Math.abs(view(actual.payload).getUint16(4, true) - 32760) < 1);
@@ -95,19 +92,23 @@ test('spectrum shows every channel: an input and its half-level output line up b
   assert.equal(spectrumCsv([]), '');
 });
 test('the zero cancels a front end\u2019s bias, and a third range is not a hole', () => {
-  // The bench default: CH1 and CH2 arrive through a front end biased to mid
-  // rail, CH3 is wired straight to the converter.
   const settings = makeSettings(), at = volts => Math.round(volts / 3.3 * 65520);
-  assert.deepEqual(settings.channels.map(c => c.zero[0]), [1.65, 1.65, 0]);
+  // Inputs start direct: nothing is removed until someone says there is a bias.
+  assert.deepEqual(settings.channels.map(c => c.zero[0]), [0, 0, 0]);
+  assert.equal(Math.round(scaleFor(settings, demoCaps, bare, 0).volts(at(1.65)) * 1000), 1650);
 
+  // What the AFE bias button writes: the input that reads mid scale. On a bare
+  // board that is the whole 1.65 V; on rev A the range descriptor has taken it
+  // out already, so there is nothing left to remove.
+  assert.ok(Math.abs(midRailVolts(demoCaps, bare[0]) - 1.65) < 1e-9);
+  assert.ok(Math.abs(midRailVolts(demoCaps, afe[0])) < 0.01);
+
+  settings.channels[0].zero[0] = midRailVolts(demoCaps, bare[0]);
   const biased = scaleFor(settings, demoCaps, bare, 0);
   assert.equal(Math.round(biased.volts(at(1.65)) * 1000), 0);       // grounded in reads zero
   assert.equal(Math.round(biased.volts(at(2.65)) * 1000), 1000);
   assert.equal(biased.code(0), at(1.65));                           // and a 0 V trigger is that code
   assert.equal(Math.round(scaleFor(settings, demoCaps, bare, 2).volts(at(1.65)) * 1000), 1650);
-
-  settings.channels[0].zero[0] = 0;                                 // typed back to a direct input
-  assert.equal(Math.round(scaleFor(settings, demoCaps, bare, 0).volts(at(1.65)) * 1000), 1650);
 
   // Boards report three ranges; an array stored by an older version holds two.
   settings.channels[0].zero = [0, 0];
@@ -193,7 +194,7 @@ test('encoders agree with the shared wire fixture', async () => {
 
 test('a trigger level left on the rail is moved somewhere the signal reaches', async () => {
   const { usableTriggerLevel } = await import('../src/protocol.mjs');
-  const settings = direct(), unipolar = scaleFor(settings, caps, bare, 0);
+  const settings = makeSettings(), unipolar = scaleFor(settings, caps, bare, 0);
   assert.ok(Math.abs(usableTriggerLevel(unipolar, 0) - 3.3 * .02) < 1e-9);      // 0 V is the bottom rail here
   assert.ok(Math.abs(usableTriggerLevel(unipolar, 99) - 3.3 * .98) < 1e-9);
   assert.equal(usableTriggerLevel(unipolar, 1.65), 1.65);                       // already reachable, untouched
