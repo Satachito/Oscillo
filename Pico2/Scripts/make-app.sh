@@ -42,4 +42,13 @@ swift Scripts/MakeIcon.swift "$BUNDLE/Contents/Resources/AppIcon.icns"
 echo "==> Signing (ad-hoc)"
 codesign --force --sign - "$BUNDLE"
 
+# Finder and the Dock draw the icon Launch Services has on file, not the one in
+# the bundle. A record left behind by an older build — at a path this project
+# has since moved, say — shadows this one and takes its icon with it.
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+if [ -x "$LSREGISTER" ]; then
+    echo "==> Registering with Launch Services"
+    "$LSREGISTER" -f "$(cd "$(dirname "$BUNDLE")" && pwd)/$(basename "$BUNDLE")"
+fi
+
 echo "==> Done: $BUNDLE"

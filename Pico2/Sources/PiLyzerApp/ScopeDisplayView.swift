@@ -22,6 +22,7 @@ struct ScopeDisplayView: View {
                     grid.draw(in: &context, size: size)
                     drawTraces(&context, size: size)
                     drawTriggerMarkers(&context, size: size)
+                    drawVerticalScale(&context, size: size)
                     if model.cursorsEnabled { drawCursors(&context, size: size) }
                 }
                 drawBanner(&context, size: size)
@@ -81,6 +82,35 @@ struct ScopeDisplayView: View {
         // half of the screen.
         let divisions = (volts - centre(channel)) / perDivision + position
         return height / 2 - CGFloat(divisions) * height / CGFloat(rows)
+    }
+
+    /// The voltage scale down the left edge, every second line.
+    ///
+    /// Channels can be on different volts per division and shifted apart, so
+    /// the numbers can only belong to one of them: the first that is switched
+    /// on, written in that channel's own colour so it is clear whose they are.
+    private func drawVerticalScale(_ context: inout GraphicsContext, size: CGSize) {
+        guard let channel = model.enabledAnalogChannels.first else { return }
+        let perDivision = voltsPerDivision(channel)
+        guard perDivision > 0, size.height > 0 else { return }
+        let position = channel < model.settings.channels.count
+            ? model.settings.channels[channel].positionDivisions : 0
+
+        for row in stride(from: 0, through: rows, by: 2) {
+            let volts = centre(channel) + (Double(rows / 2 - row) - position) * perDivision
+            let y = min(max(size.height * CGFloat(row) / CGFloat(rows), 7), size.height - 7)
+            let text = Text(Format.voltage(volts))
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(Theme.channelColor(channel))
+            // A trace crossing a number makes both unreadable, so the number
+            // sits on a patch of the screen's own colour.
+            let measured = context.resolve(text).measure(in: CGSize(width: 200, height: 20))
+            let patch = CGRect(x: 2, y: y - measured.height / 2 - 1,
+                               width: measured.width + 4, height: measured.height + 2)
+            context.fill(Path(roundedRect: patch, cornerRadius: 2),
+                         with: .color(Theme.screen.opacity(0.8)))
+            context.draw(text, at: CGPoint(x: 4, y: y), anchor: .leading)
+        }
     }
 
     private func drawTraces(_ context: inout GraphicsContext, size: CGSize) {
