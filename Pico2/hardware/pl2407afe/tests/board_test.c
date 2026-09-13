@@ -2,7 +2,7 @@
 #include <math.h>
 #include <stdio.h>
 #define PILYZER_BOARD_ID 3
-#include "../../Pico2/firmware/pilyzer/analog.c"
+#include "../../../firmware/pilyzer/analog.c"
 static const pilyzer_input_range_t ranges[] = PILYZER_INPUT_RANGES;
 int main(void) {
     assert(ANALOG_CHANNELS == 2 && ANALOG_RANGES == 3);

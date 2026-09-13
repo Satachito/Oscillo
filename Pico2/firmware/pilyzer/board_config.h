@@ -16,7 +16,7 @@
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
-#include "../../../Scoppy/firmware/board_config.h"
+#include "../../hardware/pl2407afe/board_config.h"
 // Two pins a channel here, and they are 2-5, which is why this board was the
 // first to want the generator somewhere other than 0.
 #define RANGE_PINS_PER_CHANNEL 2
@@ -59,7 +59,7 @@
 //
 // A bare Pico 2 has nothing to switch, so it offers exactly one.
 #if PILYZER_BOARD_ID == 3
-// PL2407AFE descriptors are supplied by Scoppy/firmware/board_config.h.
+// PL2407AFE descriptors are supplied by hardware/pl2407afe/board_config.h.
 #elif PILYZER_BOARD_ID == 0
 #define ANALOG_RANGES 1
 #define PILYZER_INPUT_RANGES {                                                 \
