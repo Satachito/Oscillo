@@ -1,6 +1,6 @@
 import { USBInstrument } from './usb.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, signalBasePin, SCALE_STEPS, fitScale } from './protocol.mjs';
+import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, SCALE_STEPS, fitScale } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -220,8 +220,7 @@ function synchronize() {
     const [major, minor] = instrument.identity.firmware.split('.').map(Number);
     const pin = instrument.identity.board === 3 ? 22 : major > 1 || minor >= 5 ? 20 : minor >= 3 ? 28 : 2;
     $('test-pin').textContent = instrument.demo ? 'Demo is generated in this browser. Test output controls apply to a USB instrument.' : `GPIO${pin} · 0–3.3 V square wave. Wire the output to an input to measure it.`;
-    const base = signalBasePin(instrument.identity.board, instrument.identity.firmware);
-    $('signal-pins').textContent = `GPIO${base} sine, GPIO${base + 1} white, GPIO${base + 2} pink, GPIO${base + 3} brown — PWM at 586 kHz, so each pin wants an RC (1 kΩ and 100 nF) to come out as a voltage.`;
+    $('signal-pins').textContent = `GPIO${SIGNAL_BASE_PIN} sine, GPIO${SIGNAL_BASE_PIN + 1} white, GPIO${SIGNAL_BASE_PIN + 2} pink, GPIO${SIGNAL_BASE_PIN + 3} brown — PWM at 586 kHz, so each pin wants an RC (1 kΩ and 100 nF) to come out as a voltage.`;
   }
   $('mode-title').textContent = { scope: 'Oscilloscope', spectrum: 'Spectrum analyser', logic: 'Logic analyser', meter: 'Voltage meter' }[settings.mode];
   document.body.classList.toggle('meter-mode', meter);

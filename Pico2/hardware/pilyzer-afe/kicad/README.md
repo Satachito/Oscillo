@@ -50,7 +50,7 @@ The saved schematic takes precedence over the earlier ASCII sketch.
    and ground are one net. ADC_VREF is left unconnected on the carrier.
 9. R27–R34 are DNP. They suppress floating logic inputs only when populated.
 
-## Firmware 1.11 pin map (rev B)
+## Pin map (rev B)
 
 | Signal | GPIO | Pico physical pin | Carrier socket pad |
 | --- | ---: | ---: | --- |
@@ -62,11 +62,10 @@ The saved schematic takes precedence over the earlier ASCII sketch.
 | CH3 range | 6 | 9 | J6.9 |
 | Test output | 20 | 26 | J7.15 |
 
-The three range nets were on J7.20 / J7.19 / J7.17 up to firmware 1.10, which
-is what the saved schematic still draws. Firmware 1.11 moves them to J6 so that
-GPIO16–19 — J7.20, J7.19, J7.17 and J7.16 — belong to the signal generator on
-every board. **The schematic has not been redrawn yet**, so `check_kicad.py`
-fails on those three nets until it is; that failure is the reminder.
+**The saved schematic still draws the three range nets on J7.20 / J7.19 /
+J7.17**, which is where they used to be: those four pads — with J7.16 — are
+GPIO16–19 and belong to the signal generator. `check_kicad.py` fails on them
+until the nets are moved in KiCad; that failure is the reminder.
 
 Logic D0–D7 remain on GPIO8–15. GPIO0–3 and GPIO7 remain unconnected, as do the
 four generator pins on the carrier. J8 is unused:

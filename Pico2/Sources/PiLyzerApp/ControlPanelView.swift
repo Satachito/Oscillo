@@ -299,7 +299,7 @@ struct ControlPanelView: View {
     /// Which pin carries what, and the one thing that has to be fitted to
     /// hear any of it.
     private var signalPinsHint: String {
-        let base = model.instrument?.identity.signalBasePin ?? 0
+        let base = DeviceIdentity.signalBasePin
         return "GPIO\(base) sine, GPIO\(base + 1) white, GPIO\(base + 2) pink, "
             + "GPIO\(base + 3) brown — PWM at 586 kHz, so each pin wants an RC "
             + "(1 kΩ and 100 nF) to come out as a voltage."

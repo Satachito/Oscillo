@@ -12,7 +12,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x010B   // 1.11: the generator is on GPIO16-19 on every board, and range control moves to GPIO4-6; 1.10 moved it there on the PL2407AFE alone; 1.9 put it on GPIO0-3
+#define PILYZER_FIRMWARE_VERSION 0x010B   // 1.11: the generator on GPIO16-19 and range control on GPIO4-6, the same on every board
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3

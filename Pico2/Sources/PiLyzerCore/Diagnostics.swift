@@ -188,7 +188,7 @@ public enum Diagnostics {
                 return "This instrument has no signal generator."
             }
             let actual = try instrument.setSignals(enabled: sineHz > 0, sineHz: max(sineHz, 0))
-            let base = instrument.identity.signalBasePin
+            let base = DeviceIdentity.signalBasePin
             return sineHz > 0
                 ? "Generator on: GPIO\(base) sine at \(Format.frequency(Double(actual))), "
                     + "GPIO\(base + 1) white, GPIO\(base + 2) pink, GPIO\(base + 3) brown."

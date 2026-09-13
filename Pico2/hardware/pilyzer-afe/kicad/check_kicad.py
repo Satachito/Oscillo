@@ -53,8 +53,8 @@ def net(name, *nodes):
     checks += 1
 
 # Explicit topology requirements, independent of symbol positions / graphics.
-# The range pads are on J6 from firmware 1.11: GPIO4/5/6 rather than 16/17/18,
-# which the generator now has on every board.
+# The range pads are on J6: GPIO4/5/6, low enough to leave GPIO16-19 to the
+# generator, which is on the same four pins on every board.
 for channel, offset, cn, ca, cb, comp, header, tvs, tp, switch, unit, adc, range_pad, fb_c, out_r in [
     (1, 0, 4, 6, 7, 1, 3, 5, 1, 'U2', 1, 10, 'J6.6', 21, 44),
     (2, 8, 9, 10, 11, 8, 4, 6, 2, 'U2', 2, 9, 'J6.7', 22, 45),

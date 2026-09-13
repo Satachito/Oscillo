@@ -390,12 +390,10 @@ They are marked DNP in the schematic and do nothing while unpopulated.
 | Signal generator | GPIO16…GPIO19 | 21,22,24,25 |
 | Unused | GPIO0…GPIO3, GPIO7 | 1,2,4,5,10 |
 
-The range controls sat on GPIO16/17/18 up to firmware 1.10. Firmware 1.11 moved
-them down so that the generator has GPIO16–19 on every board — one answer to
-where the sine is, whichever instrument is plugged in. The generator's four pins
-are not connected to anything on the carrier; they are PWM carriers and want an
-RC apiece before they are voltages. **A board built for firmware 1.10 or earlier
-has to be rewired before 1.11 will switch its ranges.**
+The range controls are low so that the generator can have GPIO16–19 on every
+board — one answer to where the sine is, whichever instrument is plugged in.
+Its four pins are not connected to anything on the carrier: they are PWM
+carriers, and want an RC apiece before they are voltages.
 
 The op amp draws about 4 mA, so the whole board runs from 3V3(OUT).
 
@@ -407,9 +405,8 @@ the optional DNP TVS, and TP7 exposes the divider node. U3A switches its range;
 C20 decouples U3. U3B has control tied low and signal pins left unconnected.
 U1D continues to buffer VMID.
 
-CH3 ADC is GPIO28 / J7.7; its range control is GPIO6 / J6.9 (GPIO18 / J7.17
-before firmware 1.11). Test output moves to GPIO20 / J7.15, through R35 to TP6.
-J8 remains unused.
+CH3 ADC is GPIO28 / J7.7 and its range control GPIO6 / J6.9. Test output moves
+to GPIO20 / J7.15, through R35 to TP6. J8 remains unused.
 
 The ADC scans only the channels enabled in the app. Maximum rates per channel
 are 495 / 247 / 165 kSa/s with 1 / 2 / 3 checked. At maximum rate each
@@ -420,9 +417,9 @@ analogue filter must be evaluated at that rate as well as the faster modes.
 ## Separate chord generator
 
 The diminished-chord generator runs on a separate Pico 2. The carrier has no
-J8 or note-output circuitry. Firmware 1.5 adds CH3 on GPIO28 with range GPIO18
-and moves test output to GPIO20 / TP6; firmware 1.11 moves all three range
-controls to GPIO4/5/6 on J6. Logic GPIO8–15 is unchanged throughout.
+J8 or note-output circuitry. Firmware 1.5 adds CH3 on GPIO28 and moves test
+output to GPIO20 / TP6; the three range controls are GPIO4/5/6 on J6. Logic
+GPIO8–15 is unchanged throughout.
 See [`tools/pico2-chord`](../../tools/pico2-chord) for the standalone program.
 
 This pin allocation supersedes firmware 1.2: rewire the logic and range signals

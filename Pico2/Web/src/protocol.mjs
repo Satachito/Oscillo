@@ -72,16 +72,10 @@ export const fitScale = scale => {
 // The input that reads mid scale: what a passive front end biased to the middle
 // of the converter's range leaves on a grounded input. A board that reports its
 // own offset has taken it out already, and this comes back at about zero.
-// The first of the four pins the generator drives; the sine is here and white,
-// pink and brown noise follow it. GPIO16 on every board from firmware 1.11,
-// which moved the range controls down to GPIO4-6 to free them; before that the
-// four started at GPIO0, except on a PL2407AFE, which switches its ranges there
-// and was given GPIO16-19 a release earlier.
-export const signalBasePin = (board, firmware = '') => {
-  if (board === 3) return 16;
-  const [major, minor] = firmware.split('.').map(Number);
-  return major > 1 || minor >= 11 ? 16 : 0;
-};
+// The first of the four pins the generator drives: the sine, and then white,
+// pink and brown noise. The same four on every board, which is the point of
+// them being where they are.
+export const SIGNAL_BASE_PIN = 16;
 export const midRailVolts = (caps, range) => (caps.reference / 2 - range.offset) / range.gain;
 // What this channel reads with nothing on the input: measured if anybody has,
 // otherwise what the bias was set to. Both calibrations are measured from it.

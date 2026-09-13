@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fitScale, midRailVolts, referenceBias, signalBasePin, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/usb.mjs';
 import { measure, spectrum, spectrumCsv, csv, decodeUART } from '../src/signal.mjs';
@@ -352,16 +352,4 @@ test('the log drops its oldest points rather than growing without limit', async 
   engine.pointDue = 0;
   const frame = await engine.capture(engine.instrument, settings, null, engine.token);
   assert.equal(frame.history.length, LOG_CAPACITY);
-});
-
-test('the generator lands on GPIO16 everywhere, once the firmware is new enough', () => {
-  // 1.9 put the four at GPIO0 and left the ranges at 16; 1.11 swapped them.
-  assert.equal(signalBasePin(0, '1.9'), 0);
-  assert.equal(signalBasePin(0, '1.10'), 0);
-  assert.equal(signalBasePin(0, '1.11'), 16);
-  assert.equal(signalBasePin(0, '2.0'), 16);
-  for (const board of [0, 1, 2]) assert.equal(signalBasePin(board, '1.11'), 16);
-  // A PL2407AFE never had them at 0 — its ranges are on GPIO2-5.
-  assert.equal(signalBasePin(3, '1.10'), 16);
-  assert.equal(signalBasePin(3, '1.11'), 16);
 });
