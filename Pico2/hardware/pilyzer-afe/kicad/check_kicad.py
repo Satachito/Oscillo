@@ -53,10 +53,12 @@ def net(name, *nodes):
     checks += 1
 
 # Explicit topology requirements, independent of symbol positions / graphics.
-for channel, offset, cn, ca, cb, comp, header, tvs, tp, switch, unit, adc, range_pin, fb_c, out_r in [
-    (1, 0, 4, 6, 7, 1, 3, 5, 1, 'U2', 1, 10, 20, 21, 44),
-    (2, 8, 9, 10, 11, 8, 4, 6, 2, 'U2', 2, 9, 19, 22, 45),
-    (3, 35, 17, 18, 19, 16, 10, 7, 7, 'U3', 1, 7, 17, 23, 46),
+# The range pads are on J6 from firmware 1.11: GPIO4/5/6 rather than 16/17/18,
+# which the generator now has on every board.
+for channel, offset, cn, ca, cb, comp, header, tvs, tp, switch, unit, adc, range_pad, fb_c, out_r in [
+    (1, 0, 4, 6, 7, 1, 3, 5, 1, 'U2', 1, 10, 'J6.6', 21, 44),
+    (2, 8, 9, 10, 11, 8, 4, 6, 2, 'U2', 2, 9, 'J6.7', 22, 45),
+    (3, 35, 17, 18, 19, 16, 10, 7, 7, 'U3', 1, 7, 'J6.9', 23, 46),
 ]:
     prefix = f'CH{channel}_'
     plus, minus, output = {1: (3, 2, 1), 2: (5, 6, 7), 3: (10, 9, 8)}[channel]
@@ -78,7 +80,7 @@ for channel, offset, cn, ca, cb, comp, header, tvs, tp, switch, unit, adc, range
     net(prefix+'FILT', f'C{fb_c}.2', f'U4.{output}', f'U4.{minus}', f'R{out_r}.1')
     net(prefix+'ADC', f'R{out_r}.2', f'C{cb}.1', f'J7.{adc}')
     assert bom_value(r(5)) == bom_value(r(6)) == '2.67k 1%', prefix + 'Sallen-Key resistors'
-    net(f'RANGE_CH{channel}', f'J7.{range_pin}', f'{switch}.{control}')
+    net(f'RANGE_CH{channel}', range_pad, f'{switch}.{control}')
     assert pin_net[(switch, str(normally_open))] == 'VMID'
     assert pin_net[(switch, str(normally_closed))].startswith('unconnected-')
     assert pin_net[(f'D{channel}', '1')] == 'GND'
@@ -100,15 +102,17 @@ for node in ['J7.5', 'U1.4', 'U4.4', 'U2.8', 'R3.1', 'R11.1', 'R17.1', 'C12.1', 
 for node in ['U1.11', 'U4.11', 'U2.3', 'J7.8', 'C15.2', 'R18.2', 'U3.3', 'U3.5', 'C20.2', 'C24.2']:
     assert pin_net[tuple(node.split('.'))] == 'GND', node
 
-# GPIO0–7 are deliberately unused on the instrument carrier.
-for socket_pin in [1, 2, 4, 5, 6, 7, 9, 10]:
-    node = ('J6', str(socket_pin))
+# GPIO0–3 and GPIO7 are deliberately unused on the instrument carrier, and so
+# are the generator's own four: they are PWM carriers, and whatever is to be
+# done with one is done off the header, through an RC.
+for node in [('J6', p) for p in ['1', '2', '4', '5', '10']]              \
+          + [('J7', p) for p in ['20', '19', '17', '16']]:
     assert pin_net[node].startswith('unconnected-'), node
     assert nets[pin_net[node]] == {node}, node
 # Keep the independently specified schematic pin map in step with firmware.
 config = (HERE.parents[2] / 'firmware/pilyzer/board_config.h').read_text()
-for macro, value in [('PIN_LOGIC_BASE',8),
-                     ('PIN_RANGE_CH1',16), ('PIN_RANGE_CH2',17), ('PIN_RANGE_CH3',18),
+for macro, value in [('PIN_LOGIC_BASE',8), ('PIN_SIGNAL_BASE',16),
+                     ('PIN_RANGE_CH1',4), ('PIN_RANGE_CH2',5), ('PIN_RANGE_CH3',6),
                      ('PIN_ADC_CH1',26), ('PIN_ADC_CH2',27), ('PIN_ADC_CH3',28),
                      ('ANALOG_CHANNELS',3), ('PIN_CALIBRATION_OUT',20)]:
     found = re.search(r'^#define\s+'+macro+r'\s+(\d+)', config, re.MULTILINE)

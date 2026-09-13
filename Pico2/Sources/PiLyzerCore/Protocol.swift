@@ -145,10 +145,17 @@ public struct DeviceIdentity: Equatable, Sendable {
     }
 
     /// The first of the four pins the generator drives; the sine is here and
-    /// white, pink and brown noise follow it. A PL2407AFE switches its ranges
-    /// on GPIO2-5, so there it starts at the first four consecutive pins that
-    /// board leaves alone instead.
-    public var signalBasePin: Int { boardID == 3 ? 16 : 0 }
+    /// white, pink and brown noise follow it.
+    ///
+    /// GPIO16 on every board from firmware 1.11, which moved the range
+    /// controls down to GPIO4-6 to free them. Before that the four started at
+    /// GPIO0, except on a PL2407AFE, which switches its ranges there and was
+    /// given GPIO16-19 a release earlier.
+    public var signalBasePin: Int {
+        if boardID == 3 { return 16 }
+        let major = firmwareVersion >> 8, minor = firmwareVersion & 0xFF
+        return major > 1 || minor >= 11 ? 16 : 0
+    }
 }
 
 public struct DeviceCapabilities: Equatable, Sendable {

@@ -12,16 +12,36 @@
 // frequency exact, and eight times over the audio band.
 #define SAMPLE_RATE_HZ 50000
 
-// The four pins are two PWM slices, driven as an A/B pair each, so the first
-// has to be an even GPIO — and neither slice may be the one the calibration
-// square wave already owns, because a slice has one wrap for both channels.
-// A board that moves the generator gets told here rather than on a bench.
+// Where the four pins may go. A board that moves them somewhere that cannot
+// work is told here, at compile time, rather than on a bench with a probe.
+//
+// They are two PWM slices driven as an A/B pair each, so the first has to be
+// an even GPIO, and neither slice may be the one the calibration square wave
+// already owns: a slice has one wrap counter for both of its channels.
 #define SIGNAL_SLICE(pin) (((pin) >> 1u) & 7u)
 _Static_assert(PIN_SIGNAL_BASE % 2 == 0,
     "the generator's first pin must be the A channel of a PWM slice");
 _Static_assert(SIGNAL_SLICE(PIN_CALIBRATION_OUT) != SIGNAL_SLICE(PIN_SIGNAL_BASE)
             && SIGNAL_SLICE(PIN_CALIBRATION_OUT) != SIGNAL_SLICE(PIN_SIGNAL_BASE + 2),
     "the generator and the calibration output would share a PWM slice");
+
+// And the pins themselves have to be free. Two runs of pins overlap when each
+// starts before the other ends, which covers one sitting wholly inside the
+// other as well as the two merely crossing.
+#define PINS_CLASH(a, na, b, nb) ((a) < (b) + (nb) && (b) < (a) + (na))
+#define SIGNALS_CLASH(pin, count) PINS_CLASH(PIN_SIGNAL_BASE, SIGNAL_COUNT, pin, count)
+_Static_assert(!SIGNALS_CLASH(PIN_CALIBRATION_OUT, 1),
+    "the generator would drive the calibration output's pin");
+_Static_assert(!SIGNALS_CLASH(PIN_LOGIC_BASE, LOGIC_CHANNELS),
+    "the generator would drive a logic input");
+_Static_assert(!SIGNALS_CLASH(PIN_RANGE_CH1, RANGE_PINS_PER_CHANNEL)
+            && !SIGNALS_CLASH(PIN_RANGE_CH2, RANGE_PINS_PER_CHANNEL)
+            && (ANALOG_CHANNELS < 3
+                || !SIGNALS_CLASH(PIN_RANGE_CH3, RANGE_PINS_PER_CHANNEL)),
+    "the generator would fight a range switch");
+_Static_assert(!SIGNALS_CLASH(PIN_ADC_CH1, 1) && !SIGNALS_CLASH(PIN_ADC_CH2, 1)
+            && (ANALOG_CHANNELS < 3 || !SIGNALS_CLASH(PIN_ADC_CH3, 1)),
+    "the generator would drive a converter input");
 
 static signal_source_t source;
 static repeating_timer_t timer;

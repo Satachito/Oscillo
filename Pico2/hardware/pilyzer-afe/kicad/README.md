@@ -31,7 +31,7 @@ The saved schematic takes precedence over the earlier ASCII sketch.
    to CH3; D4 remains unused. Optional connector TVS footprints D5/D6/D7 are
    marked DNP with no exact part selected.
 5. U2A/U2B/U3A COM connects to the 2.67 kΩ resistor, NO to VMID, and NC is deliberately
-   unconnected. GPIO16/17/18 LOW gives ±25 V; HIGH gives ±5 V, matching firmware
+   unconnected. GPIO4/5/6 LOW gives ±25 V; HIGH gives ±5 V, matching firmware
    switch positions 0/1. The TI DGS package uses the KiCad footprint
    `TSSOP-10_3x3mm_P0.5mm` (VSSOP-10, not a generic footprint selected by name).
 6. C15 bypasses the **divider midpoint before U1D**, avoiding a direct 1 µF
@@ -50,19 +50,26 @@ The saved schematic takes precedence over the earlier ASCII sketch.
    and ground are one net. ADC_VREF is left unconnected on the carrier.
 9. R27–R34 are DNP. They suppress floating logic inputs only when populated.
 
-## Firmware 1.5 pin map (rev B)
+## Firmware 1.11 pin map (rev B)
 
 | Signal | GPIO | Pico physical pin | Carrier socket pad |
 | --- | ---: | ---: | --- |
 | CH1 ADC | 26 | 31 | J7.10 |
 | CH2 ADC | 27 | 32 | J7.9 |
 | CH3 ADC | 28 | 34 | J7.7 |
-| CH1 range | 16 | 21 | J7.20 |
-| CH2 range | 17 | 22 | J7.19 |
-| CH3 range | 18 | 24 | J7.17 |
+| CH1 range | 4 | 6 | J6.6 |
+| CH2 range | 5 | 7 | J6.7 |
+| CH3 range | 6 | 9 | J6.9 |
 | Test output | 20 | 26 | J7.15 |
 
-Logic D0–D7 remain on GPIO8–15. GPIO0–7 remain unconnected. J8 is unused:
+The three range nets were on J7.20 / J7.19 / J7.17 up to firmware 1.10, which
+is what the saved schematic still draws. Firmware 1.11 moves them to J6 so that
+GPIO16–19 — J7.20, J7.19, J7.17 and J7.16 — belong to the signal generator on
+every board. **The schematic has not been redrawn yet**, so `check_kicad.py`
+fails on those three nets until it is; that failure is the reminder.
+
+Logic D0–D7 remain on GPIO8–15. GPIO0–3 and GPIO7 remain unconnected, as do the
+four generator pins on the carrier. J8 is unused:
 CH3's input is J10, and the diminished-chord generator stays on a separate
 Pico 2.
 U3A is CH3's range switch; U3B control is grounded and its signal pins are NC.

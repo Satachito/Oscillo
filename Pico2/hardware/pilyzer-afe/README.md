@@ -100,7 +100,7 @@ U4A OUT -- R44 1k -- ADC -- C7 1n -- GND
 
 U1A OUT -- R7 10k -- U1A (-) -- R8 2.67k -- U2A COM
 U2A NO -- VMID        U2A NC -- not connected
-GPIO16 LOW: COM-NC (gain 1); HIGH: COM-NO (gain 4.745)
+GPIO4 LOW: COM-NC (gain 1); HIGH: COM-NO (gain 4.745)
 ```
 
 * **R1 + R2** are the 1 MΩ input, split in two so each 0805 sees half the
@@ -253,7 +253,7 @@ pinout rather than assuming: dual SPDT switches are not all pin compatible.
 
 ## Ranges are switched, not jumpered
 
-The range switch is driven from GPIO16, GPIO17 and GPIO18, so the application always
+The range switch is driven from GPIO4, GPIO5 and GPIO6, so the application always
 knows which range a channel is on, can offer per-range calibration, and can
 change ranges without anyone touching the board.
 
@@ -269,7 +269,7 @@ what a single range has to reach to be useful on a bench with students at it.
 The whole difference from rev A is **`R8`: 15 kΩ instead of 2.67 kΩ**, wired
 permanently to VMID instead of being taken there by `U2A`. That makes the gain
 stage ×1.667 rather than ×4.745. Both TS5A23159 packages leave the board, and
-GPIO16 and GPIO17 come free.
+GPIO4 and GPIO5 come free.
 
 | | Overall gain | Offset | Reads |
 | --- | ---: | ---: | --- |
@@ -382,12 +382,20 @@ They are marked DNP in the schematic and do nothing while unpopulated.
 | Analogue ground | AGND | 33 |
 | Converter reference | ADC_VREF | 35 |
 | Front-end supply | 3V3(OUT) | 36 |
-| CH1 range switch | GPIO16 | 21 |
-| CH2 range switch | GPIO17 | 22 |
-| CH3 range switch | GPIO18 | 24 |
+| CH1 range switch | GPIO4 | 6 |
+| CH2 range switch | GPIO5 | 7 |
+| CH3 range switch | GPIO6 | 9 |
 | Logic D0…D7 | GPIO8…GPIO15 | 11,12,14,15,16,17,19,20 |
 | Adjustable calibration output | GPIO20 | 26 |
-| Unused | GPIO0…GPIO7 | 1,2,4,5,6,7,9,10 |
+| Signal generator | GPIO16…GPIO19 | 21,22,24,25 |
+| Unused | GPIO0…GPIO3, GPIO7 | 1,2,4,5,10 |
+
+The range controls sat on GPIO16/17/18 up to firmware 1.10. Firmware 1.11 moved
+them down so that the generator has GPIO16–19 on every board — one answer to
+where the sine is, whichever instrument is plugged in. The generator's four pins
+are not connected to anything on the carrier; they are PWM carriers and want an
+RC apiece before they are voltages. **A board built for firmware 1.10 or earlier
+has to be rewired before 1.11 will switch its ranges.**
 
 The op amp draws about 4 mA, so the whole board runs from 3V3(OUT).
 
@@ -399,8 +407,9 @@ the optional DNP TVS, and TP7 exposes the divider node. U3A switches its range;
 C20 decouples U3. U3B has control tied low and signal pins left unconnected.
 U1D continues to buffer VMID.
 
-CH3 ADC is GPIO28 / J7.7; its range control is GPIO18 / J7.17. Test output
-moves to GPIO20 / J7.15, through R35 to TP6. J8 remains unused.
+CH3 ADC is GPIO28 / J7.7; its range control is GPIO6 / J6.9 (GPIO18 / J7.17
+before firmware 1.11). Test output moves to GPIO20 / J7.15, through R35 to TP6.
+J8 remains unused.
 
 The ADC scans only the channels enabled in the app. Maximum rates per channel
 are 495 / 247 / 165 kSa/s with 1 / 2 / 3 checked. At maximum rate each
@@ -411,9 +420,9 @@ analogue filter must be evaluated at that rate as well as the faster modes.
 ## Separate chord generator
 
 The diminished-chord generator runs on a separate Pico 2. The carrier has no
-J8 or note-output circuitry; GPIO0–7 are marked unconnected on J6.
-Firmware 1.5 adds CH3 on GPIO28 with range GPIO18 and moves test output to
-GPIO20 / TP6. Logic GPIO8–15 and range GPIO16/17 remain unchanged.
+J8 or note-output circuitry. Firmware 1.5 adds CH3 on GPIO28 with range GPIO18
+and moves test output to GPIO20 / TP6; firmware 1.11 moves all three range
+controls to GPIO4/5/6 on J6. Logic GPIO8–15 is unchanged throughout.
 See [`tools/pico2-chord`](../../tools/pico2-chord) for the standalone program.
 
 This pin allocation supersedes firmware 1.2: rewire the logic and range signals

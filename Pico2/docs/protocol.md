@@ -137,10 +137,12 @@ board has a calibration output, bit 2 the logic inputs are buffered, bit 3
 the analogue trigger supports a low-pass filter (firmware 1.2 and later),
 bit 4 the device answers `inputRanges` (firmware 1.7 and later), bit 5 the
 device has a signal generator — a sine and white, pink and brown noise on four
-consecutive pins of its own (firmware 1.9 and later). Which four depends on the
-board, so the host reads them from the board id: GPIO0–3 everywhere except a
-PL2407AFE, which switches its ranges there and uses GPIO16–19 instead (firmware
-1.10 and later; 1.9 answered that that board had no generator at all).
+consecutive pins of its own (firmware 1.9 and later). They are GPIO16–19 on
+every board from firmware 1.11, which moved the range controls down to GPIO4–6
+to free them. Before that they started at GPIO0, except on a PL2407AFE, whose
+ranges are switched there: that board got GPIO16–19 in 1.10, and in 1.9 answered
+that it had no generator at all. A host that wants to name the pins reads the
+board id and the firmware version, as it already does for the test output.
 
 Analogue samples are unsigned 16-bit values, left-aligned from the converter's
 own resolution: a 12-bit code `c` arrives as `c << 4`. So a reading at the top
@@ -310,10 +312,11 @@ trigger position is sample-accurate rather than interrupt-latency-accurate.
 
 ## Firmware 1.5 pin allocation and channel count
 
-CH1/CH2/CH3 use GPIO26/27/28. Logic D0–D7 use GPIO8–15, range controls use
-GPIO16/17/18, and `setCalibrationOutput` controls GPIO20. GPIO0–3 carry the
-generator from firmware 1.9, leaving GPIO4–7 unused. Firmware 1.3/1.4 used
-GPIO28 for test output, and 1.2 used GPIO2.
+CH1/CH2/CH3 use GPIO26/27/28. Logic D0–D7 use GPIO8–15 and
+`setCalibrationOutput` controls GPIO20. Firmware 1.5 through 1.10 put the range
+controls on GPIO16/17/18; 1.11 moves them to GPIO4/5/6 and gives GPIO16–19 to
+the generator, which 1.9 had put on GPIO0–3. GPIO0–3 and GPIO7 are then free.
+Firmware 1.3/1.4 used GPIO28 for test output, and 1.2 used GPIO2.
 
 A PL2407AFE is laid out differently throughout: CH1/CH2 on GPIO26/27, two range
 pins a channel on GPIO2–5, logic on GPIO6–13, SG OUT on GPIO22, and — from

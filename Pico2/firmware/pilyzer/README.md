@@ -67,9 +67,10 @@ directly and **must not go outside that**. The front end in
 
 ### Three-channel acquisition (firmware 1.5)
 
-CH3 uses GPIO28/ADC2 and GPIO18 for its range switch. The adjustable test output
-moves to GPIO20; `setCalibrationOutput` and the app's `Test output` still control
-it. Logic GPIO8–15 and the first two range controls remain unchanged.
+CH3 uses GPIO28/ADC2 and, from firmware 1.11, GPIO6 for its range switch — the
+three range controls moved to GPIO4/5/6 to leave GPIO16–19 to the generator.
+The adjustable test output moves to GPIO20; `setCalibrationOutput` and the app's
+`Test output` still control it. Logic GPIO8–15 is unchanged throughout.
 
 The enabled mask selects only the requested ADC inputs, in ascending order.
 Any nonempty subset of CH1/CH2/CH3 is supported. At the fastest ADC clock the

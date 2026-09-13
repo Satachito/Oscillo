@@ -479,12 +479,10 @@ int main(void)
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 #endif
     for (uint8_t channel = 0; channel < ANALOG_CHANNELS; channel++) {
-        gpio_init(range_pin(channel));
-        gpio_set_dir(range_pin(channel), GPIO_OUT);
-#if PILYZER_BOARD_ID == 3
-        gpio_init(range_pin(channel) + 1);
-        gpio_set_dir(range_pin(channel) + 1, GPIO_OUT);
-#endif
+        for (uint8_t pin = 0; pin < RANGE_PINS_PER_CHANNEL; pin++) {
+            gpio_init(range_pin(channel) + pin);
+            gpio_set_dir(range_pin(channel) + pin, GPIO_OUT);
+        }
         set_input_range(channel, 0);
     }
     set_calibration_output(true, 1000);

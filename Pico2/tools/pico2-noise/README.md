@@ -5,10 +5,10 @@ to a **spare board** — it is a separate program from
 [`../pico2-chord`](../pico2-chord), and a Pico can only run one of them.
 
 **The instrument does this itself** from firmware 1.9, from the same source
-file: switch on Signal generator in the panel. It uses these same pins, except
-on a PL2407AFE, where the four move up to GPIO16–19. This program is for when
-the instrument's own pins are wanted for something else, or when a second board
-is simply more convenient than sharing one.
+file: switch on Signal generator in the panel. It puts them on GPIO16–19 rather
+than the pins below, which is where firmware 1.11 settled them for every board.
+This program is for when the instrument's own pins are wanted for something
+else, or when a second board is simply more convenient than sharing one.
 
 | GPIO | Signal | Level (peak to peak) | RMS |
 | ---: | --- | ---: | ---: |

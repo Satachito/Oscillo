@@ -234,7 +234,9 @@ Firmware 1.5 adds CH3 on GPIO28 and moves the test output to GPIO20 (TP6).
 Firmware 1.6 adds the WinUSB and WebUSB descriptors that let the browser
 application open the instrument on Windows without a hand-installed driver, and
 firmware 1.8 is the first in which Windows actually binds to them.
-Logic stays on GPIO8–15; range controls are GPIO16/17/18. The application uses
+Logic stays on GPIO8–15. Firmware 1.11 moves the range controls down to
+GPIO4/5/6 so the signal generator can have GPIO16–19 on every board, the same
+four wherever it is plugged in. The application uses
 the channel count reported by the device, so older two-channel firmware remains
 usable. Channel Enabled checkboxes control acquisition as well as display:
 1 / 2 / 3 enabled channels allow up to 495 / 247 / 165 kSa/s per channel.

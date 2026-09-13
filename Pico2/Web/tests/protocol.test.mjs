@@ -354,8 +354,14 @@ test('the log drops its oldest points rather than growing without limit', async 
   assert.equal(frame.history.length, LOG_CAPACITY);
 });
 
-test('the generator moves off the PL2407AFE range switches', () => {
-  // GPIO2-5 switch that board's ranges, so its four start at 16 instead.
-  assert.equal(signalBasePin(3), 16);
-  for (const board of [0, 1, 2]) assert.equal(signalBasePin(board), 0);
+test('the generator lands on GPIO16 everywhere, once the firmware is new enough', () => {
+  // 1.9 put the four at GPIO0 and left the ranges at 16; 1.11 swapped them.
+  assert.equal(signalBasePin(0, '1.9'), 0);
+  assert.equal(signalBasePin(0, '1.10'), 0);
+  assert.equal(signalBasePin(0, '1.11'), 16);
+  assert.equal(signalBasePin(0, '2.0'), 16);
+  for (const board of [0, 1, 2]) assert.equal(signalBasePin(board, '1.11'), 16);
+  // A PL2407AFE never had them at 0 — its ranges are on GPIO2-5.
+  assert.equal(signalBasePin(3, '1.10'), 16);
+  assert.equal(signalBasePin(3, '1.11'), 16);
 });

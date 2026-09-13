@@ -46,11 +46,11 @@ there is an aerial, and a breadboard's is a much better one than a PCB trace. An
 empty pair of holes is what "connected to nothing" is supposed to mean.
 
 **Keep the application's range selection matching the wire.** The host sends
-`setRange` to GPIO16, which with no switch fitted drives nothing at all — but it
+`setRange` to GPIO4, which with no switch fitted drives nothing at all — but it
 still applies that range's gain and offset to everything it reads. Choose ±5 V
 in the panel with `R8` out and every number will be wrong by the ratio of the
 two ranges, with nothing on screen to say so. If that is a trap you would rather
-not step in, hang an LED and a resistor off GPIO16: lit means the application
+not step in, hang an LED and a resistor off GPIO4: lit means the application
 thinks it is on the fine range, and the wire should agree.
 
 Change the link with the acquisition stopped. Nothing here is delicate, but that

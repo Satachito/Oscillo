@@ -12,26 +12,28 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x010A   // 1.10: the PL2407AFE gets the generator too, on GPIO16-19; 1.9 gave every other board one on GPIO0-3
+#define PILYZER_FIRMWARE_VERSION 0x010B   // 1.11: the generator is on GPIO16-19 on every board, and range control moves to GPIO4-6; 1.10 moved it there on the PL2407AFE alone; 1.9 put it on GPIO0-3
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
 #include "../../../Scoppy/firmware/board_config.h"
-// GPIO2-5 switch that board's ranges, so the generator cannot start at 0 as it
-// does elsewhere. GPIO16-19 are the four consecutive pins this board leaves
-// alone, and they fall on PWM slices of their own, clear of SG OUT on 22.
+// Two pins a channel here, and they are 2-5, which is why this board was the
+// first to want the generator somewhere other than 0.
+#define RANGE_PINS_PER_CHANNEL 2
 #define PIN_SIGNAL_BASE     16
 #define PILYZER_HAS_SIGNALS 1
 #else
 #define PIN_CALIBRATION_OUT 20    // adjustable calibration square wave
-// A sine and three noises, one per pin from here up. GPIO0-7 are unused on
-// every board that puts its range controls at 16 and its logic at 8.
-#define PIN_SIGNAL_BASE     0
+// A sine and three noises, one per pin from here up. Every board puts them on
+// the same four, so there is one answer to where they are rather than one an
+// application has to look up; the range controls moved down to 4 to free them.
+#define PIN_SIGNAL_BASE     16
 #define PILYZER_HAS_SIGNALS 1
 #define PIN_LOGIC_BASE      8     // D0…D7 on GPIO8…GPIO15, consecutive for PIO
-#define PIN_RANGE_CH1       16    // switch position: 0 = ±25 V, 1 = ±5 V
-#define PIN_RANGE_CH2       17
-#define PIN_RANGE_CH3       18
+#define RANGE_PINS_PER_CHANNEL 1
+#define PIN_RANGE_CH1       4     // switch position: 0 = ±25 V, 1 = ±5 V
+#define PIN_RANGE_CH2       5
+#define PIN_RANGE_CH3       6
 #define PIN_LED             PICO_DEFAULT_LED_PIN
 #define PIN_ADC_CH1         26    // ADC0
 #define PIN_ADC_CH2         27    // ADC1

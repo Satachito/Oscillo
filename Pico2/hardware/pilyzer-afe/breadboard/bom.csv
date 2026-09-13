@@ -24,5 +24,5 @@ Adapter board,VSSOP/MSOP-10 to DIP,1,,,Only if you fit the analogue switch.
 Adapter board,SOT-23 to DIP,1,,,For the BAV199.
 Breadboard,830 tie point or larger,1,,,
 Jumper wire,Assorted,1 set,,,
-LED and 1k resistor,Any,1,Through hole,,Optional: off GPIO16 to show which range the application thinks it has selected.
+LED and 1k resistor,Any,1,Through hole,,Optional: off GPIO4 to show which range the application thinks it has selected.
 Pin header,1x40 breakaway 2.54mm,1,,,To solder onto the adapter boards.

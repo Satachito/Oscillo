@@ -35,7 +35,7 @@ not a different circuit.
 | Node capacitor `C4` | 82 pF | **220 pF** |
 | Compensation `C1` | 5.6 pF | **15 pF** |
 | Parts | 93 | **70** |
-| GPIO16–18 | range control | unused |
+| GPIO4–6 | range control | unused |
 
 The gain leg and the two capacitor values are the whole electrical difference.
 Everything else is subtraction.

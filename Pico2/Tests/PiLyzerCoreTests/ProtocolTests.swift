@@ -109,16 +109,20 @@ struct ProtocolTests {
         #expect(pin(0x0108, board: 3) == 22)
     }
 
-    @Test("The generator moves off the PL2407AFE's range switches")
+    @Test("The generator lands on GPIO16 everywhere, once the firmware is new enough")
     func signalBasePin() {
-        func base(_ board: UInt32) -> Int {
-            DeviceIdentity(protocolVersion: 1, firmwareVersion: 0x010A, boardID: board, name: "").signalBasePin
+        func base(_ firmware: UInt16, board: UInt32 = 0) -> Int {
+            DeviceIdentity(protocolVersion: 1, firmwareVersion: firmware, boardID: board, name: "").signalBasePin
         }
-        #expect(base(0) == 0)
-        #expect(base(1) == 0)
-        #expect(base(2) == 0)
-        // GPIO2-5 switch that board's ranges, so the four start at 16 instead.
-        #expect(base(3) == 16)
+        // 1.9 put the four at GPIO0 and left the ranges at 16; 1.11 swapped them.
+        #expect(base(0x0109) == 0)
+        #expect(base(0x010A) == 0)
+        #expect(base(0x010B) == 16)
+        #expect(base(0x0200) == 16)
+        for board: UInt32 in [0, 1, 2] { #expect(base(0x010B, board: board) == 16) }
+        // A PL2407AFE never had them at 0 — its ranges are on GPIO2-5.
+        #expect(base(0x010A, board: 3) == 16)
+        #expect(base(0x010B, board: 3) == 16)
     }
 
     @Test("The signal generator is asked for by opcode 8, and offered by bit 5")
