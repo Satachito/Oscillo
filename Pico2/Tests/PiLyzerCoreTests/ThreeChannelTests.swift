@@ -9,7 +9,10 @@ struct ThreeChannelTests {
         let device = SimulatedInstrument()
         device.noise = 0
         device.tones = [0.5, 1.0, 1.5].map { .init(frequency: 0, amplitude: 0, offset: $0) }
+        // Straight inputs: the shipped defaults carry this bench's mid-rail
+        // bias on CH1 and CH2, and this is about slots and rates.
         var settings = ScopeSettings(secondsPerDivision: 50e-6)
+        for index in settings.channels.indices { settings.channels[index].calibration = [] }
         settings.ensureAnalogChannels(3)
         for i in 0..<3 { settings.channels[i].isEnabled = mask & (1 << i) != 0 }
         settings.trigger.source = 2

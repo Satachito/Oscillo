@@ -67,7 +67,11 @@ struct SettingsTests {
 
     @Test("The trigger level reaches the instrument as a converter reading")
     func triggerLevel() {
+        // The shipped defaults assume this bench's front end, which biases two
+        // inputs to mid rail. This is about the trigger level itself, so the
+        // inputs here go straight to the converter.
         var settings = ScopeSettings()
+        for index in settings.channels.indices { settings.channels[index].calibration = [] }
         settings.trigger.levelVolts = 0
         let configuration = settings.analogConfiguration(capabilities: capabilities,
                                                          scales: scales(settings))

@@ -376,9 +376,9 @@ struct VerticalSection: View {
             }
             .disabled(!model.isConnected)
 
-            if !model.settings.channels[channel].calibration(forRange:
-                model.settings.channels[channel].rangeIndex).isDefault {
-                Text("Calibrated").font(.caption).foregroundStyle(.secondary)
+            if model.settings.channels[channel].calibration(forRange:
+                model.settings.channels[channel].rangeIndex).scale != 1 {
+                Text("Gain calibrated").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
