@@ -35,7 +35,7 @@ function saveSettings() {
 function applyControls() {
   for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) $(id).value = settings[key];
   for (const [id, key] of CHECK_CONTROLS) $(id).checked = settings[key];
-  $('position-label').value = `${Math.round(settings.position * 100)}%`;
+  $('position-label').value = `${Math.round(settings.position * 100)} %`;
   $('logic-lines').querySelectorAll('input').forEach((input, i) => { input.checked = !!(settings.logicEnabled & (1 << i)); });
 }
 let settings = loadSettings(), instrument = null, frame = null, connecting = false;
@@ -69,13 +69,18 @@ function channelControls() {
   $('channels').replaceChildren();
   for (let i = 0; i < caps().channels; i++) {
     const ch = settings.channels[i], el = document.createElement('div'); el.className = 'channel-card'; el.style.setProperty('--channel-color', COLORS[i]);
-    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><div class="channel-actions"><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><button class="zero-button" data-zero title="Ground this input and capture a trace before setting zero.">Set zero</button><button class="zero-button" data-reset>Reset</button></div>`;
+    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><div class="channel-actions"><label class="check-row"><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><button class="zero-button" data-zero title="Ground this input and capture a trace before setting zero.">Set zero</button><button class="zero-button" data-reset>Reset</button></div>`;
     const range = el.querySelector('[data-field=range]'); frontEnd().forEach((r, j) => range.add(option(j, r.name))); range.disabled = frontEnd().length < 2;
     const scale = el.querySelector('[data-field=scale]'); [[0, 'Full range'], ...[.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20].map(v => [v, fmt(v, 'V')])].forEach(([v, t]) => scale.add(option(v, t)));
     for (const control of el.querySelectorAll('[data-field]')) {
       const key = control.dataset.field;
       if (control.type === 'checkbox') control.checked = ch[key]; else control.value = ch[key];
       if (key === 'enabled') control.disabled = ch.enabled && activeChannels(settings, caps()).length === 1;
+      if (control.type === 'range') control.addEventListener('input', () => {
+        ch[key] = Number(control.value);
+        el.querySelector('output').textContent = `${ch[key].toFixed(1)} div`;
+        renderFrame();
+      });
       control.addEventListener('change', () => {
         ch[key] = control.type === 'checkbox' ? control.checked : Number(control.value);
         if (!activeChannels(settings, caps()).length) ch.enabled = true;
@@ -226,9 +231,14 @@ for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) {
     // Points logged at one interval cannot share a time axis with points logged
     // at another, so changing it starts a new log.
     if (key === 'logInterval' && value !== settings[key]) { acquisition.resetLog(); frame = null; }
-    settings[key] = value; $('position-label').value = `${Math.round(settings.position * 100)}%`; synchronize(); changed();
+    settings[key] = value; $('position-label').value = `${Math.round(settings.position * 100)} %`; synchronize(); changed();
   });
 }
+// The trigger position only reaches the instrument on the next capture, so the
+// drag has nothing to redraw — but the reading should still follow the thumb.
+$('position').addEventListener('input', () => {
+  $('position-label').value = `${Math.round(Number($('position').value) * 100)} %`;
+});
 $('source').onchange = () => { settings[settings.mode === 'logic' ? 'logicSource' : 'source'] = Number($('source').value); saveSettings(); changed(); renderFrame(); };
 for (const [id, key] of CHECK_CONTROLS) $(id).onchange = () => { settings[key] = $(id).checked; synchronize(); changed(); };
 for (const el of document.querySelectorAll('[data-mode]')) el.onclick = async () => {
