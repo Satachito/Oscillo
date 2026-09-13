@@ -237,15 +237,25 @@ struct ScopeDisplayView: View {
         // the trace actually crosses it.
         let removed = frame.trace(source)?.removedMean ?? 0
         let level = y(model.settings.trigger.levelVolts - removed, channel: source, height: size.height)
-        if level.isFinite, level >= 0, level <= size.height {
-            var line = Path()
-            line.move(to: CGPoint(x: 0, y: level))
-            line.addLine(to: CGPoint(x: size.width, y: level))
-            context.stroke(line, with: .color(Theme.trigger.opacity(0.6)),
-                           style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-            context.draw(Text("T").font(.system(size: 10, design: .monospaced))
-                .foregroundColor(Theme.trigger),
-                         at: CGPoint(x: size.width - 10, y: level - 8))
+        // An arrow on the left edge rather than a line across the screen: the
+        // bias lines are horizontal too, and two dashed rules at similar
+        // heights are hard to tell apart. It marks a height; it does not need
+        // to be drawn over the trace to do that.
+        if level.isFinite {
+            let clamped = min(max(level, 5), size.height - 5)
+            var arrow = Path()
+            arrow.move(to: CGPoint(x: 0, y: clamped - 5))
+            arrow.addLine(to: CGPoint(x: 9, y: clamped))
+            arrow.addLine(to: CGPoint(x: 0, y: clamped + 5))
+            arrow.closeSubpath()
+            // Hollow when the level is off the screen: the arrow is then
+            // saying which way to look, not where the level is.
+            let offScreen = level < 0 || level > size.height
+            if offScreen {
+                context.stroke(arrow, with: .color(Theme.trigger), lineWidth: 1)
+            } else {
+                context.fill(arrow, with: .color(Theme.trigger))
+            }
         }
 
         let x = size.width * CGFloat(frame.triggerIndex) / CGFloat(max(frame.sampleCount - 1, 1))
