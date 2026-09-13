@@ -180,6 +180,61 @@ public enum Diagnostics {
         }
     }
 
+    /// Measures the instrument's own generator back through an input, for
+    /// when GPIO0 has been wired to one: the sine's frequency and swing, and
+    /// what the three noises are doing beside it.
+    ///
+    /// Every pin needs an RC to be a voltage rather than a carrier, so a
+    /// channel that reads a flat 1.65 V with the generator running is usually
+    /// a missing capacitor rather than a missing signal.
+    public static func signalCheck(sineHz: Int = 440, locationID: UInt32 = 0) -> String {
+        do {
+            let instrument = try USBInstrument(locationID: locationID)
+            defer { instrument.close() }
+            let capabilities = instrument.capabilities
+            guard capabilities.hasSignalGenerator else {
+                return "This instrument has no signal generator."
+            }
+
+            let mask = UInt8((1 << capabilities.analogChannels) - 1)
+            let scale = VoltageScale(reference: capabilities.referenceVolts,
+                                     fullScale: capabilities.analogFullScale,
+                                     range: (try? instrument.inputRanges())?.first
+                                         ?? FrontEnd.ranges(forBoard: instrument.identity.boardID)[0])
+
+            let actual = try instrument.setSignals(enabled: true, sineHz: sineHz)
+            defer { _ = try? instrument.setSignals(enabled: false, sineHz: 0) }
+            Thread.sleep(forTimeInterval: 0.05)
+
+            // Forty samples a cycle: enough to measure a sine's period without
+            // spending the record on one.
+            let period = max(1 / (Double(actual) * 40), capabilities.minimumSamplePeriod(channels: capabilities.analogChannels))
+            let plan = try instrument.configureAnalog(AnalogConfiguration(
+                channelMask: mask, triggerMode: .freeRun, samplePeriod: period,
+                recordSamples: 4096, pretriggerSamples: 0, autoTimeout: 0.2))
+            try instrument.armAnalog()
+            guard let status = try waitForRecord({ try instrument.analogStatus() },
+                                                 timeout: plan.duration + 2),
+                  status.state == .complete else { return "signals       FAILED: no record" }
+            let columns = try instrument.readAnalogRecord(plan: plan)
+
+            var lines = [String(format: "signals       sine asked %d Hz, device says %d Hz, %@ a sample",
+                                sineHz, actual, Format.time(plan.samplePeriod))]
+            for (index, column) in columns.enumerated() {
+                let volts = column.map { scale.volts($0) }
+                let measured = Measurements.of(volts, samplePeriod: plan.samplePeriod)
+                lines.append(String(format: "              CH%d  %@ pp, mean %@, %@",
+                                    index + 1, Format.voltage(measured.peakToPeak),
+                                    Format.voltage(measured.mean),
+                                    measured.frequency.map { Format.frequency($0) } ?? "no edges"))
+            }
+            return lines.joined(separator: "\n")
+        } catch {
+            return "Could not reach the instrument: "
+                + ((error as? LocalizedError)?.errorDescription ?? "\(error)")
+        }
+    }
+
     /// Measures the instrument's own calibration output back through the
     /// converter, at several frequencies and several sample rates.
     ///
