@@ -93,11 +93,16 @@ export function scaleFor(settings, caps, frontEnd, channel) {
 // A trigger level sitting on the rail never fires, which looks exactly like a
 // broken trigger rather than a level left behind by a range change. Keep it
 // somewhere the signal can actually reach.
-export function usableTriggerLevel(scale, volts) {
+// Where a trigger level can usefully sit: the range with 2% kept off each rail.
+export function triggerWindow(scale) {
   const margin = Math.abs(scale.span) * .02;
   const low = Math.min(scale.low, scale.high) + margin, high = Math.max(scale.low, scale.high) - margin;
-  if (!(low < high)) return scale.centre;
-  return Math.min(Math.max(volts, low), high);
+  return low < high ? { low, high } : null;
+}
+export function usableTriggerLevel(scale, volts) {
+  const window = triggerWindow(scale);
+  if (!window) return scale.centre;
+  return Math.min(Math.max(volts, window.low), window.high);
 }
 // The wire structures of docs/protocol.md, kept apart from the planners above
 // them so the byte layout can be checked against tests/fixtures/wire-golden.json

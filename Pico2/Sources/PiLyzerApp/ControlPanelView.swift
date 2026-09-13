@@ -123,6 +123,9 @@ struct ControlPanelView: View {
             }
             LabeledSlider(title: "Level", value: $model.settings.trigger.levelVolts,
                           range: levelRange, format: Format.voltage)
+            if let note = model.triggerLevelNote {
+                Text(note).font(.caption).foregroundStyle(.secondary)
+            }
             LabeledSlider(title: "Noise", value: $model.settings.trigger.hysteresis,
                           range: 0...0.05, format: { Format.percent($0 * 100, digits: 1) })
             TriggerLowPassControl(cutoffHz: $model.settings.trigger.lowPassHz)

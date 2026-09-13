@@ -27,6 +27,8 @@ final class ScopeModel: ObservableObject {
     /// One entry per enabled channel, in channel order.
     @Published private(set) var spectra: [ChannelSpectrum] = []
     @Published private(set) var plan = AcquisitionPlan.empty
+    /// Why the trigger level is not the number that was typed, when it is not.
+    @Published private(set) var triggerLevelNote: String?
 
     @Published var sources: [(source: DeviceSource, label: String)] = []
     /// Why the instrument list is empty, when it is.
@@ -263,11 +265,21 @@ final class ScopeModel: ObservableObject {
     /// the front end but the very bottom of a bare Pico 2, where nothing ever
     /// crosses it. That looks like a broken trigger rather than a stale
     /// setting, so it is moved somewhere the signal can get to.
+    /// A level the input cannot reach is moved to one it can — and says so,
+    /// because a number that springs back with no explanation reads as a bug.
     private func settleTriggerLevel() {
         let source = min(max(settings.trigger.source, 0), max(settings.channels.count - 1, 0))
-        let usable = scale(for: source).usableTriggerLevel(settings.trigger.levelVolts)
-        if abs(usable - settings.trigger.levelVolts) > 1e-9 {
-            settings.trigger.levelVolts = usable
+        let scale = scale(for: source)
+        let requested = settings.trigger.levelVolts
+        let usable = scale.usableTriggerLevel(requested)
+        guard abs(usable - requested) > 1e-9 else { triggerLevelNote = nil; return }
+        settings.trigger.levelVolts = usable
+        if let window = scale.triggerWindow {
+            triggerLevelNote = "CH\(source + 1) triggers between \(Format.voltage(window.lowerBound)) "
+                + "and \(Format.voltage(window.upperBound)). \(Format.voltage(requested)) is outside "
+                + "that, where nothing would cross it, so it moved to \(Format.voltage(usable))."
+        } else {
+            triggerLevelNote = "CH\(source + 1) has no range to trigger in."
         }
     }
 

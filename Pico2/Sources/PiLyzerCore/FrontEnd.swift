@@ -171,14 +171,18 @@ public struct VoltageScale: Equatable, Sendable {
     /// True when zero volts is inside the range rather than at its edge.
     public var straddlesZero: Bool { lowestVolts < 0 && highestVolts > 0 }
 
-    /// Keeps a trigger level somewhere the signal can actually reach. A level
-    /// sitting on the rail never fires, which looks exactly like a broken
-    /// trigger.
-    public func usableTriggerLevel(_ volts: Double) -> Double {
+    /// Where a trigger level can usefully sit: the range, with 2% kept off
+    /// each rail. A level on the rail never fires, which looks exactly like a
+    /// broken trigger.
+    public var triggerWindow: ClosedRange<Double>? {
         let margin = abs(spanVolts) * 0.02
         let low = min(lowestVolts, highestVolts) + margin
         let high = max(lowestVolts, highestVolts) - margin
-        guard low < high else { return screenCentreVolts }
-        return min(max(volts, low), high)
+        return low < high ? low...high : nil
+    }
+
+    public func usableTriggerLevel(_ volts: Double) -> Double {
+        guard let window = triggerWindow else { return screenCentreVolts }
+        return min(max(volts, window.lowerBound), window.upperBound)
     }
 }

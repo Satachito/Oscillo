@@ -1,6 +1,6 @@
 import { USBInstrument } from './usb.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, midRailVolts, SCALE_STEPS, fitScale } from './protocol.mjs';
+import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, midRailVolts, SCALE_STEPS, fitScale } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -138,10 +138,20 @@ function channelControls() {
 const timebases = [10e-6, 20e-6, 50e-6, .0001, .0002, .0005, .001, .002, .005, .01, .02, .05, .1, .2, .5, 1, 2, 5];
 // A level left behind by another range sits on the rail, where no signal ever
 // crosses it. That reads as a broken trigger, so it is moved into reach.
+// A level the input cannot reach is moved to one it can — and says so, because
+// a number that springs back with no explanation reads as a bug.
 function settleTriggerLevel() {
-  if (settings.mode === 'logic' || settings.mode === 'meter') return;
-  const usable = usableTriggerLevel(scaleFor(settings, caps(), frontEnd(), settings.source), settings.level);
-  if (Math.abs(usable - settings.level) > 1e-9) { settings.level = usable; $('level').value = Number(usable.toPrecision(6)); }
+  const note = $('level-note');
+  if (settings.mode === 'logic' || settings.mode === 'meter') { note.hidden = true; return; }
+  const scale = scaleFor(settings, caps(), frontEnd(), settings.source);
+  const requested = settings.level, usable = usableTriggerLevel(scale, requested);
+  if (Math.abs(usable - requested) < 1e-9) { note.hidden = true; return; }
+  settings.level = usable; $('level').value = Number(usable.toPrecision(6));
+  const window = triggerWindow(scale);
+  note.hidden = false;
+  note.textContent = window
+    ? `CH${settings.source + 1} triggers between ${fmt(window.low, 'V')} and ${fmt(window.high, 'V')}. ${fmt(requested, 'V')} is outside that, where nothing would cross it, so it moved to ${fmt(usable, 'V')}.`
+    : `CH${settings.source + 1} has no range to trigger in.`;
 }
 function synchronize() {
   const active = activeChannels(settings, caps());

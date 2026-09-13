@@ -207,7 +207,10 @@ test('encoders agree with the shared wire fixture', async () => {
 });
 
 test('a trigger level left on the rail is moved somewhere the signal reaches', async () => {
-  const { usableTriggerLevel } = await import('../src/protocol.mjs');
+  const { usableTriggerLevel, triggerWindow } = await import('../src/protocol.mjs');
+  // The window the panel names when it moves a level: 2% off each rail.
+  const bare0 = triggerWindow(scaleFor(makeSettings(), caps, bare, 0));
+  assert.ok(Math.abs(bare0.low - 3.3 * .02) < 1e-9 && Math.abs(bare0.high - 3.3 * .98) < 1e-9);
   const settings = makeSettings(), unipolar = scaleFor(settings, caps, bare, 0);
   assert.ok(Math.abs(usableTriggerLevel(unipolar, 0) - 3.3 * .02) < 1e-9);      // 0 V is the bottom rail here
   assert.ok(Math.abs(usableTriggerLevel(unipolar, 99) - 3.3 * .98) < 1e-9);
