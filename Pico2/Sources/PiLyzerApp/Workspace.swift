@@ -260,9 +260,15 @@ struct MeasurementRow: View {
             Text(number)
                 .font(Theme.mono)
                 .foregroundStyle(Theme.ink)
+            // The column is 22 points so that V, mV, Hz and µs line up under
+            // each other. A longer unit — "bits" is the only one — keeps its
+            // line and runs into the card's padding rather than wrapping onto
+            // a second row and pushing the card taller.
             Text(unit)
                 .font(Theme.mono)
                 .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .frame(width: 22, alignment: .leading)
         }
         .accessibilityElement(children: .ignore)
