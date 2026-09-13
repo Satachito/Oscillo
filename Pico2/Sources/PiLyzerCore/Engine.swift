@@ -200,7 +200,7 @@ public final class InstrumentEngine {
     }
 
     /// Pushes the panel settings that live in the hardware rather than in a
-    /// packet: the input range switches and the calibration output.
+    /// packet: the range switches, the calibration output and the generator.
     private func applyPanel(to device: Instrument) {
         guard let ranges = connected?.ranges else { return }
         for (index, channel) in settings.channels.enumerated() where index < device.capabilities.analogChannels {
@@ -210,6 +210,9 @@ public final class InstrumentEngine {
         if device.capabilities.hasCalibrationOutput {
             _ = try? device.setCalibrationOutput(enabled: settings.calibrationOutputEnabled,
                                                  frequency: settings.calibrationOutputFrequency)
+        }
+        if device.capabilities.hasSignalGenerator {
+            _ = try? device.setSignals(enabled: settings.signalsEnabled, sineHz: settings.signalSineHz)
         }
     }
 
@@ -225,6 +228,8 @@ public final class InstrumentEngine {
             let panelChanged = newSettings.channels.map(\.rangeIndex) != settings.channels.map(\.rangeIndex)
                 || newSettings.calibrationOutputEnabled != settings.calibrationOutputEnabled
                 || newSettings.calibrationOutputFrequency != settings.calibrationOutputFrequency
+                || newSettings.signalsEnabled != settings.signalsEnabled
+                || newSettings.signalSineHz != settings.signalSineHz
             settings = newSettings
             if let instrument { settings.ensureAnalogChannels(instrument.capabilities.analogChannels) }
             appliedAnalog = nil

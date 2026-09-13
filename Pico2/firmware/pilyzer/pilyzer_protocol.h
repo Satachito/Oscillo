@@ -19,6 +19,7 @@ enum pilyzer_opcode {
     OP_SET_CALIBRATION_OUT   = 0x05,
     OP_REBOOT_BOOTLOADER     = 0x06,
     OP_INPUT_RANGES          = 0x07,
+    OP_SET_SIGNALS           = 0x08,
 
     OP_ANALOG_CONFIGURE      = 0x10,
     OP_ANALOG_ARM            = 0x11,
@@ -65,6 +66,8 @@ enum pilyzer_state {
 #define CAP_TRIGGER_LOWPASS    (1u << 3)
 // The device answers OP_INPUT_RANGES; the host need not know the board.
 #define CAP_REPORTS_RANGES     (1u << 4)
+// The device can put a sine and three noises on four pins of its own.
+#define CAP_SIGNAL_GENERATOR   (1u << 5)
 
 #define PILYZER_HEADER_SIZE 12
 

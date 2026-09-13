@@ -75,6 +75,7 @@ transfer.
 | `0x05` | `setCalibrationOutput` | `u8 on, u32 frequencyHz` | `u32 actualFrequencyHz` |
 | `0x06` | `rebootToBootloader` | — | — (device restarts) |
 | `0x07` | `inputRanges` | — | `InputRange[analogueRanges]` (firmware 1.7) |
+| `0x08` | `setSignals` | `u8 on, u32 sineHz` | `u32 actualSineHz` (firmware 1.9) |
 | `0x10` | `analogConfigure` | `AnalogConfig` | `AcquisitionPlan` |
 | `0x11` | `analogArm` | — | — |
 | `0x12` | `analogStatus` | — | `AcquisitionStatus` |
@@ -134,7 +135,9 @@ as authoritative rather than computing it from the converter's datasheet.
 Flags: bit 0 the input ranges are switched under software control, bit 1 the
 board has a calibration output, bit 2 the logic inputs are buffered, bit 3
 the analogue trigger supports a low-pass filter (firmware 1.2 and later),
-bit 4 the device answers `inputRanges` (firmware 1.7 and later).
+bit 4 the device answers `inputRanges` (firmware 1.7 and later), bit 5 the
+device has a signal generator — a sine and white, pink and brown noise on four
+pins of its own (firmware 1.9 and later).
 
 Analogue samples are unsigned 16-bit values, left-aligned from the converter's
 own resolution: a 12-bit code `c` arrives as `c << 4`. So a reading at the top

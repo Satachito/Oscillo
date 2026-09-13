@@ -12,13 +12,20 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0108   // 1.8: WinUSB binds on Windows; 1.7 reported input ranges; 1.6 added the WinUSB/WebUSB descriptors
+#define PILYZER_FIRMWARE_VERSION 0x0109   // 1.9: sine and noise generator on GPIO0-3; 1.8 made WinUSB bind on Windows
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
 #include "../../../Scoppy/firmware/board_config.h"
+// GPIO2-5 switch that board's ranges, so there is nowhere to put the
+// generator; the host is told it has none rather than being lied to.
+#define PILYZER_HAS_SIGNALS 0
 #else
 #define PIN_CALIBRATION_OUT 20    // adjustable calibration square wave
+// A sine and three noises, one per pin from here up. GPIO0-7 are unused on
+// every board that puts its range controls at 16 and its logic at 8.
+#define PIN_SIGNAL_BASE     0
+#define PILYZER_HAS_SIGNALS 1
 #define PIN_LOGIC_BASE      8     // D0…D7 on GPIO8…GPIO15, consecutive for PIO
 #define PIN_RANGE_CH1       16    // switch position: 0 = ±25 V, 1 = ±5 V
 #define PIN_RANGE_CH2       17

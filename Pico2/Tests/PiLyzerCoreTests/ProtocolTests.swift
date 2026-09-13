@@ -108,4 +108,33 @@ struct ProtocolTests {
         #expect(pin(0x0200) == 20)
         #expect(pin(0x0108, board: 3) == 22)
     }
+
+    @Test("The signal generator is asked for by opcode 8, and offered by bit 5")
+    func signalGenerator() throws {
+        #expect(Opcode.setSignals.rawValue == 0x08)
+
+        var capabilities = DeviceCapabilities.unavailable
+        capabilities.flags = 2 | 8
+        #expect(!capabilities.hasSignalGenerator)
+        capabilities.flags |= 32
+        #expect(capabilities.hasSignalGenerator)
+        #expect(capabilities.hasCalibrationOutput)          // and it is its own bit
+
+        // The panel remembers what it asked for.
+        var settings = ScopeSettings()
+        #expect(!settings.signalsEnabled && settings.signalSineHz == 440)
+        settings.signalsEnabled = true
+        settings.signalSineHz = 1000
+        let encoded = try JSONEncoder().encode(settings)
+        let back = try JSONDecoder().decode(ScopeSettings.self, from: encoded)
+        #expect(back.signalsEnabled && back.signalSineHz == 1000)
+
+        // A panel saved before it existed opens with it switched off.
+        var json = try #require(try JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        json.removeValue(forKey: "signalsEnabled")
+        json.removeValue(forKey: "signalSineHz")
+        let older = try JSONDecoder().decode(
+            ScopeSettings.self, from: try JSONSerialization.data(withJSONObject: json))
+        #expect(!older.signalsEnabled && older.signalSineHz == 440)
+    }
 }

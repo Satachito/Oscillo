@@ -300,6 +300,9 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
     public var xyVertical: Int
     public var calibrationOutputEnabled: Bool
     public var calibrationOutputFrequency: Int
+    /// The sine and the three noises the instrument can put on its own pins.
+    public var signalsEnabled: Bool
+    public var signalSineHz: Int
     /// How often the meter writes a point into its log. The instrument is read
     /// far faster than this whatever it is set to, and each point carries the
     /// lowest, mean and highest reading of its interval — a log at one point a
@@ -314,6 +317,8 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
                 showsXY: Bool = false, xyHorizontal: Int = 0, xyVertical: Int = 1,
                 calibrationOutputEnabled: Bool = true,
                 calibrationOutputFrequency: Int = 1000,
+                signalsEnabled: Bool = false,
+                signalSineHz: Int = 440,
                 logIntervalSeconds: Double = 0.5) {
         self.mode = mode
         self.channels = channels
@@ -328,6 +333,8 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         self.xyVertical = xyVertical
         self.calibrationOutputEnabled = calibrationOutputEnabled
         self.calibrationOutputFrequency = calibrationOutputFrequency
+        self.signalsEnabled = signalsEnabled
+        self.signalSineHz = signalSineHz
         self.logIntervalSeconds = logIntervalSeconds
     }
 
@@ -339,6 +346,7 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         case mode, channels, secondsPerDivision, recordLength, trigger, averaging
         case logic, spectrum, showsXY, xyHorizontal, xyVertical
         case calibrationOutputEnabled, calibrationOutputFrequency, logIntervalSeconds
+        case signalsEnabled, signalSineHz
     }
 
     /// Every field is optional on the way in, so a panel saved by an older
@@ -360,6 +368,8 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         xyVertical = try values.decodeIfPresent(Int.self, forKey: .xyVertical) ?? fallback.xyVertical
         calibrationOutputEnabled = try values.decodeIfPresent(Bool.self, forKey: .calibrationOutputEnabled) ?? fallback.calibrationOutputEnabled
         calibrationOutputFrequency = try values.decodeIfPresent(Int.self, forKey: .calibrationOutputFrequency) ?? fallback.calibrationOutputFrequency
+        signalsEnabled = try values.decodeIfPresent(Bool.self, forKey: .signalsEnabled) ?? fallback.signalsEnabled
+        signalSineHz = try values.decodeIfPresent(Int.self, forKey: .signalSineHz) ?? fallback.signalSineHz
         let interval = try values.decodeIfPresent(Double.self, forKey: .logIntervalSeconds) ?? fallback.logIntervalSeconds
         logIntervalSeconds = Self.logIntervals.contains(interval) ? interval : fallback.logIntervalSeconds
     }

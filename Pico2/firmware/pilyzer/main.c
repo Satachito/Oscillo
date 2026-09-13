@@ -17,6 +17,7 @@
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
 #include "pilyzer_protocol.h"
+#include "signals.h"
 #include "tusb.h"
 
 #define MAX_REQUEST_PAYLOAD 64
@@ -210,7 +211,8 @@ static void fill_capabilities(pilyzer_capabilities_t *capabilities)
     // switched.
     capabilities->flags = CAP_CALIBRATION_OUTPUT | CAP_TRIGGER_LOWPASS |
                           CAP_REPORTS_RANGES |
-                          (ANALOG_RANGES > 1 ? CAP_SOFTWARE_RANGE : 0);
+                          (ANALOG_RANGES > 1 ? CAP_SOFTWARE_RANGE : 0) |
+                          (signals_available() ? CAP_SIGNAL_GENERATOR : 0);
 }
 
 // What this board's front end does to a voltage on its way to the converter.
@@ -267,6 +269,15 @@ static void handle(const pilyzer_header_t *header, const uint8_t *payload)
         uint32_t requested;
         memcpy(&requested, payload + 1, sizeof requested);
         uint32_t actual = set_calibration_output(payload[0] != 0, requested);
+        respond(opcode, sequence, ST_OK, &actual, sizeof actual, NULL, 0);
+        return;
+    }
+    case OP_SET_SIGNALS: {
+        if (length < 5) { respond(opcode, sequence, ST_BAD_LENGTH, NULL, 0, NULL, 0); return; }
+        if (!signals_available()) { respond(opcode, sequence, ST_BAD_ARGUMENT, NULL, 0, NULL, 0); return; }
+        uint32_t requested;
+        memcpy(&requested, payload + 1, sizeof requested);
+        uint32_t actual = signals_set(payload[0] != 0, requested);
         respond(opcode, sequence, ST_OK, &actual, sizeof actual, NULL, 0);
         return;
     }
@@ -480,6 +491,7 @@ int main(void)
 
     analog_init();
     logic_init();
+    signals_init();
     tusb_init();
 
     while (true) {

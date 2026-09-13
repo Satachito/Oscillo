@@ -47,6 +47,7 @@ public enum Opcode: UInt8, Sendable {
     case setLED = 0x03
     case setRange = 0x04
     case setCalibrationOutput = 0x05
+    case setSignals = 0x08
     case rebootToBootloader = 0x06
     case inputRanges = 0x07
 
@@ -161,6 +162,8 @@ public struct DeviceCapabilities: Equatable, Sendable {
 
     public var hasSoftwareRanges: Bool { flags & 1 != 0 }
     public var hasCalibrationOutput: Bool { flags & 2 != 0 }
+    /// The device can put a sine and three noises on four pins of its own.
+    public var hasSignalGenerator: Bool { flags & 32 != 0 }
     public var hasTriggerLowPass: Bool { flags & 8 != 0 }
     /// The device describes its own front end, so the host does not have to
     /// keep a table keyed on the board id.

@@ -10,7 +10,10 @@ set(CMAKE_C_STANDARD 11)
 
 pico_sdk_init()
 
-add_executable(noise noise.c signal_source.c)
+# The generator itself lives with the instrument firmware, which emits the
+# same four signals: one copy, one set of tests, no drift.
+add_executable(noise noise.c ../../firmware/pilyzer/signal_source.c)
+target_include_directories(noise PRIVATE ../../firmware/pilyzer)
 
 target_link_libraries(noise
     pico_stdlib

@@ -296,8 +296,28 @@ struct ControlPanelView: View {
             + "Wire the output to an input to measure it."
     }
 
+    /// Which pin carries what, and the one thing that has to be fitted to
+    /// hear any of it.
+    private var signalPinsHint: String {
+        "GPIO0 sine, GPIO1 white, GPIO2 pink, GPIO3 brown — PWM at 586 kHz, so "
+            + "each pin wants an RC (1 kΩ and 100 nF) to come out as a voltage."
+    }
+
     private var instrumentSection: some View {
         Section("Instrument") {
+            if model.capabilities.hasSignalGenerator {
+                Toggle("Signal generator", isOn: $model.settings.signalsEnabled)
+                if model.settings.signalsEnabled {
+                    Picker("Sine", selection: $model.settings.signalSineHz) {
+                        ForEach([100, 440, 1000, 5000, 10000], id: \.self) {
+                            Text(Format.frequency(Double($0))).tag($0)
+                        }
+                    }
+                }
+                Text(signalPinsHint)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Toggle("Cursors", isOn: $model.cursorsEnabled)
             if model.cursorsEnabled {
                 LabeledSlider(title: "A", value: $model.cursorA, range: 0...1,

@@ -45,7 +45,7 @@ public final class SimulatedInstrument: Instrument {
         analogClockHz: 48_000_000, analogMinPeriodCycles: 96,
         analogMaxRecord: 16384, analogMaxPretrigger: 16383,
         logicClockHz: 150_000_000, logicMaxRecord: 65536, logicMaxPretrigger: 65535,
-        referenceVolts: 3.3, flags: 1 | 2 | 8)
+        referenceVolts: 3.3, flags: 1 | 2 | 8 | 32)
 
     private var ranges = [0, 0, 0]
 
@@ -334,5 +334,11 @@ public final class SimulatedInstrument: Instrument {
     @discardableResult
     public func setCalibrationOutput(enabled: Bool, frequency: Int) throws -> Int {
         enabled ? max(frequency, 1) : 0
+    }
+
+    /// The demo has no pins, so it agrees and does nothing — the same answer a
+    /// real board gives, which keeps the front panel honest either way.
+    public func setSignals(enabled: Bool, sineHz: Int) throws -> Int {
+        enabled ? min(max(sineHz, 1), 12500) : 0
     }
 }

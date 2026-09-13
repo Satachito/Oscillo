@@ -17,6 +17,8 @@ add_executable(pilyzer
     main.c
     analog.c
     logic.c
+    signals.c
+    signal_source.c
     usb_descriptors.c
 )
 

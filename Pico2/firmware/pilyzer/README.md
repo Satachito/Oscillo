@@ -116,6 +116,24 @@ descriptor set is 162 bytes rather than 178.
 The bytes were self-consistent all along, which is why a host-side probe that
 asked for the descriptor and checked its lengths reported it correct. Only
 Windows could tell that they were in the wrong place.
+### A sine and three noises of its own (firmware 1.9)
+
+`setSignals` puts a 440 Hz sine on GPIO0 and white, pink and brown noise on
+GPIO1, 2 and 3 — enough to exercise a front end without a second board. Each is
+a 586 kHz PWM carrier whose duty follows a sample, 50,000 a second, so **each
+pin wants an RC** (1 kΩ and 100 nF) to come out as a voltage. All four sit on
+mid rail and use about 2.8 V of the 3.3 V a pin can swing.
+
+The generator costs one interrupt at 50 kHz. Acquisition is unaffected —
+analogue capture is the converter and DMA, logic capture is PIO and DMA — but
+it is switched off until the host asks, and the host is told whether the board
+has it: the PL2407AFE switches its ranges on GPIO2–5, so board id 3 reports no
+generator rather than fighting over the pins.
+
+The same generator, in the same file, runs on a spare Pico 2 as
+[`tools/pico2-noise`](../../tools/pico2-noise) for when the instrument's own
+pins are wanted elsewhere.
+
 Signal generators for a *separate* Pico 2 live in `tools`: the diminished chord
 in [`tools/pico2-chord`](../../tools/pico2-chord), and a 440 Hz sine with white,
 pink and brown noise in [`tools/pico2-noise`](../../tools/pico2-noise). Both use

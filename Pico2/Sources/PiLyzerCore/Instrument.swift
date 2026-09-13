@@ -26,6 +26,7 @@ public protocol Instrument: AnyObject {
     func setRange(channel: Int, range: Int) throws
     func setLED(_ on: Bool) throws
     @discardableResult func setCalibrationOutput(enabled: Bool, frequency: Int) throws -> Int
+    @discardableResult func setSignals(enabled: Bool, sineHz: Int) throws -> Int
     /// Restarts the instrument in its bootloader, ready for new firmware.
     func rebootToBootloader() throws
     /// What this board's front end does to a voltage on its way to the
@@ -277,6 +278,18 @@ public final class USBInstrument: Instrument {
         writer.append(UInt8(enabled ? 1 : 0))
         writer.append(UInt32(clamping: frequency))
         let data = try send(.setCalibrationOutput, writer.data)
+        var reader = ByteReader(data)
+        return Int(reader.uint32())
+    }
+
+    /// Switches the sine and the three noises on or off, and says which sine
+    /// frequency the device settled on.
+    @discardableResult
+    public func setSignals(enabled: Bool, sineHz: Int) throws -> Int {
+        var writer = ByteWriter()
+        writer.append(UInt8(enabled ? 1 : 0))
+        writer.append(UInt32(clamping: sineHz))
+        let data = try send(.setSignals, writer.data)
         var reader = ByteReader(data)
         return Int(reader.uint32())
     }
