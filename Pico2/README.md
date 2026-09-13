@@ -168,7 +168,7 @@ Calibration is stored per channel *and per range*, because the two ranges go
 through different amplifier gains.
 
 The front end's frequency compensation is a physical adjustment, not a software
-one: the firmware puts a square wave on GPIO20 (firmware 1.5+) for it, and
+one: the firmware puts a square wave on GPIO22 for it, and
 [the front end's documentation](hardware/pilyzer-afe/README.md) explains what to
 turn.
 
@@ -230,7 +230,7 @@ that records do not have to be small.
 
 MIT. See [LICENSE](LICENSE).
 
-Firmware 1.5 adds CH3 on GPIO28 and moves the test output to GPIO20 (TP6).
+Firmware 1.5 adds CH3 on GPIO28; the test output is GPIO22 (TP6).
 Firmware 1.6 adds the WinUSB and WebUSB descriptors that let the browser
 application open the instrument on Windows without a hand-installed driver, and
 firmware 1.8 is the first in which Windows actually binds to them.

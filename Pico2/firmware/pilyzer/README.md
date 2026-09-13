@@ -69,8 +69,8 @@ directly and **must not go outside that**. The front end in
 
 CH3 uses GPIO28/ADC2 and GPIO6 for its range switch; the three range controls
 are GPIO4/5/6, leaving GPIO16–19 to the generator. The adjustable test output
-moves to GPIO20; `setCalibrationOutput` and the app's `Test output` still
-control it. Logic GPIO8–15 is unchanged throughout.
+is GPIO22; `setCalibrationOutput` and the app's `Test output` still control it.
+Logic GPIO8–15 is unchanged throughout.
 
 The enabled mask selects only the requested ADC inputs, in ascending order.
 Any nonempty subset of CH1/CH2/CH3 is supported. At the fastest ADC clock the
@@ -228,7 +228,7 @@ this: before the fix a 1 kHz square read back as 2 kHz at the fastest sweep and
 correctly at every slower one.
 
 **Checking the time axis.** Nothing above proves the sample interval is right —
-the samples alone cannot say how far apart they are. Put a jumper from GPIO20
+the samples alone cannot say how far apart they are. Put a jumper from GPIO22
 (the test square wave) to GPIO26 (CH1) and the scope should read a 1 kHz square
 wave with a 50% duty cycle. If the frequency reads correctly across several
 sweep speeds, the whole timing chain is right; if it is wrong by a constant

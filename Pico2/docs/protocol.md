@@ -310,14 +310,14 @@ trigger position is sample-accurate rather than interrupt-latency-accurate.
 ## Pin allocation and channel count
 
 CH1/CH2/CH3 use GPIO26/27/28. Logic D0–D7 use GPIO8–15, the range controls are
-GPIO4/5/6, `setCalibrationOutput` controls GPIO20 and the generator has
-GPIO16–19. GPIO0–3 and GPIO7 are free.
+GPIO4/5/6, `setCalibrationOutput` controls GPIO22 and the generator has
+GPIO16–19. GPIO0–3, GPIO7, GPIO20 and GPIO21 are free.
 
 A PL2407AFE is laid out differently throughout: CH1/CH2 on GPIO26/27, two range
-pins a channel on GPIO2–5, logic on GPIO6–13, SG OUT on GPIO22, and the
-generator on the same GPIO16–19 as everything else. That leaves GPIO0, GPIO1,
-GPIO14, GPIO15, GPIO20, GPIO21 and GPIO28 free, GPIO28 being the only one of
-them the converter can read.
+pins a channel on GPIO2–5, logic on GPIO6–13, and the same GPIO22 for the
+square wave and GPIO16–19 for the generator as every other board. That leaves
+GPIO0, GPIO1, GPIO14, GPIO15, GPIO20, GPIO21 and GPIO28 free, GPIO28 being the
+only one of them the converter can read.
 
 The capability reply advertises three analogue channels. `analogSample` returns
 three little-endian u16 readings (CH1, CH2, CH3), one per advertised channel;

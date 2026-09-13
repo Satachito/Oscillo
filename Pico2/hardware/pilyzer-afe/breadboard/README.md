@@ -152,7 +152,7 @@ See [`../README.md`](../README.md#adjusting-the-compensation).
 
 ## Measuring
 
-The Pico's own calibration output (GPIO20 through `R35`, 100 Hz to 100 kHz) is a
+The Pico's own calibration output (GPIO22 through `R35`, 100 Hz to 100 kHz) is a
 square wave, which is the right signal for the compensation trim: adjust `TC1`
 until the corners are square, with no overshoot and no sag.
 

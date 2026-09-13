@@ -76,6 +76,9 @@ export const fitScale = scale => {
 // pink and brown noise. The same four on every board, which is the point of
 // them being where they are.
 export const SIGNAL_BASE_PIN = 16;
+// The GPIO the test square wave comes out of. The PL2407AFE brings its own SG
+// OUT pad here, and every other board followed it.
+export const CALIBRATION_PIN = 22;
 export const midRailVolts = (caps, range) => (caps.reference / 2 - range.offset) / range.gain;
 // What this channel reads with nothing on the input: measured if anybody has,
 // otherwise what the bias was set to. Both calibrations are measured from it.

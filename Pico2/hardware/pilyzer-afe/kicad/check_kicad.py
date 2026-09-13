@@ -91,7 +91,7 @@ net('VMID', 'U1.14', 'U1.13', 'U2.2', 'U2.4', 'U3.2', 'TP3.1',
     'C6.2', 'C10.2', 'C18.2', 'U4.12')
 # The filter quad's spare amplifier is a follower on VMID, not left floating.
 net('U4D_TIE', 'U4.13', 'U4.14')
-net('CAL_GPIO20', 'J7.15', 'R35.1')
+net('CAL_GPIO22', 'J7.12', 'R35.1')
 net('TEST_OUT', 'R35.2', 'TP6.1')
 for i, socket_pin in enumerate([11, 12, 14, 15, 16, 17, 19, 20]):
     net(f'D{i}_IN', f'J5.{i+1}', f'R{19+i}.1')
@@ -105,8 +105,8 @@ for node in ['U1.11', 'U4.11', 'U2.3', 'J7.8', 'C15.2', 'R18.2', 'U3.3', 'U3.5',
 # GPIO0–3 and GPIO7 are deliberately unused on the instrument carrier, and so
 # are the generator's own four: they are PWM carriers, and whatever is to be
 # done with one is done off the header, through an RC.
-for node in [('J6', p) for p in ['1', '2', '4', '5', '10']]              \
-          + [('J7', p) for p in ['20', '19', '17', '16']]:
+for node in [('J6', p) for p in ['1', '2', '4', '5', '10']]                  \
+          + [('J7', p) for p in ['20', '19', '17', '16', '15']]:
     assert pin_net[node].startswith('unconnected-'), node
     assert nets[pin_net[node]] == {node}, node
 # Keep the independently specified schematic pin map in step with firmware.
@@ -114,7 +114,7 @@ config = (HERE.parents[2] / 'firmware/pilyzer/board_config.h').read_text()
 for macro, value in [('PIN_LOGIC_BASE',8), ('PIN_SIGNAL_BASE',16),
                      ('PIN_RANGE_CH1',4), ('PIN_RANGE_CH2',5), ('PIN_RANGE_CH3',6),
                      ('PIN_ADC_CH1',26), ('PIN_ADC_CH2',27), ('PIN_ADC_CH3',28),
-                     ('ANALOG_CHANNELS',3), ('PIN_CALIBRATION_OUT',20)]:
+                     ('ANALOG_CHANNELS',3), ('PIN_CALIBRATION_OUT',22)]:
     found = re.search(r'^#define\s+'+macro+r'\s+(\d+)', config, re.MULTILINE)
     assert found and int(found[1]) == value, macro
 

@@ -126,7 +126,7 @@ checks += 1
 # --- The Pico map, against the firmware's own pin definitions -----------
 macros = FIRMWARE.read_text()
 for macro, expected_net in [('PIN_ADC_CH1', 'CH1_ADC'), ('PIN_ADC_CH2', 'CH2_ADC'),
-                            ('PIN_LOGIC_BASE', 'D0_GPIO8'), ('PIN_CALIBRATION_OUT', 'CAL_GPIO20')]:
+                            ('PIN_LOGIC_BASE', 'D0_GPIO8'), ('PIN_CALIBRATION_OUT', 'CAL_GPIO22')]:
     found = re.search(rf'#define\s+{macro}\s+(\d+)', macros)
     assert found, f'{macro} not found in board_config.h'
     gpio = int(found.group(1))

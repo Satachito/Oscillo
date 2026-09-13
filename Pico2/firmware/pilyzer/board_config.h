@@ -12,7 +12,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x010B   // 1.11: the generator on GPIO16-19 and range control on GPIO4-6, the same on every board
+#define PILYZER_FIRMWARE_VERSION 0x010C   // 1.12: one pin map for every board - generator GPIO16-19, ranges GPIO4-6, test output GPIO22
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
@@ -23,7 +23,9 @@
 #define PIN_SIGNAL_BASE     16
 #define PILYZER_HAS_SIGNALS 1
 #else
-#define PIN_CALIBRATION_OUT 20    // adjustable calibration square wave
+// The PL2407AFE brings its own SG OUT pad on GPIO22, so every board uses that
+// pin and nothing has to ask which board it is talking to.
+#define PIN_CALIBRATION_OUT 22    // adjustable calibration square wave
 // A sine and three noises, one per pin from here up. Every board puts them on
 // the same four, so there is one answer to where they are rather than one an
 // application has to look up; the range controls moved down to 4 to free them.

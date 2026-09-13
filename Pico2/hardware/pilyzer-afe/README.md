@@ -208,7 +208,7 @@ bottoms out over-compensated with nowhere left to go. A breadboard would not
 have caught it either — its stray is *larger* than a PCB's, which pushes the
 answer up into the window and trims happily.
 
-The firmware puts a square wave on GPIO20 for exactly this. Feed it into a
+The firmware puts a square wave on GPIO22 for exactly this. Feed it into a
 channel, set the ±25 V range, and adjust TC1 until the corners are square — the
 same procedure as compensating a scope probe, and the same failure modes:
 overshoot means too much capacitance across the input resistor, a slumped
@@ -386,7 +386,7 @@ They are marked DNP in the schematic and do nothing while unpopulated.
 | CH2 range switch | GPIO5 | 7 |
 | CH3 range switch | GPIO6 | 9 |
 | Logic D0…D7 | GPIO8…GPIO15 | 11,12,14,15,16,17,19,20 |
-| Adjustable calibration output | GPIO20 | 26 |
+| Adjustable calibration output | GPIO22 | 29 |
 | Signal generator | GPIO16…GPIO19 | 21,22,24,25 |
 | Unused | GPIO0…GPIO3, GPIO7 | 1,2,4,5,10 |
 
@@ -405,8 +405,8 @@ the optional DNP TVS, and TP7 exposes the divider node. U3A switches its range;
 C20 decouples U3. U3B has control tied low and signal pins left unconnected.
 U1D continues to buffer VMID.
 
-CH3 ADC is GPIO28 / J7.7 and its range control GPIO6 / J6.9. Test output moves
-to GPIO20 / J7.15, through R35 to TP6. J8 remains unused.
+CH3 ADC is GPIO28 / J7.7 and its range control GPIO6 / J6.9. Test output is
+GPIO22 / J7.12, through R35 to TP6. J8 remains unused.
 
 The ADC scans only the channels enabled in the app. Maximum rates per channel
 are 495 / 247 / 165 kSa/s with 1 / 2 / 3 checked. At maximum rate each
@@ -417,14 +417,14 @@ analogue filter must be evaluated at that rate as well as the faster modes.
 ## Separate chord generator
 
 The diminished-chord generator runs on a separate Pico 2. The carrier has no
-J8 or note-output circuitry. Firmware 1.5 adds CH3 on GPIO28 and moves test
-output to GPIO20 / TP6; the three range controls are GPIO4/5/6 on J6. Logic
-GPIO8–15 is unchanged throughout.
+J8 or note-output circuitry. Firmware 1.5 adds CH3 on GPIO28; test output is
+GPIO22 / TP6 and the three range controls are GPIO4/5/6 on J6. Logic GPIO8–15
+is unchanged throughout.
 See [`tools/pico2-chord`](../../tools/pico2-chord) for the standalone program.
 
 This pin allocation supersedes firmware 1.2: rewire the logic and range signals
 before using firmware 1.3 or later. Firmware 1.5 also requires moving the test
-output from GPIO28 to GPIO20 before GPIO28 is used as CH3. The software range gains are unchanged.
+output off GPIO28 before GPIO28 is used as CH3. The software range gains are unchanged.
 
 ## Before fabrication
 

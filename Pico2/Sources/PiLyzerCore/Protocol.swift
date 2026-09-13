@@ -136,9 +136,9 @@ public struct DeviceIdentity: Equatable, Sendable {
     /// other value is a front end that scales and shifts them.
     public var hasFrontEnd: Bool { boardID != 0 }
 
-    /// The GPIO the test square wave comes out of: GPIO20, except on a
-    /// PL2407AFE, where it is that board's own SG OUT pin.
-    public var calibrationOutputPin: Int { boardID == 3 ? 22 : 20 }
+    /// The GPIO the test square wave comes out of. The PL2407AFE brings its
+    /// own SG OUT pad here, and every other board followed it.
+    public static let calibrationOutputPin = 22
 
     /// The first of the four pins the generator drives: the sine, and then
     /// white, pink and brown noise. The same four on every board, which is

@@ -289,10 +289,7 @@ struct ControlPanelView: View {
         if model.selectedSource == .simulator && model.isConnected {
             return "The demo is generated on this Mac. Test output applies to a USB instrument."
         }
-        guard let identity = model.instrument?.identity else {
-            return "0–3.3 V square wave. Wire the output to an input to measure it."
-        }
-        return "GPIO\(identity.calibrationOutputPin) · 0–3.3 V square wave. "
+        return "GPIO\(DeviceIdentity.calibrationOutputPin) · 0–3.3 V square wave. "
             + "Wire the output to an input to measure it."
     }
 
