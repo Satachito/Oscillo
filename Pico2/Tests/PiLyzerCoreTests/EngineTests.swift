@@ -177,8 +177,16 @@ struct EngineTests {
         #expect(abs(Measurements.of(ac.samples, samplePeriod: captured.samplePeriod).mean) < 1e-9)
         #expect(abs(Measurements.of(dc.samples, samplePeriod: captured.samplePeriod).mean) > 1e-6)
 
-        // And the file is those same numbers, column for column.
-        let rows = Export.csv(scope: captured).split(separator: "\n")
+        // And the file is those same numbers, column for column, under a note
+        // saying which column had its mean taken out and how much came off.
+        let all = Export.csv(scope: captured).split(separator: "\n")
+        let comments = all.filter { $0.hasPrefix("#") }
+        #expect(comments.count == 1)
+        let note = try #require(comments.first)
+        #expect(note.hasPrefix("# channel1: mean removed,"))
+        #expect(abs(Double(note.split(separator: " ")[4])! - ac.removedMean) < 1e-6)
+
+        let rows = all.filter { !$0.hasPrefix("#") }
         #expect(rows.first == "time_s,channel1_V,channel2_V,channel3_V")
         for (index, row) in rows.dropFirst().enumerated() {
             let columns = row.split(separator: ",", omittingEmptySubsequences: false).map(String.init)

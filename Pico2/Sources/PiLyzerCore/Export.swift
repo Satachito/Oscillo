@@ -4,7 +4,13 @@ import Foundation
 public enum Export {
     public static func csv(scope frame: ScopeFrame) -> String {
         guard !frame.isEmpty else { return "" }
-        var lines = ["time_s," + frame.traces.map { "channel\($0.index + 1)_V" }.joined(separator: ",")]
+        // A column with the mean taken out looks like any other column once the
+        // file is opened somewhere else, so the ones that had it say so, and
+        // say how much — enough to put it back.
+        var lines = frame.traces.filter { $0.removedMean != 0 }.map {
+            String(format: "# channel%d: mean removed, %.7g V", $0.index + 1, $0.removedMean)
+        }
+        lines.append("time_s," + frame.traces.map { "channel\($0.index + 1)_V" }.joined(separator: ","))
         for index in 0..<frame.sampleCount {
             var row = [String(format: "%.9g", frame.time(at: index))]
             for trace in frame.traces {
