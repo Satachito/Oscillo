@@ -37,7 +37,9 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 PLIST
 
 echo "==> Drawing icon"
-swift Scripts/MakeIcon.swift "$BUNDLE/Contents/Resources/AppIcon.icns"
+# The application draws it, so the icon in the bundle and the one it hands the
+# Dock when it is run straight out of .build cannot drift apart.
+"$BUNDLE/Contents/MacOS/PiLyzer" --write-icon "$BUNDLE/Contents/Resources/AppIcon.icns"
 
 echo "==> Signing (ad-hoc)"
 codesign --force --sign - "$BUNDLE"
