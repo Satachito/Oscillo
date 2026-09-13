@@ -1,6 +1,6 @@
 import { USBInstrument } from './usb.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, midRailVolts, SCALE_STEPS, fitScale } from './protocol.mjs';
+import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, SCALE_STEPS, fitScale } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -138,20 +138,29 @@ function channelControls() {
 const timebases = [10e-6, 20e-6, 50e-6, .0001, .0002, .0005, .001, .002, .005, .01, .02, .05, .1, .2, .5, 1, 2, 5];
 // A level left behind by another range sits on the rail, where no signal ever
 // crosses it. That reads as a broken trigger, so it is moved into reach.
-// A level the input cannot reach is moved to one it can — and says so, because
-// a number that springs back with no explanation reads as a bug.
+// A level outside what the input reaches is left exactly as it was typed — it
+// is the user's number — and simply reported as one nothing will cross.
 function settleTriggerLevel() {
   const note = $('level-note');
   if (settings.mode === 'logic' || settings.mode === 'meter') { note.hidden = true; return; }
   const scale = scaleFor(settings, caps(), frontEnd(), settings.source);
-  const requested = settings.level, usable = usableTriggerLevel(scale, requested);
-  if (Math.abs(usable - requested) < 1e-9) { note.hidden = true; return; }
-  settings.level = usable; $('level').value = Number(usable.toPrecision(6));
   const window = triggerWindow(scale);
-  note.hidden = false;
+  note.hidden = !!window && settings.level >= window.low && settings.level <= window.high;
+  if (note.hidden) return;
   note.textContent = window
-    ? `CH${settings.source + 1} triggers between ${fmt(window.low, 'V')} and ${fmt(window.high, 'V')}. ${fmt(requested, 'V')} is outside that, where nothing would cross it, so it moved to ${fmt(usable, 'V')}.`
+    ? `CH${settings.source + 1} reaches ${fmt(window.low, 'V')} to ${fmt(window.high, 'V')}, so nothing will cross ${fmt(settings.level, 'V')}. The level is left where it was set.`
     : `CH${settings.source + 1} has no range to trigger in.`;
+}
+
+// Once, when an instrument answers: a level that cannot fire on the channel it
+// watches starts at that channel's bias instead. One that can fire is never
+// touched, whatever it is.
+function seedTriggerLevel() {
+  const scale = scaleFor(settings, caps(), frontEnd(), settings.source);
+  const window = triggerWindow(scale);
+  if (!window || (settings.level >= window.low && settings.level <= window.high)) return;
+  settings.level = Number(biasVolts(scale).toPrecision(6));
+  $('level').value = settings.level;
 }
 function synchronize() {
   const active = activeChannels(settings, caps());
@@ -252,13 +261,11 @@ async function connect(demo) {
   connecting = true; showError(); updateButtons();
   try {
     instrument = demo ? new DemoInstrument() : await USBInstrument.connect(); acquisition.attach(instrument); frame = null;
-    settings.channels.forEach(ch => { ch.zero = [0, 0]; });
     if (demo) settings.channels.forEach(ch => { ch.range = 1; ch.scale = 1; });
-    // Start the trigger where the front end's own range is centred: mid rail on
-    // a bare Pico 2, zero on a bipolar front end. No board id needed.
     settings.channels.forEach(ch => { if (ch.range >= frontEnd().length) ch.range = 0; });
-    settings.level = scaleFor(settings, caps(), frontEnd(), 0).centre;
-    $('level').value = settings.level;
+    // The zero and the gain describe the wiring, so connecting does not clear
+    // them, and a trigger level that works is not moved either.
+    seedTriggerLevel();
     settings.record = Math.min(settings.record, caps().maxRecord);
     if (!(caps().flags & 8)) { settings.lpf = 0; $('lpf').value = 0; }
     synchronize();

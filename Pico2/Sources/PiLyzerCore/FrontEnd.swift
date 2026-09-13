@@ -185,4 +185,10 @@ public struct VoltageScale: Equatable, Sendable {
         guard let window = triggerWindow else { return screenCentreVolts }
         return min(max(volts, window.lowerBound), window.upperBound)
     }
+
+    /// The middle of what this channel reads: the bias a front end holds the
+    /// input at, in the volts the panel works in. A trigger that has never
+    /// been set starts here, because it is the one level a biased signal is
+    /// certain to cross.
+    public var biasVolts: Double { volts(code: fullScale / 2) }
 }

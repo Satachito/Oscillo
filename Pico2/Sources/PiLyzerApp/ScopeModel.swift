@@ -206,6 +206,7 @@ final class ScopeModel: ObservableObject {
         case let .connected(instrument):
             settings.ensureAnalogChannels(instrument.capabilities.analogChannels)
             normalizeAnalogSelection()
+            seedTriggerLevel()
             settleTriggerLevel()
             statusText = instrument.summary
             if startsOnConnect { startsOnConnect = false; start() }
@@ -265,22 +266,33 @@ final class ScopeModel: ObservableObject {
     /// the front end but the very bottom of a bare Pico 2, where nothing ever
     /// crosses it. That looks like a broken trigger rather than a stale
     /// setting, so it is moved somewhere the signal can get to.
-    /// A level the input cannot reach is moved to one it can — and says so,
-    /// because a number that springs back with no explanation reads as a bug.
+    /// A level outside what the input reaches is left exactly as it was typed
+    /// — it is the user's number — and simply reported as one nothing will
+    /// cross.
     private func settleTriggerLevel() {
         let source = min(max(settings.trigger.source, 0), max(settings.channels.count - 1, 0))
         let scale = scale(for: source)
-        let requested = settings.trigger.levelVolts
-        let usable = scale.usableTriggerLevel(requested)
-        guard abs(usable - requested) > 1e-9 else { triggerLevelNote = nil; return }
-        settings.trigger.levelVolts = usable
-        if let window = scale.triggerWindow {
-            triggerLevelNote = "CH\(source + 1) triggers between \(Format.voltage(window.lowerBound)) "
-                + "and \(Format.voltage(window.upperBound)). \(Format.voltage(requested)) is outside "
-                + "that, where nothing would cross it, so it moved to \(Format.voltage(usable))."
-        } else {
+        let level = settings.trigger.levelVolts
+        guard let window = scale.triggerWindow else {
             triggerLevelNote = "CH\(source + 1) has no range to trigger in."
+            return
         }
+        guard !window.contains(level) else { triggerLevelNote = nil; return }
+        triggerLevelNote = "CH\(source + 1) reaches \(Format.voltage(window.lowerBound)) to "
+            + "\(Format.voltage(window.upperBound)), so nothing will cross "
+            + "\(Format.voltage(level)). The level is left where it was set."
+    }
+
+    /// Once, when an instrument answers: a level that cannot fire on the
+    /// channel it watches starts at that channel's bias instead — the middle
+    /// of what it reads, which a biased signal crosses. A level that can fire
+    /// is never touched, whatever it is.
+    private func seedTriggerLevel() {
+        let source = min(max(settings.trigger.source, 0), max(settings.channels.count - 1, 0))
+        let scale = scale(for: source)
+        guard let window = scale.triggerWindow,
+              !window.contains(settings.trigger.levelVolts) else { return }
+        settings.trigger.levelVolts = scale.biasVolts
     }
 
     /// The X/Y axes, held to channels that are switched on. A plot against a

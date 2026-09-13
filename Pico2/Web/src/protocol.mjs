@@ -99,6 +99,10 @@ export function triggerWindow(scale) {
   const low = Math.min(scale.low, scale.high) + margin, high = Math.max(scale.low, scale.high) - margin;
   return low < high ? { low, high } : null;
 }
+// The middle of what a channel reads: the bias a front end holds the input at.
+// A trigger that cannot fire where it is starts here, because it is the one
+// level a biased signal is certain to cross.
+export const biasVolts = scale => scale.volts(65520 / 2);
 export function usableTriggerLevel(scale, volts) {
   const window = triggerWindow(scale);
   if (!window) return scale.centre;

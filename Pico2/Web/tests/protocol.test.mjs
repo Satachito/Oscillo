@@ -209,7 +209,14 @@ test('encoders agree with the shared wire fixture', async () => {
 test('a trigger level left on the rail is moved somewhere the signal reaches', async () => {
   const { usableTriggerLevel, triggerWindow } = await import('../src/protocol.mjs');
   // The window the panel names when it moves a level: 2% off each rail.
+  const { biasVolts } = await import('../src/protocol.mjs');
+  // What a level that cannot fire is seeded to: the middle of what the channel
+  // reads. On a bare board that is the mid rail the front end biases to.
+  assert.ok(Math.abs(biasVolts(scaleFor(makeSettings(), caps, bare, 0)) - 1.65) < 1e-3);
+  assert.ok(Math.abs(biasVolts(scaleFor(makeSettings(), caps, afe, 0))) < 0.01);
   const bare0 = triggerWindow(scaleFor(makeSettings(), caps, bare, 0));
+  // 0 V is outside a bare board's window, which is what makes the seed matter.
+  assert.ok(0 < bare0.low);
   assert.ok(Math.abs(bare0.low - 3.3 * .02) < 1e-9 && Math.abs(bare0.high - 3.3 * .98) < 1e-9);
   const settings = makeSettings(), unipolar = scaleFor(settings, caps, bare, 0);
   assert.ok(Math.abs(usableTriggerLevel(unipolar, 0) - 3.3 * .02) < 1e-9);      // 0 V is the bottom rail here

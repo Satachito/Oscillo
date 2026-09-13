@@ -105,4 +105,28 @@ struct FrontEndTests {
         channel.calibrateGain(measured: 1, applied: 0, forRange: 0)
         #expect(channel.calibration(forRange: 0) == before)
     }
+
+    @Test("A trigger starts at the middle of what the channel reads")
+    func biasIsWhereATriggerStarts() {
+        // A bare board reads 0 to 3.3 V, and 0 V is on its bottom rail: a level
+        // there never fires, so a channel that has never been set starts at the
+        // mid rail a front end biases the input to.
+        let bare = VoltageScale(reference: 3.3, fullScale: 65520, range: FrontEnd.bareBoard[0])
+        #expect(abs(bare.biasVolts - 1.65) < 1e-3)
+        #expect(bare.triggerWindow?.contains(0) == false)
+        #expect(bare.triggerWindow?.contains(bare.biasVolts) == true)
+
+        // A front end that reports its own offset is already about zero.
+        for range in FrontEnd.revA {
+            let scale = VoltageScale(reference: 3.3, fullScale: 65520, range: range)
+            #expect(abs(scale.biasVolts) < 0.05)
+            #expect(scale.triggerWindow?.contains(0) == true)
+        }
+
+        // And a channel told what its bias is reads zero in the middle.
+        var channel = AnalogChannelSettings()
+        channel.calibrateZero(to: 1.65, forRange: 0)
+        let corrected = channel.scale(reference: 3.3, fullScale: 65520, ranges: FrontEnd.bareBoard)
+        #expect(abs(corrected.biasVolts) < 1e-3)
+    }
 }
