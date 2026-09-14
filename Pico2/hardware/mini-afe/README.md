@@ -32,6 +32,18 @@ Both halves of the dual are used, so there is nothing to switch:
 **Two jumpers are not on it**: each amplifier's output has to reach its converter
 pin — row 23 A–E to row 10 F–J for CH1, and row 23 F–J to row 9 F–J for CH2.
 
+Ground is taken twice on purpose. Pin 18 feeds the left rail and pin 23 the
+right, and **pin 33 — AGND, the pin the converter measures against — joins the
+right rail too**, so the analogue returns sit next to it rather than reaching it
+through the Pico's own plane. The two rails are then linked at row 1.
+
+That link closes a loop, which is worth a sentence because it looks alarming and
+is not: both of its ends are the same Pico ground, so there is no second
+reference to circulate current between. What it can pick up is magnetic, and the
+area is small — a 1 µT field at 50 Hz induces 3 µV in it, which is 0.004 of a
+count, and a 10 µT field 0.04. The gain is a return path that does not depend on
+a single pin's contact.
+
 Either way the follower does the job that matters: a high impedance to whatever
 is being measured, a low one to the converter. The RP2350's ADC wants to see
 **under 10 kΩ**, and a source that cannot promise that reads low and drifts —

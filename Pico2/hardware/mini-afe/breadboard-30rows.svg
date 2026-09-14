@@ -1094,6 +1094,7 @@
 <polyline points="716,436 804,436" fill="none" stroke="#d32f3844" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
 <polyline points="408,1060 320,1060" fill="none" stroke="#2276ba44" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
 <polyline points="716,1060 804,1060" fill="none" stroke="#2276ba44" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="716,580 804,580" fill="none" stroke="#2276ba44" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
 <polyline points="628,1348 804,1348" fill="none" stroke="#d32f3844" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
 <polyline points="496,1492 320,1492" fill="none" stroke="#2276ba44" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
 <polyline points="804,436 940,436" fill="none" stroke="#fff" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
@@ -1136,6 +1137,14 @@
 <polyline points="804,1540 940,1540" fill="none" stroke="#d32f38" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="804" cy="1540" r="6.5" fill="#d32f38" stroke="#fff" stroke-width="1"/>
 <circle cx="940" cy="1540" r="6.5" fill="#d32f38" stroke="#fff" stroke-width="1"/>
+<polyline points="804,580 990,580" fill="none" stroke="#fff" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="804,580 990,580" fill="none" stroke="#273341" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="804" cy="580" r="6.5" fill="#273341" stroke="#fff" stroke-width="1"/>
+<circle cx="990" cy="580" r="6.5" fill="#273341" stroke="#fff" stroke-width="1"/>
+<polyline points="220,244 270,244 270,148 870,148 870,244 990,244" fill="none" stroke="#fff" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="220,244 270,244 270,148 870,148 870,244 990,244" fill="none" stroke="#273341" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="220" cy="244" r="6.5" fill="#273341" stroke="#fff" stroke-width="1"/>
+<circle cx="990" cy="244" r="6.5" fill="#273341" stroke="#fff" stroke-width="1"/>
 <polyline points="672,1348 672,1252" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
 <polyline points="672,1348 672,1252" fill="none" stroke="#147d84" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="657.0" y="1291.0" width="30" height="18" rx="0" fill="#fff" stroke="none" stroke-width="1"/>
@@ -1210,26 +1219,30 @@
 <text x="1165" y="778" font-size="28" text-anchor="start" font-weight="bold" style="fill:#172a3a">指定された追加接続</text>
 <text x="1165" y="824" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">J22 → 右−</text>
 <text x="1694" y="824" font-size="24" text-anchor="end" font-weight="bold" style="fill:#273341">ジャンパ</text>
-<text x="1165" y="867" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">G24 ↔ G22</text>
-<text x="1694" y="867" font-size="24" text-anchor="end" font-weight="bold" style="fill:#147d84">104</text>
-<text x="1165" y="910" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">H25 ↔ H23</text>
-<text x="1694" y="910" font-size="24" text-anchor="end" font-weight="bold" style="fill:#826846">1kΩ</text>
-<text x="1165" y="953" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">C24 ↔ C23</text>
-<text x="1694" y="953" font-size="24" text-anchor="end" font-weight="bold" style="fill:#826846">1kΩ</text>
-<text x="1165" y="996" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">A23 → 左−</text>
-<text x="1694" y="996" font-size="24" text-anchor="end" font-weight="bold" style="fill:#147d84">472</text>
-<text x="1165" y="1039" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">I23 → 右−</text>
-<text x="1694" y="1039" font-size="24" text-anchor="end" font-weight="bold" style="fill:#147d84">472</text>
-<text x="1165" y="1082" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">G30 ↔ G27</text>
-<text x="1694" y="1082" font-size="24" text-anchor="end" font-weight="bold" style="fill:#147d84">155</text>
-<text x="1165" y="1125" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">H29 ↔ H27</text>
-<text x="1694" y="1125" font-size="24" text-anchor="end" font-weight="bold" style="fill:#826846">100kΩ</text>
-<text x="1165" y="1168" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">I28 ↔ I27</text>
-<text x="1694" y="1168" font-size="24" text-anchor="end" font-weight="bold" style="fill:#826846">100kΩ</text>
-<text x="1165" y="1211" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">J29 → 右−</text>
-<text x="1694" y="1211" font-size="24" text-anchor="end" font-weight="bold" style="fill:#273341">ジャンパ</text>
-<text x="1165" y="1254" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">J28 → 右＋</text>
-<text x="1694" y="1254" font-size="24" text-anchor="end" font-weight="bold" style="fill:#d32f38">ジャンパ</text>
+<text x="1165" y="860" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">G24 ↔ G22</text>
+<text x="1694" y="860" font-size="24" text-anchor="end" font-weight="bold" style="fill:#147d84">104</text>
+<text x="1165" y="896" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">H25 ↔ H23</text>
+<text x="1694" y="896" font-size="24" text-anchor="end" font-weight="bold" style="fill:#826846">1kΩ</text>
+<text x="1165" y="932" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">C24 ↔ C23</text>
+<text x="1694" y="932" font-size="24" text-anchor="end" font-weight="bold" style="fill:#826846">1kΩ</text>
+<text x="1165" y="968" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">A23 → 左−</text>
+<text x="1694" y="968" font-size="24" text-anchor="end" font-weight="bold" style="fill:#147d84">472</text>
+<text x="1165" y="1004" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">I23 → 右−</text>
+<text x="1694" y="1004" font-size="24" text-anchor="end" font-weight="bold" style="fill:#147d84">472</text>
+<text x="1165" y="1040" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">G30 ↔ G27</text>
+<text x="1694" y="1040" font-size="24" text-anchor="end" font-weight="bold" style="fill:#147d84">155</text>
+<text x="1165" y="1076" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">H29 ↔ H27</text>
+<text x="1694" y="1076" font-size="24" text-anchor="end" font-weight="bold" style="fill:#826846">100kΩ</text>
+<text x="1165" y="1112" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">I28 ↔ I27</text>
+<text x="1694" y="1112" font-size="24" text-anchor="end" font-weight="bold" style="fill:#826846">100kΩ</text>
+<text x="1165" y="1148" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">J29 → 右−</text>
+<text x="1694" y="1148" font-size="24" text-anchor="end" font-weight="bold" style="fill:#273341">ジャンパ</text>
+<text x="1165" y="1184" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">J28 → 右＋</text>
+<text x="1694" y="1184" font-size="24" text-anchor="end" font-weight="bold" style="fill:#d32f38">ジャンパ</text>
+<text x="1165" y="1220" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">J8 → 右−</text>
+<text x="1694" y="1220" font-size="24" text-anchor="end" font-weight="bold" style="fill:#273341">ジャンパ</text>
+<text x="1165" y="1256" font-size="24" text-anchor="start" font-weight="normal" style="fill:#172a3a">左− ↔ 右−（1行目）</text>
+<text x="1694" y="1256" font-size="24" text-anchor="end" font-weight="bold" style="fill:#273341">ジャンパ</text>
 <polyline points="1165,1291 1705,1291" fill="none" stroke="#dce4ed" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="1165" y="1333" font-size="26" text-anchor="start" font-weight="bold" style="fill:#172a3a">部品の表記</text>
 <text x="1165" y="1374" font-size="23" text-anchor="start" font-weight="normal" style="fill:#147d84">104 = 100nF（0.1µF）</text>
@@ -1240,7 +1253,7 @@
 <text x="1165" y="1568" font-size="21" text-anchor="start" font-weight="normal" style="fill:#172a3a">● が差し込み位置。線の交差は未接続。</text>
 <text x="1165" y="1606" font-size="21" text-anchor="start" font-weight="normal" style="fill:#172a3a">同じ行のA–E、F–Jは各々内部で導通。</text>
 <text x="1165" y="1644" font-size="21" text-anchor="start" font-weight="normal" style="fill:#172a3a">22行のGNDはF–J側のみ。</text>
-<text x="1165" y="1682" font-size="21" text-anchor="start" font-weight="normal" style="fill:#172a3a">左右のレール間にジャンパなし。</text>
+<text x="1165" y="1682" font-size="21" text-anchor="start" font-weight="normal" style="fill:#172a3a">左右の−を1行目で接続（上方へ迂回）。</text>
 <text x="1165" y="1720" font-size="20" text-anchor="start" font-weight="normal" style="fill:#172a3a">部品・配線は見やすさのため記号で表示。</text>
 <text x="130" y="1825" font-size="23" text-anchor="start" font-weight="normal" style="fill:#172a3a">Picoのピン番号は物理番号。36番は3.3V出力。Pico 2はUSBから給電。</text>
 <text x="130" y="1860" font-size="21" text-anchor="start" font-weight="normal" style="fill:#172a3a">赤：＋3.3V　黒：GND　橙：帰還ジャンパ　茶：抵抗　青緑：コンデンサ</text>
