@@ -2810,7 +2810,7 @@
 		)
 		(uuid "462734c8-3e1d-5f2c-934b-5ff4dce2cdbb")
 	)
-	(text "Firmware 1.7: ADC GPIO26–27; logic GPIO8–15; test GPIO20. GPIO16–18 unused."
+	(text "ADC GPIO26–27; logic GPIO8–15; test GPIO22; generator GPIO16–19. GPIO4–6 unused."
 		(exclude_from_sim no)
 		(at 12.7 142.24 0)
 		(effects
@@ -2993,7 +2993,7 @@
 		(uuid "c0ecabff-6237-5f2b-aae3-1075c7c421f2")
 	)
 	(no_connect
-		(at 114.3 85.09)
+		(at 114.3 92.71)
 		(uuid "c7466762-2a48-5339-ae43-6c6c9fa99a93")
 	)
 	(no_connect
@@ -3642,7 +3642,7 @@
 	)
 	(wire
 		(pts
-			(xy 114.3 92.71) (xy 106.68 92.71)
+			(xy 114.3 85.09) (xy 106.68 85.09)
 		)
 		(stroke
 			(width 0.1524)
@@ -4400,7 +4400,7 @@
 			)
 		)
 	)
-	(global_label "CAL_GPIO20"
+	(global_label "CAL_GPIO22"
 		(shape passive)
 		(at 213.36 259.08 180)
 		(effects
@@ -5016,9 +5016,9 @@
 			)
 		)
 	)
-	(global_label "CAL_GPIO20"
+	(global_label "CAL_GPIO22"
 		(shape passive)
-		(at 106.68 92.71 180)
+		(at 106.68 85.09 180)
 		(effects
 			(font
 				(size 1.016 1.016)
@@ -5027,7 +5027,7 @@
 		)
 		(uuid "aba23490-ac8e-5a5d-84c5-605895a23867")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 106.68 92.71 0)
+			(at 106.68 85.09 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
