@@ -8,6 +8,20 @@ same thing three times.
 The PCB bill of materials next door is 0805 and SOIC. This one is through hole
 wherever a through-hole part exists, and names the adapter where none does.
 
+**There is no clamp on this build.** The PCB carries a BAV199 across the divider
+node; a breadboard is a bench where you already know what you are connecting, so
+it saves a SOT-23 adapter and a part whose leakage would otherwise sit in every
+reading. The 1 MΩ input is doing the protecting either way — it is what turns
+100 V at the probe into 96 µA — but the last few volts now land on the op amp's
+own input diodes, which are not specified for the job and leak more than a
+BAV199 does. **Keep the input inside the range the board is built for**, and do
+not use this one to find out what happens above it: that is what
+[the clamp tables](../README.md#protection) are for, and they describe the PCB.
+
+Leaving it out also gives up a measurement. The clamp's leakage, warmed up, was
+one of the things this build was meant to show; it can still be measured, but
+only on a board that has the part fitted.
+
 ## What one channel needs
 
 `U1` is a quad, and a single channel uses three of its four amplifiers, so
@@ -29,13 +43,13 @@ circuit for the [Falstad simulator](https://www.falstad.com/circuit/circuitjs.ht
 which runs in a browser with nothing to install — the same bargain the
 application itself makes.
 
-**[Open it in the simulator](https://www.falstad.com/circuit/circuitjs.html?cct=%24%201%201.0E-6%2010.20027730826997%2050%203.3%2050%205.0E-11%0AR%2080%20320%2032%20320%200%201%20100.0%205.0%200.0%200.0%200.5%0Aw%2080%20320%20144%20320%200%0Ar%20144%20320%20208%20320%200%20499000.0%0Ar%20208%20320%20272%20320%200%20499000.0%0Aw%20144%20320%20144%20256%200%0Aw%20272%20320%20272%20256%200%0Ac%20144%20256%20272%20256%200%206.8E-12%200%0Aw%20272%20320%20336%20320%200%0Ar%20336%20320%20336%20256%200%20125000.0%0AR%20336%20256%20336%20224%200%200%2040.0%203.3%200.0%200.0%200.5%0Ar%20336%20320%20336%20384%200%20143000.0%0Ag%20336%20384%20336%20416%200%0Aw%20336%20320%20400%20320%200%0Ac%20400%20320%20400%20384%200%208.2E-11%200%0Ag%20400%20384%20400%20416%200%0Aw%20400%20320%20464%20320%200%0Ad%20464%20320%20464%20256%200%0AR%20464%20256%20464%20224%200%200%2040.0%203.3%200.0%200.0%200.5%0Ad%20464%20384%20464%20320%200%0Ag%20464%20384%20464%20416%200%0Aw%20464%20320%20544%20320%200%0Aa%20544%20304%20640%20304%200%203.3%200.0%201000000.0%0Aw%20640%20304%20640%20224%200%0Ar%20640%20224%20544%20224%200%2010000.0%0Aw%20544%20224%20544%20288%200%0Ar%20544%20224%20544%20160%200%202670.0%0Aw%20640%20304%20704%20304%200%0Ar%20704%20304%20768%20304%200%202670.0%0Ar%20768%20304%20832%20304%200%202670.0%0Aw%20832%20304%20848%20304%200%0Aa%20848%20288%20944%20288%200%203.3%200.0%201000000.0%0Aw%20944%20288%20944%20224%200%0Aw%20944%20224%20848%20224%200%0Aw%20848%20224%20848%20272%200%0Aw%20944%20288%20944%20368%200%0Ac%20944%20368%20768%20368%200%202.2E-9%200%0Aw%20768%20368%20768%20304%200%0Ac%20848%20304%20848%20448%200%201.0E-9%200%0Aw%20944%20288%201008%20288%200%0Ar%201008%20288%201072%20288%200%201000.0%0Ac%201072%20288%201072%20368%200%201.0E-9%200%0Ag%201072%20368%201072%20400%200%0AO%201072%20288%201136%20288%200%0AR%2096%20400%2096%20368%200%200%2040.0%203.3%200.0%200.0%200.5%0Ar%2096%20400%2096%20464%200%2010000.0%0Ar%2096%20464%2096%20528%200%2010000.0%0Ag%2096%20528%2096%20560%200%0Aw%2096%20464%20160%20464%200%0Ac%20160%20464%20160%20528%200%201.0E-6%201.65%0Ag%20160%20528%20160%20560%200%0Aa%20224%20448%20320%20448%200%203.3%200.0%201000000.0%0Aw%20160%20464%20224%20464%200%0Aw%20320%20448%20320%20400%200%0Aw%20320%20400%20224%20400%200%0Aw%20224%20400%20224%20432%200%0Aw%20320%20448%20848%20448%200%0Aw%20848%20448%201200%20448%200%0Aw%201200%20448%201200%20160%200%0Aw%201200%20160%20544%20160%200%0A)**
+**[Open it in the simulator](https://www.falstad.com/circuit/circuitjs.html?cct=%24%201%201.0E-6%2010.20027730826997%2050%203.3%2050%205.0E-11%0AR%2080%20320%2032%20320%200%201%20100.0%205.0%200.0%200.0%200.5%0Aw%2080%20320%20144%20320%200%0Ar%20144%20320%20208%20320%200%20499000.0%0Ar%20208%20320%20272%20320%200%20499000.0%0Aw%20144%20320%20144%20256%200%0Aw%20272%20320%20272%20256%200%0Ac%20144%20256%20272%20256%200%206.8E-12%200%0Aw%20272%20320%20336%20320%200%0Ar%20336%20320%20336%20256%200%20125000.0%0AR%20336%20256%20336%20224%200%200%2040.0%203.3%200.0%200.0%200.5%0Ar%20336%20320%20336%20384%200%20143000.0%0Ag%20336%20384%20336%20416%200%0Aw%20336%20320%20400%20320%200%0Ac%20400%20320%20400%20384%200%208.2E-11%200%0Ag%20400%20384%20400%20416%200%0Aw%20400%20320%20544%20320%200%0Aa%20544%20304%20640%20304%200%203.3%200.0%201000000.0%0Aw%20640%20304%20640%20224%200%0Ar%20640%20224%20544%20224%200%2010000.0%0Aw%20544%20224%20544%20288%200%0Ar%20544%20224%20544%20160%200%202670.0%0Aw%20640%20304%20704%20304%200%0Ar%20704%20304%20768%20304%200%202670.0%0Ar%20768%20304%20832%20304%200%202670.0%0Aw%20832%20304%20848%20304%200%0Aa%20848%20288%20944%20288%200%203.3%200.0%201000000.0%0Aw%20944%20288%20944%20224%200%0Aw%20944%20224%20848%20224%200%0Aw%20848%20224%20848%20272%200%0Aw%20944%20288%20944%20368%200%0Ac%20944%20368%20768%20368%200%202.2E-9%200%0Aw%20768%20368%20768%20304%200%0Ac%20848%20304%20848%20448%200%201.0E-9%200%0Aw%20944%20288%201008%20288%200%0Ar%201008%20288%201072%20288%200%201000.0%0Ac%201072%20288%201072%20368%200%201.0E-9%200%0Ag%201072%20368%201072%20400%200%0AO%201072%20288%201136%20288%200%0AR%2096%20400%2096%20368%200%200%2040.0%203.3%200.0%200.0%200.5%0Ar%2096%20400%2096%20464%200%2010000.0%0Ar%2096%20464%2096%20528%200%2010000.0%0Ag%2096%20528%2096%20560%200%0Aw%2096%20464%20160%20464%200%0Ac%20160%20464%20160%20528%200%201.0E-6%201.65%0Ag%20160%20528%20160%20560%200%0Aa%20224%20448%20320%20448%200%203.3%200.0%201000000.0%0Aw%20160%20464%20224%20464%200%0Aw%20320%20448%20320%20400%200%0Aw%20320%20400%20224%20400%200%0Aw%20224%20400%20224%20432%200%0Aw%20320%20448%20848%20448%200%0Aw%20848%20448%201200%20448%200%0Aw%201200%20448%201200%20160%200%0Aw%201200%20160%20544%20160%200%0A)**
 
 Or open the simulator and use *File → Import From Text*, which is the shorter
 road if that link has been mangled by something in between.
 
 What is in it: the 1 MΩ input split in two, the compensation across it, the
-bias legs to 3V3 and ground, `C4`, the BAV199 clamp, the gain stage at ×4.745,
+bias legs to 3V3 and ground, `C4`, the gain stage at ×4.745,
 the VMID divider and its buffer, the Sallen-Key section, and `R44`/`C7` at the
 converter pin. The source is a 5 V 100 Hz sine, which is the fine range's full
 scale, so the output swings very nearly rail to rail.
@@ -56,8 +70,9 @@ filter doing what the 40.2 kHz corner says it should.
 Two things it is not. The op amps are ideal ones with the rails set to 0 and
 3.3 V, so it will not show you the TLV9064's offset, noise or bandwidth; and
 past about ±10 V at the input the ideal model stops converging on anything
-physical, so read the clamp's behaviour out of the tables in
-[`../README.md`](../README.md#protection) rather than off the screen.
+physical. It has no clamp in it, because this build has none — what happens
+above the range is in [`../README.md`](../README.md#protection), and it is the
+PCB's behaviour, not this one's.
 
 Change `R8` from 2.67 kΩ to 15 kΩ in the simulator and you have the one-range
 ±15 V build below, with nothing else moved.
@@ -75,7 +90,7 @@ nothing:
 **A bench that wants no switch at all** can have one ±15 V range instead: the
 same circuit with `R8` at 15 kΩ wired permanently to VMID. Building that instead
 is a change of one resistor; everything measured here — the compensation, the
-filter, the clamp — is identical either way, and
+filter, the compensation — is identical either way, and
 [the rev A notes](../README.md#building-it-with-one-range-instead-of-two) carry
 the arithmetic and what the single range costs in resolution.
 
@@ -109,8 +124,8 @@ at a fixed **0.2%** of gain — about 7 Ω:
 | `U2A` at 7 Ω | 4.7352 |
 
 So the gain a jumper measures is the circuit's, not the board's. That matters
-for the absolute gain figure and for nothing else: the frequency response, the
-filter's Q and the clamp's leakage are all unaffected. Fit the real part when
+for the absolute gain figure and for nothing else: the frequency response and
+the filter's Q are unaffected. Fit the real part when
 you want the board's own number — and buy the adapter now either way, since you
 will want it eventually.
 
@@ -132,9 +147,10 @@ What the circuit actually asks for:
 | Input bias current | ≤ 1 nA, so CMOS or FET | see below |
 | Amplifiers | three | one quad, or two duals |
 
-The bandwidth and the bias current are not preferences. **The filter's Q and the
-clamp's leakage are measurements of the amplifier as much as of the circuit
-around it**, so substituting it quietly defeats the point of making them.
+The bandwidth and the bias current are not preferences. **The filter's Q is a
+measurement of the amplifier as much as of the circuit around it**, and the bias
+current lands directly on the reading, so substituting the part quietly defeats
+the point of measuring either.
 
 The divider node's source impedance is 62.5 kΩ — 125k, 143k and the 998k input
 in parallel. Input bias current flows through that:
@@ -142,11 +158,12 @@ in parallel. Input bias current flows through that:
 | Input stage | Bias current | At the node | In converter counts |
 | --- | ---: | ---: | ---: |
 | CMOS, as specified | 10 pA | 0.6 µV | 0.00 LSB |
-| **the clamp leakage being measured** | **1 nA** | **62.5 µV** | **0.08 LSB** |
+| a nanoamp, from anywhere | 1 nA | 62.5 µV | 0.08 LSB |
 | an ordinary bipolar input | 45 nA | 2813 µV | 3.49 LSB |
 
-A bipolar-input part buries the nanoamp it is supposed to reveal under forty-five
-of its own. Checking the clamp diodes at temperature stops being possible.
+A bipolar-input part puts three and a half counts of its own into every reading,
+before anything else in the circuit has had a turn, and it moves with
+temperature.
 
 The bandwidth argument is the same shape. A 1 MHz part is 25 × the filter's
 corner, not 249 ×, and its finite gain bandwidth moves Q by several per cent —
@@ -172,8 +189,6 @@ the compensation trim happily, and then comes out.
 
 - the Sallen-Key's real corner and Q against the calculated 40.2 kHz and 0.742,
   which is set by the capacitors you actually bought
-- the clamp diodes' leakage, including warmed up — a nanoamp through the bias
-  legs is already visible on the ±5 V range
 - whether the gain stage does ×1 and ×4.745 to the accuracy your resistors allow
 - noise, and whether the whole path behaves at all
 
