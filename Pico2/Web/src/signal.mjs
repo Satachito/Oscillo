@@ -25,7 +25,15 @@ export function spectrum(samples, period) {
   const n = 2 ** Math.floor(Math.log2(samples.length));
   if (n < 8) return { bins: [], peak: null, resolution: 0 };
   const real = new Float64Array(n), imag = new Float64Array(n); let weight = 0;
-  for (let i = 0; i < n; i++) { const w = .5 - .5 * Math.cos(2 * Math.PI * i / (n - 1)); weight += w; real[i] = samples[i] * w; }
+  // The mean comes out here rather than being left to the panel's Remove mean,
+  // which is a scope setting. A DC offset put through the window is not a tall
+  // bin 0 but a skirt across the first few bins, and on a mid-rail input that
+  // skirt outweighs the signal — a 440 Hz tone on 1.65 V reported its peak at
+  // 12 Hz. So the spectrum is the same whether the panel removes the mean.
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += samples[i];
+  mean /= n;
+  for (let i = 0; i < n; i++) { const w = .5 - .5 * Math.cos(2 * Math.PI * i / (n - 1)); weight += w; real[i] = (samples[i] - mean) * w; }
   for (let i = 1, j = 0; i < n; i++) {
     let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
     if (i < j) [real[i], real[j]] = [real[j], real[i]];

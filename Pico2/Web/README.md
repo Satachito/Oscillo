@@ -31,6 +31,10 @@ a driver association added by hand. macOS and Linux are unaffected either way.
 
 - Scope: 1–3 channels according to device capabilities, voltage/probe scales,
   vertical position, mean removal, peak-to-peak/RMS/mean/frequency readouts.
+  Remove mean belongs to the scope alone, and the panel greys it out elsewhere:
+  the spectrum takes the mean out itself — a DC offset through the window is a
+  skirt across the low bins rather than a tall bin at zero — and the meter's
+  whole job is the reading the converter made.
 - X/Y draws the first two enabled channels on a square grid, so a division is
   the same size on both axes and a Lissajous figure has its real shape. The
   horizontal axis is the first channel, the vertical axis the second.

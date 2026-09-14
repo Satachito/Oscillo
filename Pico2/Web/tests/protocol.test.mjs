@@ -353,3 +353,18 @@ test('the log drops its oldest points rather than growing without limit', async 
   const frame = await engine.capture(engine.instrument, settings, null, engine.token);
   assert.equal(frame.history.length, LOG_CAPACITY);
 });
+
+test('the spectrum is the same whether or not the panel removed the mean', () => {
+  // Remove mean is a scope setting; a DC offset through the window becomes a
+  // skirt over the low bins, not a tall bin 0, so the transform takes it out.
+  const n = 4096, period = 1 / 50000;
+  const sine = i => 1.5 * Math.sin(2 * Math.PI * 440 * i * period);
+  const biased = spectrum(Float64Array.from({ length: n }, (_, i) => 1.65 + sine(i)), period);
+  const centred = spectrum(Float64Array.from({ length: n }, (_, i) => sine(i)), period);
+  assert.equal(biased.peak.frequency, centred.peak.frequency);
+  for (const i of [0, 1, 2, 40]) {
+    assert.ok(Math.abs(biased.bins[i].rms - centred.bins[i].rms) < 1e-9, `bin ${i}`);
+  }
+  // And the tone itself is where it belongs rather than losing to the skirt.
+  assert.ok(Math.abs(biased.peak.frequency - 440) < 1, biased.peak.frequency);
+});

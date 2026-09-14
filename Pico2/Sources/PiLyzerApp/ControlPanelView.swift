@@ -357,6 +357,12 @@ struct VerticalSection: View {
                 set: { model.settings.channels[channel].voltsPerDivision = $0 })
     }
 
+    /// Removing the mean is a scope setting: nothing else on screen is drawn
+    /// from the samples it shifts.
+    private var removesMeanApplies: Bool {
+        model.settings.mode == .scope
+    }
+
     private var gainCorrection: Double {
         let channel = model.settings.channels[self.channel]
         return channel.calibration(forRange: channel.rangeIndex).scale
@@ -395,7 +401,16 @@ struct VerticalSection: View {
             LabeledSlider(title: "Position", value: binding.positionDivisions,
                           range: -4...4, format: { String(format: "%.1f div", $0) })
 
+            // Only the scope draws what this changes. The spectrum takes the
+            // mean out itself, because a DC offset through the window is a
+            // skirt over the low bins rather than a tall one at zero, and the
+            // meter's whole job is the reading the converter actually made.
             Toggle("Remove mean (software AC)", isOn: binding.removesMean)
+                .disabled(!removesMeanApplies)
+                .help(removesMeanApplies
+                      ? "Centres the trace on zero, and the CSV with it."
+                      : "Scope only. The spectrum removes the mean itself, and "
+                        + "the meter logs what the converter read.")
 
             // Each button sits under the field it writes, and Reset — which
             // clears both of them — stands on its own.
