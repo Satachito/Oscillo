@@ -207,8 +207,8 @@ static void fill_capabilities(pilyzer_capabilities_t *capabilities)
     capabilities->reference_microvolts = ADC_REFERENCE_MICROVOLTS;
     // Only a board with a switch on it claims to switch ranges under software
     // control. A bare Pico 2 has one range because there is nothing in front of
-    // it; PiLyzer Lite has one because its gain leg is wired rather than
-    // switched.
+    // it, and a rev A built with its gain leg wired rather than switched has
+    // one for the same kind of reason.
     capabilities->flags = CAP_CALIBRATION_OUTPUT | CAP_TRIGGER_LOWPASS |
                           CAP_REPORTS_RANGES |
                           (ANALOG_RANGES > 1 ? CAP_SOFTWARE_RANGE : 0) |

@@ -225,8 +225,8 @@ switch wearing an SPDT's package.
 
 It matters for the count. Three channels need three switches, and a dual SPDT
 gives two per package, so the board carries two of them with one half of `U3`
-wasted. **A quad SPST would do all three in one package.** PiLyzer Lite needs no
-switch at all — see below.
+wasted. **A quad SPST would do all three in one package.** A one-range build
+needs no switch at all — see below.
 
 What the part actually has to do is undemanding, which is worth knowing before
 paying for a premium one. `COM` sits at VMID whichever way the switch is thrown,
@@ -261,19 +261,22 @@ This is deliberate. A pair of jumpers per channel is cheaper, but a jumper left
 in the wrong place produces a reading that is wrong by a factor of five and
 looks perfectly plausible, with nothing in software able to tell.
 
-## PiLyzer Lite: one range, no switch
+## Building it with one range instead of two
 
-Lite offers **±15 V and nothing else** — wide enough for a 12 V supply, which is
-what a single range has to reach to be useful on a bench with students at it.
+A bench that would rather have no switch at all can have **±15 V and nothing
+else** — wide enough for a 12 V supply, which is what a single range has to
+reach to be useful with students at it. This is the shape the
+[breadboard build](breadboard/) takes, and it was nearly a board of its own
+before the part list said otherwise: every part it needs is a part of rev A.
 
-The whole difference from rev A is **`R8`: 15 kΩ instead of 2.67 kΩ**, wired
-permanently to VMID instead of being taken there by `U2A`. That makes the gain
-stage ×1.667 rather than ×4.745. Both TS5A23159 packages leave the board, and
-GPIO4 and GPIO5 come free.
+The whole difference is **`R8`: 15 kΩ instead of 2.67 kΩ**, wired permanently to
+VMID instead of being taken there by `U2A`. That makes the gain stage ×1.667
+rather than ×4.745. Both TS5A23159 packages come off, and GPIO4 and GPIO5 come
+free.
 
 | | Overall gain | Offset | Reads |
 | --- | ---: | ---: | --- |
-| Lite, `R8` 15 kΩ | 0.104408 | 1.650858 V | −15.81 … +15.80 V |
+| `R8` 15 kΩ, one range | 0.104408 | 1.650858 V | −15.81 … +15.80 V |
 
 15 kΩ rather than the 13.3 kΩ that would land on exactly ±15 V, because 1%
 parts at their worst corner still have to clear 15 V: 13.3 kΩ falls to 14.90 V
@@ -302,7 +305,7 @@ range:
 
 | | Span | One count |
 | --- | ---: | ---: |
-| Lite ±15 V | 31.6 V | 7.72 mV |
+| One range, ±15 V | 31.6 V | 7.72 mV |
 | rev A ±5 V | 11.1 V | 2.71 mV |
 | rev A ±25 V | 52.7 V | 12.86 mV |
 
@@ -312,17 +315,17 @@ bits back on slow sweeps. It is worth knowing rather than discovering.
 
 ### Nothing changes in either application
 
-The device has reported its own ranges since firmware 1.7, so Lite answers with
-one entry and both front panels disable the range menu on their own — the macOS
-panel already asks `ranges.count > 1` and the browser one
-`frontEnd().length < 2`. Lite is `PILYZER_BOARD_ID 2` and needs no host release
-to be read correctly.
+The device has reported its own ranges since firmware 1.7, so a one-range build
+answers with one entry and both front panels disable the range menu on their
+own — the macOS panel already asks `ranges.count > 1` and the browser one
+`frontEnd().length < 2`. It needs no host release to be read correctly, and no
+board id of its own: what it reports is what it is.
 
 ### Earning a fixed capacitor instead of a trimmer
 
 A trimmer on a teaching board is both a cost and something for a student to
-turn, so Lite should not have one. That is affordable if the compensation is
-made insensitive to the layout rather than adjustable for it.
+turn, so a classroom build should not have one. That is affordable if the
+compensation is made insensitive to the layout rather than adjustable for it.
 
 The lever is `C4`. Whatever the layout adds lands on `C_node` beside it, so the
 larger `C4` is, the smaller a fraction of `C_node` the unknown becomes:
@@ -339,9 +342,9 @@ capacitance. A bench oscilloscope's input is 10 to 20 pF, which puts **220 pF
 the sensible end of the trade**: 16 pF in and a compensation that a fixed part
 can hold to a few per cent.
 
-So Lite: **`C4` 220 pF, and a fixed capacitor near 16 pF in place of `C1`/`TC1`**
-— with the exact value taken from measuring the first boards, not from this
-table. Fit a trimmer on the prototype run; fit the number it lands on
+So a one-range classroom build: **`C4` 220 pF, and a fixed capacitor near 16 pF
+in place of `C1`/`TC1`** — with the exact value taken from measuring the first
+boards, not from this table. Fit a trimmer on the prototype run; fit the number it lands on
 thereafter.
 
 ## Protection

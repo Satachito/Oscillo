@@ -8,7 +8,9 @@
 #ifndef PILYZER_BOARD_ID
 // 0 = bare Pico 2, inputs straight on the converter pins.
 // 1 = PiLyzer analogue front end rev A/B.
-// 0 bare Pico 2, 1 PiLyzer AFE rev A, 2 PiLyzer Lite, 3 PL2407AFE.
+// 0 bare Pico 2, 1 PiLyzer AFE rev A, 3 PL2407AFE. 2 was a second in-house
+// board and is retired rather than reused, so an old build that still says 2
+// fails here instead of quietly reading through rev A's ranges.
 #define PILYZER_BOARD_ID 0
 #endif
 
@@ -67,16 +69,7 @@
       .name = "0 – 3.3 V" },                                                   \
 }
 #elif PILYZER_BOARD_ID == 2
-// PiLyzer Lite: one range, wide enough for a 12 V supply. The attenuator is
-// rev A's, unchanged — that is where the input protection lives — and the gain
-// leg is wired to VMID rather than switched, so there is no analogue switch on
-// the board at all. R8 is 15k rather than rev A's 2.67k, which is the whole
-// difference: a stage gain of 1.667 instead of 4.745.
-#define ANALOG_RANGES 1
-#define PILYZER_INPUT_RANGES {                                                 \
-    { .switch_position = 0, .gain_micro = 104408, .offset_microvolts = 1650858,\
-      .name = "±15 V" },                                                       \
-}
+#error "board id 2 is retired; a one-range rev A build reports its own ranges"
 #else
 // PiLyzer AFE rev A: both ranges sit on the same attenuator and the same
 // mid-rail bias; the switch only changes the gain of the stage after it.
