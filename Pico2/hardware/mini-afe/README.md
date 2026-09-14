@@ -76,7 +76,7 @@ whatever it is without the amplifier adding an offset of its own.
 [Falstad simulator](https://www.falstad.com/circuit/circuitjs.html), which runs
 in a browser with nothing to install.
 
-**[Open it in the simulator](https://www.falstad.com/circuit/circuitjs.html?cct=%24%201%201.0E-6%2010.20027730826997%2050%203.3%2050%205.0E-11%0AR%2080%20200%2032%20200%200%201%201000.0%201.0%200.0%200.0%200.5%0Aw%2080%20200%20144%20200%200%0Ac%20144%20200%20208%20200%200%201.0E-6%20-1.65%0Ar%20208%20200%20208%20136%200%20100000.0%0AR%20208%20136%20208%20104%200%200%2040.0%203.3%200.0%200.0%200.5%0Ar%20208%20200%20208%20264%200%20100000.0%0Ag%20208%20264%20208%20296%200%0Aw%20208%20200%20288%20200%200%0Aa%20288%20184%20384%20184%200%203.3%200.0%201000000.0%0Aw%20384%20184%20384%20136%200%0Aw%20384%20136%20288%20136%200%0Aw%20288%20136%20288%20168%200%0Aw%20384%20184%20416%20184%200%0Ar%20416%20184%20480%20184%200%201000.0%0Ac%20480%20184%20480%20248%200%204.7E-9%200%0Ag%20480%20248%20480%20280%200%0AO%20480%20184%20544%20184%200%0AR%2080%20400%2032%20400%200%201%201000.0%201.0%201.65%200.0%200.5%0Aw%2080%20400%20288%20400%200%0Aa%20288%20384%20384%20384%200%203.3%200.0%201000000.0%0Aw%20384%20384%20384%20336%200%0Aw%20384%20336%20288%20336%200%0Aw%20288%20336%20288%20368%200%0Aw%20384%20384%20416%20384%200%0Ar%20416%20384%20480%20384%200%201000.0%0Ac%20480%20384%20480%20448%200%204.7E-9%200%0Ag%20480%20448%20480%20480%200%0AO%20480%20384%20544%20384%200%0A)**
+**[Open it in the simulator](https://www.falstad.com/circuit/circuitjs.html?cct=%24%201%201.0E-6%2010.20027730826997%2050%203.3%2050%205.0E-11%0AR%2080%20200%2032%20200%200%201%201000.0%201.0%200.0%200.0%200.5%0Aw%2080%20200%20144%20200%200%0Ac%20144%20200%20208%20200%200%201.0E-7%20-1.65%0Ar%20208%20200%20208%20136%200%201000000.0%0AR%20208%20136%20208%20104%200%200%2040.0%203.3%200.0%200.0%200.5%0Ar%20208%20200%20208%20264%200%201000000.0%0Ag%20208%20264%20208%20296%200%0Aw%20208%20200%20288%20200%200%0Aa%20288%20184%20384%20184%200%203.3%200.0%201000000.0%0Aw%20384%20184%20384%20136%200%0Aw%20384%20136%20288%20136%200%0Aw%20288%20136%20288%20168%200%0Aw%20384%20184%20416%20184%200%0Ar%20416%20184%20480%20184%200%201000.0%0Ac%20480%20184%20480%20248%200%204.7E-9%200%0Ag%20480%20248%20480%20280%200%0AO%20480%20184%20544%20184%200%0AR%2080%20400%2032%20400%200%201%201000.0%201.0%201.65%200.0%200.5%0Aw%2080%20400%20288%20400%200%0Aa%20288%20384%20384%20384%200%203.3%200.0%201000000.0%0Aw%20384%20384%20384%20336%200%0Aw%20384%20336%20288%20336%200%0Aw%20288%20336%20288%20368%200%0Aw%20384%20384%20416%20384%200%0Ar%20416%20384%20480%20384%200%201000.0%0Ac%20480%20384%20480%20448%200%204.7E-9%200%0Ag%20480%20448%20480%20480%200%0AO%20480%20384%20544%20384%200%0A)**
 
 Both branches are drawn, with the AC one fed from its own copy of the source, so
 you can watch the coupled-and-biased version and the direct version at once
@@ -84,11 +84,10 @@ rather than moving a jumper. A 1 V sine reaches the converter pin as
 **1.65 ± 1.0 V either way** — 0.648 to 2.647 V through the coupling capacitor
 and 0.651 to 2.650 V direct, which is the whole point of the choice.
 
-The divider is drawn as 100 kΩ / 100 kΩ and the coupling capacitor as 1 µF,
-which are the values this circuit had when it was last written down rather than
-what is in the board now; see the end of this file. `C3` carries an initial
-−1.65 V so the mid rail starts settled instead of taking the divider's 50 ms to
-charge.
+`C3` carries an initial −1.65 V so the mid rail starts settled instead of
+taking the divider's 50 ms to charge. The low corner is arithmetic rather than
+something the simulation shows well: at 3 Hz a cycle is longer than the
+simulation advances while you watch it.
 
 ## What it cannot do
 
@@ -102,9 +101,40 @@ charge.
   reads is what reached it. Set the channel's bias in the panel to 0 on the
   direct branch, and to the mid rail on the AC branch.
 
-## Not recorded yet
+## The AC branch's own numbers
 
-`C3` and the `R2`/`R3` divider are fitted but their values are not written down
-here. Read them off the board and they will go in the bill of materials — the
-ratio decides how much of a signal about 0 V fits inside the converter's range,
-and `C3` with that divider sets the low-frequency corner of the AC branch.
+`R2` and `R3` are 1 MΩ each, so the node they bias sits at **500 kΩ** — and
+that one number decides three things.
+
+| | |
+| --- | --- |
+| Low corner, with `C3` at 100 nF | **3.2 Hz** — anything audio passes |
+| Settling from cold | 50 ms, which is `C3` charging through the divider |
+| What the op amp has to be | CMOS, and not by a little |
+
+The last is worth spelling out. Bias current flows through that 500 kΩ and lands
+in the reading as an offset:
+
+| | Bias current | Offset it adds |
+| --- | ---: | ---: |
+| **MCP6022** | 1 pA | 0.5 µV, which is 0.00 LSB |
+| LM358 | 45 nA | 22.5 mV, which is **28 LSB** |
+
+So the part in the socket is not only clipping the top of the range, it is
+sitting 28 counts off the middle of it on this branch. Both go away with the
+MCP6022.
+
+**Expect the AC branch to roll off earlier than the output RC does.** 500 kΩ
+against whatever stray a breadboard puts on that node is a low-pass of its own,
+and it lands below `R1`/`C1`:
+
+| Stray at the node | Corner |
+| ---: | ---: |
+| 10 pF | 31.8 kHz |
+| 20 pF | 15.9 kHz |
+| 30 pF | 10.6 kHz |
+
+The direct branch has none of this — it carries whatever the source's own
+impedance gives it. If the AC branch measures softer at the top of the audio
+band than the direct one, that is why, and it is the divider rather than the
+amplifier.
