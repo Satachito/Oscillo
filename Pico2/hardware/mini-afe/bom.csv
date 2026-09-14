@@ -1,8 +1,8 @@
 Item,Value,Qty,Package,Designator,Notes
-Op amp,MCP6022-I/P,1,DIP-8,U1,"Dual, and both halves are used: A is the AC channel, B the direct one. Rail to rail in and out — see the README before substituting."
+Op amp,MCP6022-I/P,1,DIP-8,U1,"Dual, and both halves are used: A is the direct channel (CH1), B the AC one (CH2). Rail to rail in and out — see the README before substituting."
 Resistor,100k 1% metal film,2,Through hole,R2 R3,"Bias divider to mid rail, on the AC channel only. 50 kΩ at the node."
 Capacitor,1.5uF (155),1,Through hole,C3,"Coupling capacitor on the AC channel. With the divider this is 2.1 Hz. If it is electrolytic, + goes to the divider node."
-Resistor,1k 1% metal film,2,Through hole,R1 R4,One at each op amp output, to its converter pin.
+Resistor,1k 1% metal film,2,Through hole,R1 R4,"One at each op amp output: R1 to GPIO26, R4 to GPIO27."
 Capacitor,4.7nF C0G/NP0,2,Through hole,C1 C4,"With R1/R4: 33.9 kHz. Also keeps the converter's sampling capacitor off the op amp outputs."
 Capacitor,100nF X7R,1,Through hole,C2,Op amp decoupling. At the supply pin.
 Breadboard,830 tie point or larger,1,,,

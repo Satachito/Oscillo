@@ -11,21 +11,26 @@ on the inputs and reports one 0 – 3.3 V range.
 ## What it is
 
 ```
+IN(dc) ───────────── U1A + ── out ── R1 1k ──┬── GPIO26  CH1
+                                             └── C1 4.7n ── GND
+
 IN(ac) ── C3 1.5u ──┬── R2 100k ── +3V3
                     ├── R3 100k ── GND
-                    └── U1A + ── out ── R1 1k ──┬── GPIO26  CH1
-                                                └── C1 4.7n ── GND
-
-IN(dc) ───────────── U1B + ── out ── R4 1k ──┬── GPIO27  CH2
-                                             └── C4 4.7n ── GND
+                    └── U1B + ── out ── R4 1k ──┬── GPIO27  CH2
+                                                └── C4 4.7n ── GND
 ```
 
 Both halves of the dual are used, so there is nothing to switch:
 
 | | Sees | For |
 | --- | --- | --- |
-| **CH1** | the input through `C3`, biased to mid rail | a signal that swings about 0 V |
-| **CH2** | the input direct, DC coupled, gain 1 | a signal already inside 0 – 3.3 V |
+| **CH1** | the input direct, DC coupled, gain 1 | a signal already inside 0 – 3.3 V |
+| **CH2** | the input through `C3`, biased to mid rail | a signal that swings about 0 V |
+
+[`breadboard-30rows.svg`](breadboard-30rows.svg) is where every part goes on a
+30-row board, hole by hole, with the Pico on rows 1–20 and the MCP6022 on 24–27.
+**Two jumpers are not on it**: each amplifier's output has to reach its converter
+pin — row 23 A–E to row 10 F–J for CH1, and row 23 F–J to row 9 F–J for CH2.
 
 Either way the follower does the job that matters: a high impedance to whatever
 is being measured, a low one to the converter. The RP2350's ADC wants to see
@@ -33,7 +38,7 @@ is being measured, a low one to the converter. The RP2350's ADC wants to see
 the multiplexer's charge carries between channels and drags a high-impedance
 input with it.
 
-Set the bias in the panel to match: **mid rail on CH1, 0 on CH2**. The dotted
+Set the bias in the panel to match: **0 on CH1, mid rail on CH2**. The dotted
 line then lands where the channel actually sits, and both readings stay the
 volts the converter saw.
 
@@ -66,7 +71,7 @@ number carries the channel:
 
 That last line is the trade. 50 kΩ is light for a function generator or an op
 amp output and heavy for a sensor or a divider tap, so **high-impedance things
-go on CH2**, where the only load is the amplifier's own picoamps.
+go on CH1**, where the only load is the amplifier's own picoamps.
 
 The divider used to be 1 MΩ a side, which put 500 kΩ at the node and rolled the
 AC channel off at 15.9 kHz — below the output RC, so the two channels stopped
