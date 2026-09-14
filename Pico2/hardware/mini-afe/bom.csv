@@ -1,10 +1,9 @@
 Item,Value,Qty,Package,Designator,Notes
-Op amp,MCP6022-I/P,1,DIP-8,U1,"Dual; one half is the follower, the other is spare. Rail to rail in and out, which is the whole reason for it — see the README before substituting."
-Resistor,1k 1% metal film,1,Through hole,R1,Between the follower output and the converter pin. With C1 this is the only bandlimiting in the path.
-Capacitor,4.7nF C0G/NP0,1,Through hole,C1,With R1: 33.9 kHz. Also keeps the converter's sampling capacitor off the op amp's output.
+Op amp,MCP6022-I/P,1,DIP-8,U1,"Dual, and both halves are used: A is the AC channel, B the direct one. Rail to rail in and out — see the README before substituting."
+Resistor,100k 1% metal film,2,Through hole,R2 R3,"Bias divider to mid rail, on the AC channel only. 50 kΩ at the node."
+Capacitor,1.5uF (155),1,Through hole,C3,"Coupling capacitor on the AC channel. With the divider this is 2.1 Hz. If it is electrolytic, + goes to the divider node."
+Resistor,1k 1% metal film,2,Through hole,R1 R4,One at each op amp output, to its converter pin.
+Capacitor,4.7nF C0G/NP0,2,Through hole,C1 C4,"With R1/R4: 33.9 kHz. Also keeps the converter's sampling capacitor off the op amp outputs."
 Capacitor,100nF X7R,1,Through hole,C2,Op amp decoupling. At the supply pin.
-Capacitor,100nF (104),1,Through hole,C3,Coupling capacitor on the AC branch. With the divider this is 3.2 Hz.
-Resistor,1M 1% metal film,2,Through hole,R2 R3,"Bias divider to mid rail on the AC branch. 500 kΩ at the node, so the op amp has to be CMOS."
-Jumper,2.54mm,1,,J1,Selects the follower's input: the AC branch or the input direct.
 Breadboard,830 tie point or larger,1,,,
 Jumper wire,Assorted,1 set,,,
