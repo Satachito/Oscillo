@@ -3258,7 +3258,7 @@
 	)
 	(wire
 		(pts
-			(xy 276.86 203.2) (xy 276.86 208.28)
+			(xy 259.08 203.2) (xy 259.08 208.28)
 		)
 		(stroke
 			(width 0.1524)
@@ -3278,7 +3278,7 @@
 	)
 	(wire
 		(pts
-			(xy 276.86 177.8) (xy 276.86 172.72)
+			(xy 259.08 177.8) (xy 259.08 172.72)
 		)
 		(stroke
 			(width 0.1524)
@@ -4946,7 +4946,7 @@
 	)
 	(global_label "GND"
 		(shape passive)
-		(at 276.86 208.28 180)
+		(at 259.08 208.28 180)
 		(effects
 			(font
 				(size 1.016 1.016)
@@ -4955,7 +4955,7 @@
 		)
 		(uuid "758b6ec2-7667-539f-af6e-ac2fe36139f1")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 276.86 208.28 0)
+			(at 259.08 208.28 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5892,7 +5892,7 @@
 	)
 	(global_label "+3V3"
 		(shape passive)
-		(at 276.86 172.72 180)
+		(at 259.08 172.72 180)
 		(effects
 			(font
 				(size 1.016 1.016)
@@ -5901,7 +5901,7 @@
 		)
 		(uuid "e74149b4-b959-5cf0-8e5b-9940946579d3")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 276.86 172.72 0)
+			(at 259.08 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9290,7 +9290,7 @@
 	)
 	(symbol
 		(lib_id "PiLyzer:Analog_Switch_TS5A23159DGS")
-		(at 276.86 190.5 0)
+		(at 259.08 190.5 0)
 		(unit 3)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -9300,7 +9300,7 @@
 		(dnp no)
 		(uuid "f8e6a490-646d-567d-90c0-be53bea867f7")
 		(property "Reference" "U2"
-			(at 284.48 187.96 0)
+			(at 259.08 215.9 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9311,7 +9311,7 @@
 			)
 		)
 		(property "Value" "TS5A23159DGSR"
-			(at 284.48 190.5 0)
+			(at 259.08 218.44 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9322,7 +9322,7 @@
 			)
 		)
 		(property "Footprint" "PiLyzer:TSSOP-10_3x3mm_P0.5mm"
-			(at 276.86 190.5 0)
+			(at 259.08 190.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9333,7 +9333,7 @@
 			)
 		)
 		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/ts5a23159.pdf"
-			(at 276.86 190.5 0)
+			(at 259.08 190.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9344,7 +9344,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 276.86 190.5 0)
+			(at 259.08 190.5 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
