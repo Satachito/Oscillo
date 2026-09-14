@@ -4,7 +4,7 @@ Three DC-coupled analogue channels and eight logic inputs for a Raspberry Pi
 Pico 2. Design status: **KiCad schematic captured and footprints assigned;
 prototype measurements and PCB layout remain.** Open
 [`kicad/pilyzer-afe.kicad_pro`](kicad/pilyzer-afe.kicad_pro) in KiCad 10.
-The four sheets cover the Pico/power/logic interface, CH1, CH2, and CH3 (rev B).
+The four sheets cover the Pico/power/logic interface, CH1, CH2 and CH3.
 See [`kicad/README.md`](kicad/README.md) for checks, sources and capture corrections.
 
 This board is USB-ground referenced and **not isolated**. It must not be used
@@ -400,7 +400,7 @@ carriers, and want an RC apiece before they are voltages.
 
 The op amp draws about 4 mA, so the whole board runs from 3V3(OUT).
 
-## Third channel (rev B / firmware 1.5)
+## Third channel (firmware 1.5)
 
 CH3 uses U1C for its gain stage and U4C for its filter. Its input is J10, a
 2-pin header. R36–R43, C16–C19, TC3 and D3 repeat the CH1 input network; D7 is

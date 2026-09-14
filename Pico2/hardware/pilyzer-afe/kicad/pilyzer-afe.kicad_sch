@@ -6,8 +6,8 @@
 	(paper "A3")
 	(title_block
 		(title "PiLyzer AFE — Pico interface, power and logic")
-		(date "2026-09-08")
-		(rev "B")
+		(date "2026-09-14")
+		(rev "A")
 		(company "PiLyzer")
 		(comment 1 "Schematic capture for prototype validation; PCB not laid out")
 	)

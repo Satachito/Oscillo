@@ -50,7 +50,7 @@ The saved schematic takes precedence over the earlier ASCII sketch.
    and ground are one net. ADC_VREF is left unconnected on the carrier.
 9. R27–R34 are DNP. They suppress floating logic inputs only when populated.
 
-## Pin map (rev B)
+## Pin map
 
 | Signal | GPIO | Pico physical pin | Carrier socket pad |
 | --- | ---: | ---: | --- |
