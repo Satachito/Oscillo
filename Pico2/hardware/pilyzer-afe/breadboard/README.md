@@ -22,6 +22,46 @@ wherever a through-hole part exists, and names the adapter where none does.
 Wire it as the block diagram in [`../README.md`](../README.md#the-signal-path)
 draws it, with `U4A` read as `U1B`.
 
+## Trying it before you wire it
+
+[`falstad-one-channel.txt`](falstad-one-channel.txt) is this channel as a
+circuit for the [Falstad simulator](https://www.falstad.com/circuit/circuitjs.html),
+which runs in a browser with nothing to install — the same bargain the
+application itself makes.
+
+**[Open it in the simulator](https://www.falstad.com/circuit/circuitjs.html?cct=%24%201%201.0E-6%2010.20027730826997%2050%203.3%2050%205.0E-11%0AR%2080%20320%2032%20320%200%201%20100.0%205.0%200.0%200.0%200.5%0Aw%2080%20320%20144%20320%200%0Ar%20144%20320%20208%20320%200%20499000.0%0Ar%20208%20320%20272%20320%200%20499000.0%0Aw%20144%20320%20144%20256%200%0Aw%20272%20320%20272%20256%200%0Ac%20144%20256%20272%20256%200%206.8E-12%200%0Aw%20272%20320%20336%20320%200%0Ar%20336%20320%20336%20256%200%20125000.0%0AR%20336%20256%20336%20224%200%200%2040.0%203.3%200.0%200.0%200.5%0Ar%20336%20320%20336%20384%200%20143000.0%0Ag%20336%20384%20336%20416%200%0Aw%20336%20320%20400%20320%200%0Ac%20400%20320%20400%20384%200%208.2E-11%200%0Ag%20400%20384%20400%20416%200%0Aw%20400%20320%20464%20320%200%0Ad%20464%20320%20464%20256%200%0AR%20464%20256%20464%20224%200%200%2040.0%203.3%200.0%200.0%200.5%0Ad%20464%20384%20464%20320%200%0Ag%20464%20384%20464%20416%200%0Aw%20464%20320%20544%20320%200%0Aa%20544%20304%20640%20304%200%203.3%200.0%201000000.0%0Aw%20640%20304%20640%20224%200%0Ar%20640%20224%20544%20224%200%2010000.0%0Aw%20544%20224%20544%20288%200%0Ar%20544%20224%20544%20160%200%202670.0%0Aw%20640%20304%20704%20304%200%0Ar%20704%20304%20768%20304%200%202670.0%0Ar%20768%20304%20832%20304%200%202670.0%0Aw%20832%20304%20848%20304%200%0Aa%20848%20288%20944%20288%200%203.3%200.0%201000000.0%0Aw%20944%20288%20944%20224%200%0Aw%20944%20224%20848%20224%200%0Aw%20848%20224%20848%20272%200%0Aw%20944%20288%20944%20368%200%0Ac%20944%20368%20768%20368%200%202.2E-9%200%0Aw%20768%20368%20768%20304%200%0Ac%20848%20304%20848%20448%200%201.0E-9%200%0Aw%20944%20288%201008%20288%200%0Ar%201008%20288%201072%20288%200%201000.0%0Ac%201072%20288%201072%20368%200%201.0E-9%200%0Ag%201072%20368%201072%20400%200%0AO%201072%20288%201136%20288%200%0AR%2096%20400%2096%20368%200%200%2040.0%203.3%200.0%200.0%200.5%0Ar%2096%20400%2096%20464%200%2010000.0%0Ar%2096%20464%2096%20528%200%2010000.0%0Ag%2096%20528%2096%20560%200%0Aw%2096%20464%20160%20464%200%0Ac%20160%20464%20160%20528%200%201.0E-6%201.65%0Ag%20160%20528%20160%20560%200%0Aa%20224%20448%20320%20448%200%203.3%200.0%201000000.0%0Aw%20160%20464%20224%20464%200%0Aw%20320%20448%20320%20400%200%0Aw%20320%20400%20224%20400%200%0Aw%20224%20400%20224%20432%200%0Aw%20320%20448%20848%20448%200%0Aw%20848%20448%201200%20448%200%0Aw%201200%20448%201200%20160%200%0Aw%201200%20160%20544%20160%200%0A)**
+
+Or open the simulator and use *File → Import From Text*, which is the shorter
+road if that link has been mangled by something in between.
+
+What is in it: the 1 MΩ input split in two, the compensation across it, the
+bias legs to 3V3 and ground, `C4`, the BAV199 clamp, the gain stage at ×4.745,
+the VMID divider and its buffer, the Sallen-Key section, and `R44`/`C7` at the
+converter pin. The source is a 5 V 100 Hz sine, which is the fine range's full
+scale, so the output swings very nearly rail to rail.
+
+It agrees with [`../check_transfer.py`](../check_transfer.py), which is the
+point of having it:
+
+| Input | Divider node | At the converter | `check_transfer.py` |
+| ---: | ---: | ---: | ---: |
+| 0 V | 1.6505 V | 1.652 V | 1.6524 V |
+| +5 V | 1.9637 V | 3.139 V | 3.1388 V |
+| −5 V | 1.3373 V | 0.1662 V | 0.1661 V |
+
+A 1 V peak sine at 1 kHz comes out 0.595 V peak to peak, which is
+2 × 0.29727 exactly, and at 100 kHz it is 6.8 times smaller — the anti-alias
+filter doing what the 40.2 kHz corner says it should.
+
+Two things it is not. The op amps are ideal ones with the rails set to 0 and
+3.3 V, so it will not show you the TLV9064's offset, noise or bandwidth; and
+past about ±10 V at the input the ideal model stops converging on anything
+physical, so read the clamp's behaviour out of the tables in
+[`../README.md`](../README.md#protection) rather than off the screen.
+
+Change `R8` from 2.67 kΩ to 15 kΩ in the simulator and you have the one-range
+±15 V build below, with nothing else moved.
+
 ## Changing range by hand instead of fitting the switch
 
 `U2A` selects the range by connecting the far end of `R8` either to VMID or to
