@@ -265,9 +265,8 @@ looks perfectly plausible, with nothing in software able to tell.
 
 A bench that would rather have no switch at all can have **±15 V and nothing
 else** — wide enough for a 12 V supply, which is what a single range has to
-reach to be useful with students at it. This is the shape the
-[breadboard build](breadboard/) takes, and it was nearly a board of its own
-before the part list said otherwise: every part it needs is a part of rev A.
+reach to be useful with students at it. It was nearly a board of its own before
+the part list said otherwise: every part it needs is a part of rev A.
 
 The whole difference is **`R8`: 15 kΩ instead of 2.67 kΩ**, wired permanently to
 VMID instead of being taken there by `U2A`. That makes the gain stage ×1.667
@@ -431,19 +430,26 @@ output off GPIO28 before GPIO28 is used as CH3. The software range gains are unc
 
 ## Before fabrication
 
-1. Breadboard one channel — [`breadboard/`](breadboard/) has the parts list and
-   what that build can and cannot tell you — and **measure** the frequency
-   response in both ranges. Every number above is nominal; the compensation in particular is
-   only as good as the stray capacitance, which a layout changes.
-2. Measure the Sallen-Key's actual corner and Q against the calculated
+These measurements happen on the **first PCB run**, not before it. There is no
+breadboard prototype of this board: a breadboard's stray capacitance is larger
+and less predictable than a layout's, so the one number most worth having early
+— the compensation — is the one it cannot give. The
+[mini AFE](../mini-afe/) next door is a different, simpler front end, not a
+prototype of this one.
+
+1. Review the captured schematic and assigned footprints against the actual
+   parts to be ordered. KiCad ERC currently passes; rerun it after edits.
+2. Lay out, keeping the divider node small — it is the compensation.
+3. DRC, Gerber review, BOM and CPL.
+4. On the first boards, **measure** the frequency response in both ranges.
+   Every number above is nominal.
+5. Measure the Sallen-Key's actual corner and Q against the calculated
    40.2 kHz and 0.742. Capacitor tolerance moves Q, and a Q much above 0.8
    puts a peak in the passband just where the filter is supposed to be
    flattening out.
-3. Check the clamp diodes' leakage at temperature on the ±5 V range, where a
+6. Check the clamp diodes' leakage at temperature on the ±5 V range, where a
    nanoamp through 62 kΩ is already visible.
-4. Review the captured schematic and assigned footprints against the actual parts
-   to be ordered. KiCad ERC currently passes; rerun it after edits.
-5. Lay out, keeping the divider node small — it is the compensation.
-6. DRC, Gerber review, BOM and CPL.
+7. Trim `TC1` against the square wave on GPIO22, and fit the value it lands on
+   from the second run.
 
 The current schematic is in `hardware/pilyzer-afe/kicad`.
