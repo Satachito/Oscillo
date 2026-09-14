@@ -2810,7 +2810,7 @@
 		)
 		(uuid "462734c8-3e1d-5f2c-934b-5ff4dce2cdbb")
 	)
-	(text "Firmware 1.5: ADC GPIO26–28; logic GPIO8–15; range GPIO16–18; test GPIO20."
+	(text "ADC GPIO26–28; logic GPIO8–15; range GPIO4–6; test GPIO22; generator GPIO16–19."
 		(exclude_from_sim no)
 		(at 12.7 142.24 0)
 		(effects
@@ -2941,7 +2941,7 @@
 		(uuid "2b0ed9ed-c605-5dc3-b7d3-0e2ca02bcd57")
 	)
 	(no_connect
-		(at 43.18 77.47)
+		(at 114.3 97.79)
 		(uuid "2c45eb74-9089-56b2-b7bc-1e124376f016")
 	)
 	(no_connect
@@ -2969,7 +2969,7 @@
 		(uuid "8c9822c3-ad62-5ee3-bcc1-ebc1a6a85cb6")
 	)
 	(no_connect
-		(at 43.18 72.39)
+		(at 114.3 102.87)
 		(uuid "9b4bc40a-cb23-5505-bf8f-ef966396e348")
 	)
 	(no_connect
@@ -2981,11 +2981,11 @@
 		(uuid "af23326f-75fb-5092-892a-6e729125f328")
 	)
 	(no_connect
-		(at 43.18 69.85)
+		(at 114.3 105.41)
 		(uuid "c0ecabff-6237-5f2b-aae3-1075c7c421f2")
 	)
 	(no_connect
-		(at 114.3 85.09)
+		(at 114.3 92.71)
 		(uuid "c7466762-2a48-5339-ae43-6c6c9fa99a93")
 	)
 	(no_connect
@@ -3178,7 +3178,7 @@
 	)
 	(wire
 		(pts
-			(xy 114.3 105.41) (xy 106.68 105.41)
+			(xy 43.18 69.85) (xy 35.56 69.85)
 		)
 		(stroke
 			(width 0.1524)
@@ -3318,7 +3318,7 @@
 	)
 	(wire
 		(pts
-			(xy 114.3 102.87) (xy 106.68 102.87)
+			(xy 43.18 72.39) (xy 35.56 72.39)
 		)
 		(stroke
 			(width 0.1524)
@@ -3338,7 +3338,7 @@
 	)
 	(wire
 		(pts
-			(xy 114.3 97.79) (xy 106.68 97.79)
+			(xy 43.18 77.47) (xy 35.56 77.47)
 		)
 		(stroke
 			(width 0.1524)
@@ -3748,7 +3748,7 @@
 	)
 	(wire
 		(pts
-			(xy 114.3 92.71) (xy 106.68 92.71)
+			(xy 114.3 85.09) (xy 106.68 85.09)
 		)
 		(stroke
 			(width 0.1524)
@@ -4548,7 +4548,7 @@
 			)
 		)
 	)
-	(global_label "CAL_GPIO20"
+	(global_label "CAL_GPIO22"
 		(shape passive)
 		(at 213.36 259.08 180)
 		(effects
@@ -4572,7 +4572,7 @@
 	)
 	(global_label "RANGE_CH3"
 		(shape passive)
-		(at 106.68 97.79 180)
+		(at 35.56 77.47 180)
 		(effects
 			(font
 				(size 1.016 1.016)
@@ -4581,7 +4581,7 @@
 		)
 		(uuid "5685d102-dddd-5361-a0fd-95ec132fbd03")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 106.68 97.79 0)
+			(at 35.56 77.47 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4814,7 +4814,7 @@
 	)
 	(global_label "RANGE_CH2"
 		(shape passive)
-		(at 106.68 102.87 180)
+		(at 35.56 72.39 180)
 		(effects
 			(font
 				(size 1.016 1.016)
@@ -4823,7 +4823,7 @@
 		)
 		(uuid "67bc5af9-2edf-57b2-8774-3e21c73d3c83")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 106.68 102.87 0)
+			(at 35.56 72.39 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5056,7 +5056,7 @@
 	)
 	(global_label "RANGE_CH1"
 		(shape passive)
-		(at 106.68 105.41 180)
+		(at 35.56 69.85 180)
 		(effects
 			(font
 				(size 1.016 1.016)
@@ -5065,7 +5065,7 @@
 		)
 		(uuid "8a75100a-b912-5a4c-95ba-680fa85110c9")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 106.68 105.41 0)
+			(at 35.56 69.85 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5318,9 +5318,9 @@
 			)
 		)
 	)
-	(global_label "CAL_GPIO20"
+	(global_label "CAL_GPIO22"
 		(shape passive)
-		(at 106.68 92.71 180)
+		(at 106.68 85.09 180)
 		(effects
 			(font
 				(size 1.016 1.016)
@@ -5329,7 +5329,7 @@
 		)
 		(uuid "aba23490-ac8e-5a5d-84c5-605895a23867")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 106.68 92.71 0)
+			(at 106.68 85.09 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

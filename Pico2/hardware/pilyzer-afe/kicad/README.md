@@ -62,11 +62,9 @@ The saved schematic takes precedence over the earlier ASCII sketch.
 | CH3 range | 6 | 9 | J6.9 |
 | Test output | 22 | 29 | J7.12 |
 
-**The saved schematic still draws the old map**: the three range nets on
-J7.20 / J7.19 / J7.17, which with J7.16 are GPIO16–19 and now belong to the
-signal generator, and `CAL_GPIO20` on J7.15 rather than `CAL_GPIO22` on J7.12.
-`check_kicad.py` fails on those four nets until they are moved in KiCad; that
-failure is the reminder.
+The three range nets were on J7.20 / J7.19 / J7.17 and the square wave on
+J7.15 until firmware 1.11 and 1.12 moved them; those pads, with J7.16, are
+GPIO16–19 and belong to the signal generator now, and carry no-connect flags.
 
 Logic D0–D7 remain on GPIO8–15. GPIO0–3 and GPIO7 remain unconnected, as do the
 four generator pins on the carrier. J8 is unused:
