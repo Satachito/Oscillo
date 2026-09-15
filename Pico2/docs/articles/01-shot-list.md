@@ -44,10 +44,43 @@ camera setting.
 | B8 | The op amp on a breadboard, shallow focus, teasing | 6:45 | The next-episode shot. Deliberately not explained. |
 | B9 | Thumbnail frame: front panel with a trace, board and cable beside it | — | Shoot this last, when the set is tidy. |
 
-## On the one you already took (IMG_1523.png)
+## Recording setup (macOS)
 
-It is a real bench and that is worth something, but as a frame it works against
-you three ways:
+The built-in recorder is enough. **⇧⌘5** → *Record Selected Portion*. There is
+no "record this window" mode — you drag a region — which is actually what you
+want here: set the region once and every take has the same crop, so S10 and
+S11 cut together without a nudge in the edit.
+
+In its **Options** menu, before the first take:
+
+- **Remember Last Selection** on. This is the one that matters — it keeps the
+  crop across takes.
+- **Show Floating Thumbnail** off, or the previous take's thumbnail drifts into
+  the next one.
+- **Show Mouse Clicks** on for S4 (the connect flow, where the pointer is the
+  story) and off for everything else. It is a per-take toggle.
+- **Save to** a folder, not the desktop, or the desktop shots fill up with the
+  files you are shooting.
+- Microphone **off**. Narration is separate and already timed.
+
+Around it: Focus / Do Not Disturb on, Dock hidden (⌥⌘D), desktop icons off
+(`defaults write com.apple.finder CreateDesktop false; killall Finder` — put it
+back afterwards). Crop above the menu bar if you would rather not show the
+clock.
+
+It captures at Retina resolution, so a window on a 2× display gives you room to
+push in during the edit without softening. It records no system audio — nothing
+needed here, but worth knowing if a later episode wants the app's sound.
+
+**For S13 (the phone):** the phone's USB-C port is holding the Pico, so mirroring
+over a cable is out. Use Android's own screen recorder in the quick settings
+panel, and shoot B7 at the same time from a tripod so you have both the screen
+and the proof there is no computer.
+
+## On the test photo
+
+The first bench photo (since deleted) showed a real bench, which is worth
+something, but as a frame it worked against itself three ways:
 
 1. **Under-lit.** The whole picture sits in a dark vignette, and the board is
    dark-on-dark against the table. A phone camera in that light lifts the ISO
@@ -65,8 +98,8 @@ of white A4 or a cutting mat under the board, point a desk lamp at the ceiling
 or a wall so the light arrives soft, and shoot from directly above with the
 board's edge parallel to the frame. Tape the loose wires down.
 
-The one thing worth keeping from that photo is the composition idea of showing
-the board *in use* rather than posed — B7 and B8 are that, with the mess
+The one thing worth keeping from it is the idea of showing the board *in use*
+rather than posed — B7 and B8 are that, with the mess
 removed.
 
 ## Order to shoot in
