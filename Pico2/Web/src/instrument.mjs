@@ -1,5 +1,5 @@
 import { USB_IDS, OP, MAX_PAYLOAD, request, responseHeader, identity, capabilities, inputRanges, ranges, view } from './protocol.mjs';
-const errors = ['OK', 'Unknown command', 'Wrong payload size', 'Invalid setting', 'Instrument busy', 'Acquisition not configured', 'No record available', 'Instrument error'];
+export const errors = ['OK', 'Unknown command', 'Wrong payload size', 'Invalid setting', 'Instrument busy', 'Acquisition not configured', 'No record available', 'Instrument error'];
 // One transaction at a time. Bulk packets are a byte stream, not message boundaries.
 export class BulkTransport {
   constructor(device, input, output) { this.device = device; this.input = input; this.output = output; this.sequence = 0; this.buffer = new Uint8Array(); this.queue = Promise.resolve(); this.closed = false; }
@@ -78,7 +78,7 @@ export class BulkTransport {
   }
   async close() { this.closed = true; this.buffer = new Uint8Array(); if (this.device.opened) await this.device.close(); }
 }
-export class USBInstrument {
+export class Instrument {
   static async connect() {
     if (!navigator.usb) throw new Error('WebUSB requires Chrome or Edge, on a computer or on Android. You can still use Demo.');
     const device = await navigator.usb.requestDevice({ filters: [USB_IDS] });
@@ -87,12 +87,12 @@ export class USBInstrument {
     // handle shows up at the next call rather than at the reset itself, so the
     // whole sequence is retried once without it. The nonce scan in
     // synchronize() is what actually recovers framing; the reset is a courtesy.
-    try { return await USBInstrument.open(device, true); }
+    try { return await Instrument.open(device, true); }
     catch (error) {
       if (error.deviceStatus || error.name === 'NotFoundError' || error.name === 'AbortError') throw error;
       // The plain path is the one that says what is really wrong, so its
       // failure is the one reported.
-      return await USBInstrument.open(device, false);
+      return await Instrument.open(device, false);
     }
   }
   static async open(device, reset) {
@@ -108,15 +108,7 @@ export class USBInstrument {
       const input = alternate.endpoints.find(e => e.direction === 'in' && e.type === 'bulk');
       const output = alternate.endpoints.find(e => e.direction === 'out' && e.type === 'bulk');
       if (!input || !output) throw new Error('PiLyzer bulk endpoints are missing');
-      const instrument = new USBInstrument(new BulkTransport(device, input.endpointNumber, output.endpointNumber));
-      instrument.identity = identity(await instrument.transport.synchronize());
-      instrument.caps = capabilities(await instrument.command(OP.capabilities));
-      // A host that went away mid-sweep leaves the instrument armed, and an
-      // armed instrument refuses to be configured. Only one host holds the
-      // interface, so anything still running belongs to a session that is over.
-      await instrument.abort().catch(() => {});
-      instrument.ranges = await instrument.frontEnd();
-      return instrument;
+      return await Instrument.handshake(new BulkTransport(device, input.endpointNumber, output.endpointNumber));
     } catch (error) {
       if (device.opened) await device.close().catch(() => {});
       // Name the failure. Every one of these means something else holds the
@@ -126,6 +118,20 @@ export class USBInstrument {
         throw new Error(`USB is unavailable — ${error.name}: ${error.message} Close any other tab or application holding the instrument, then unplug it and plug it back in.`);
       throw error;
     }
+  }
+  /// Everything after a transport is open, which is the same whichever
+  /// transport it is: name the device, ask what it can do, clear anything a
+  /// previous session left running, and read its front end.
+  static async handshake(transport) {
+    const instrument = new Instrument(transport);
+    instrument.identity = identity(await transport.synchronize());
+    instrument.caps = capabilities(await instrument.command(OP.capabilities));
+    // A host that went away mid-sweep leaves the instrument armed, and an
+    // armed instrument refuses to be configured, so anything still running
+    // belongs to a session that is over.
+    await instrument.abort().catch(() => {});
+    instrument.ranges = await instrument.frontEnd();
+    return instrument;
   }
   constructor(transport) { this.transport = transport; this.demo = false; }
   command(opcode, payload) { return this.transport.exchange(opcode, payload); }

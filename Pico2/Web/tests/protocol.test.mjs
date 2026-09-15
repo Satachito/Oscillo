@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
-import { BulkTransport } from '../src/usb.mjs';
+import { BulkTransport } from '../src/instrument.mjs';
+import { HttpTransport, available } from '../src/net.mjs';
 import { measure, spectrum, spectrumCsv, csv, decodeUART } from '../src/signal.mjs';
 const caps = demoCaps;
 const afe = ranges(1), bare = ranges(0);
@@ -168,7 +169,7 @@ test('single capture returns all enabled channels once', async () => {
 });
 
 test('USB connect synchronizes past stale ADC bytes even when reset leaves IN data queued', async () => {
-  const { USBInstrument } = await import('../src/usb.mjs');
+  const { Instrument } = await import('../src/instrument.mjs');
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   const events = [], alternate = { interfaceClass: 255, alternateSetting: 0, endpoints: [{ direction: 'in', type: 'bulk', endpointNumber: 2 }, { direction: 'out', type: 'bulk', endpointNumber: 1 }] };
   const device = new FakeDevice();
@@ -187,7 +188,7 @@ test('USB connect synchronizes past stale ADC bytes even when reset leaves IN da
   };
   Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { usb: { requestDevice: async () => device } } });
   try {
-    const instrument = await USBInstrument.connect();
+    const instrument = await Instrument.connect();
     assert.equal(instrument.identity.firmware, '1.5'); assert.equal(instrument.caps.channels, 3);
     assert.deepEqual(events, ['open', 'reset', 'claim']); await instrument.close();
   } finally { if (previous) Object.defineProperty(globalThis, 'navigator', previous); else delete globalThis.navigator; }
@@ -250,7 +251,7 @@ test('initial synchronization is bounded and closes a stream without a valid ide
 });
 
 test('the front end comes from the device, and from the board-id table only when it will not say', async () => {
-  const { USBInstrument } = await import('../src/usb.mjs');
+  const { Instrument } = await import('../src/instrument.mjs');
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   const alternate = { interfaceClass: 255, alternateSetting: 0, endpoints: [{ direction: 'in', type: 'bulk', endpointNumber: 2 }, { direction: 'out', type: 'bulk', endpointNumber: 1 }] };
   const golden = JSON.parse(await (await import('node:fs/promises')).readFile(new URL('./fixtures/wire-golden.json', import.meta.url), 'utf8'));
@@ -283,7 +284,7 @@ test('the front end comes from the device, and from the board-id table only when
       return { status: 'ok', bytesWritten: bytes.length };
     };
     Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { usb: { requestDevice: async () => device } } });
-    const instrument = await USBInstrument.connect();
+    const instrument = await Instrument.connect();
     await instrument.close();
     return instrument;
   }
@@ -367,4 +368,88 @@ test('the spectrum is the same whether or not the panel removed the mean', () =>
   }
   // And the tone itself is where it belongs rather than losing to the skirt.
   assert.ok(Math.abs(biased.peak.frequency - 440) < 1, biased.peak.frequency);
+});
+
+// A stand-in for the instrument's own HTTP server: one POST in, one reply out.
+function fakeServer({ status = 0, truncate = false, httpStatus = 200, hang = false } = {}) {
+  const calls = [];
+  return { calls, fetch: async (url, init) => {
+    const bytes = new Uint8Array(init.body);
+    const op = bytes[1], seq = view(bytes).getUint16(4, true);
+    calls.push({ op, seq, url: String(url) });
+    if (hang) return new Promise((_, reject) => init.signal.addEventListener('abort', () => {
+      const e = new Error('aborted'); e.name = 'AbortError'; reject(e);
+    }));
+    if (httpStatus !== 200) return { ok: false, status: httpStatus };
+    const answer = reply(op, seq, new Uint8Array([17, 23]), status);
+    const body = truncate ? answer.slice(0, 13) : answer;
+    return { ok: true, arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) };
+  } };
+}
+function withFetch(server, run) {
+  const saved = globalThis.fetch;
+  globalThis.fetch = server.fetch;
+  return run().finally(() => { globalThis.fetch = saved; });
+}
+
+test('the network transport posts to rpc beside the page and returns the payload', async () => {
+  const server = fakeServer();
+  await withFetch(server, async () => {
+    const t = new HttpTransport('http://192.168.4.1/index.html');
+    assert.deepEqual([...await t.exchange(OP.capabilities)], [17, 23]);
+    assert.match(server.calls[0].url, /^http:\/\/192\.168\.4\.1\/rpc$/);
+    assert.equal(server.calls[0].op, OP.capabilities);
+  });
+});
+
+test('the network transport keeps one transaction outstanding and numbers them in order', async () => {
+  const server = fakeServer();
+  await withFetch(server, async () => {
+    const t = new HttpTransport('http://192.168.4.1/');
+    await Promise.all([t.exchange(OP.analogRead), t.exchange(OP.identify), t.exchange(OP.capabilities)]);
+    assert.deepEqual(server.calls.map(c => c.op), [OP.analogRead, OP.identify, OP.capabilities]);
+    const seqs = server.calls.map(c => c.seq);
+    assert.deepEqual(seqs, [seqs[0], seqs[0] + 1, seqs[0] + 2]);
+  });
+});
+
+test('a refused command leaves the network connection up; a broken one closes it', async () => {
+  await withFetch(fakeServer({ status: 3 }), async () => {
+    const t = new HttpTransport('http://192.168.4.1/');
+    await assert.rejects(t.exchange(99), /Invalid setting/);
+    assert.equal(t.closed, false, 'the instrument answering is not a link failure');
+    await assert.rejects(t.exchange(99), /Invalid setting/);   // still usable
+  });
+  await withFetch(fakeServer({ httpStatus: 404 }), async () => {
+    const t = new HttpTransport('http://example.test/');
+    await assert.rejects(t.exchange(OP.identify), /answered 404/);
+    assert.equal(t.closed, true);
+  });
+});
+
+test('a reply shorter than its header claims is refused rather than half-read', async () => {
+  await withFetch(fakeServer({ truncate: true }), async () => {
+    const t = new HttpTransport('http://192.168.4.1/');
+    await assert.rejects(t.exchange(OP.identify), /shorter than its header/);
+  });
+});
+
+test('an instrument that stops answering times out with something to act on', async () => {
+  await withFetch(fakeServer({ hang: true }), async () => {
+    const t = new HttpTransport('http://192.168.4.1/');
+    const pending = assert.rejects(t.exchange(OP.identify), /Check the Wi-Fi connection/);
+    await new Promise(r => setTimeout(r, 5));
+    t.close();                       // stand in for the 8 s fuse
+    await pending;
+  });
+});
+
+test('an https page does not probe for an instrument it could not talk to anyway', async () => {
+  let asked = false;
+  const saved = globalThis.fetch;
+  globalThis.fetch = async () => { asked = true; throw new Error('should not be called'); };
+  try {
+    assert.equal(await available('https://satachito.github.io/Oscillo/'), false);
+    assert.equal(asked, false, 'mixed content makes the answer moot, so no request is made');
+  } finally { globalThis.fetch = saved; }
 });

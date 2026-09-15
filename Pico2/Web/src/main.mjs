@@ -1,4 +1,5 @@
-import { USBInstrument } from './usb.mjs';
+import { Instrument } from './instrument.mjs';
+import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
 import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
@@ -50,6 +51,9 @@ function applyControls() {
   $('logic-lines').querySelectorAll('input').forEach((input, i) => { input.checked = !!(settings.logicEnabled & (1 << i)); });
 }
 let settings = loadSettings(), instrument = null, frame = null, connecting = false;
+// Set once at startup: true when this page came from the instrument's own
+// server, in which case it is reached over the network and not over USB.
+let overNetwork = false;
 const plot = new Plot($('plot'));
 const acquisition = new Acquisition(value => { frame = value; renderFrame(); }, (message, error = false) => {
   $('status').textContent = message; if (error) showError(message); updateButtons();
@@ -63,7 +67,7 @@ function updateButtons() {
   $('run').disabled = !instrument || connecting; $('run').textContent = acquisition.running ? '■ Stop' : '▶ Run';
   $('single').disabled = !instrument || acquisition.running || connecting;
   $('connect').hidden = !!instrument; $('demo').hidden = !!instrument; $('disconnect').hidden = !instrument;
-  $('connect').disabled = connecting || !navigator.usb; $('demo').disabled = connecting;
+  $('connect').disabled = connecting || !(overNetwork || navigator.usb); $('demo').disabled = connecting;
   $('run-dot').classList.toggle('live', acquisition.running);
   $('connection-dot').classList.toggle('connected', !!instrument);
   $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : 'USB' : 'OFFLINE';
@@ -72,7 +76,7 @@ function updateButtons() {
   $('empty-demo').disabled = connecting || acquisition.running;
   $('empty-demo').textContent = instrument ? 'Single capture' : 'Start a demo →';
   $('empty-state').querySelector('h2').textContent = instrument ? 'Ready for your signal.' : 'A closer look at your signal.';
-  $('empty-state').querySelector('p').textContent = instrument ? 'Press Run for continuous capture, or Single for one record.' : 'Connect your PiLyzer Pico 2, or explore three channels with the built-in demo.';
+  $('empty-state').querySelector('p').textContent = instrument ? 'Press Run for continuous capture, or Single for one record.' : (overNetwork ? 'This page came from the instrument. Press Connect, or explore three channels with the built-in demo.' : 'Connect your PiLyzer Pico 2, or explore three channels with the built-in demo.');
 }
 function option(value, label) { const el = document.createElement('option'); el.value = value; el.textContent = label; return el; }
 function options(id, values, selected) { $(id).replaceChildren(...values.map(([value, label]) => option(value, label))); $(id).value = selected; }
@@ -301,7 +305,7 @@ async function connect(demo) {
   if (instrument || connecting) return;
   connecting = true; showError(); updateButtons();
   try {
-    instrument = demo ? new DemoInstrument() : await USBInstrument.connect(); acquisition.attach(instrument); frame = null;
+    instrument = demo ? new DemoInstrument() : overNetwork ? await connectOverNetwork() : await Instrument.connect(); acquisition.attach(instrument); frame = null;
     if (demo) settings.channels.forEach(ch => { ch.range = 1; ch.scale = 1; });
     settings.channels.forEach(ch => { if (ch.range >= frontEnd().length) ch.range = 0; });
     // The zero and the gain describe the wiring, so connecting does not clear
@@ -360,5 +364,15 @@ if (navigator.usb) navigator.usb.addEventListener('disconnect', event => {
   }
 });
 window.addEventListener('pagehide', () => { acquisition.token++; if (instrument && !instrument.demo) instrument.close().catch(() => {}); });
+// If this page was served by an instrument, `rpc` answers beside it and there
+// is nothing to plug in or choose. Anywhere else the probe fails quickly and
+// the USB path stands as before.
+servedByInstrument().then(yes => {
+  if (!yes) return;
+  overNetwork = true;
+  $('connect').firstChild.nodeValue = 'Connect ';
+  $('browser-note').hidden = true;
+  updateButtons(); renderFrame();
+});
 $('browser-note').hidden = !!navigator.usb;
 applyControls(); synchronize();
