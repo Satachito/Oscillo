@@ -422,6 +422,36 @@ void tud_umount_cb(void)
     logic_abort();
 }
 
+// Runs one request and hands back the reply, for a transport that frames its
+// own messages and so needs none of the byte-stream machinery above.
+//
+// The command layer never knew what was carrying it: `handle` fills the same
+// two buffers whoever asks, and a caller here reads them instead of pumping
+// them at an endpoint. Refuses while USB is mid-answer, because both would be
+// writing the same buffers.
+bool pilyzer_execute(const uint8_t *packet, uint32_t length,
+                     const uint8_t **head, uint32_t *head_size,
+                     const uint8_t **body, uint32_t *body_size)
+{
+    if (transmitting()) return false;
+    if (length < PILYZER_HEADER_SIZE) return false;
+
+    pilyzer_header_t header;
+    memcpy(&header, packet, PILYZER_HEADER_SIZE);
+    if (header.magic != PILYZER_MAGIC_REQUEST) return false;
+    if (header.length > MAX_REQUEST_PAYLOAD) return false;
+    if (length != PILYZER_HEADER_SIZE + header.length) return false;
+
+    handle(&header, packet + PILYZER_HEADER_SIZE);
+
+    *head = tx_head;   *head_size = tx_head_size;
+    *body = tx_body;   *body_size = tx_body_size;
+    // The answer leaves with the caller, so nothing is left queued behind it.
+    tx_head_sent = tx_head_size;
+    tx_body_sent = tx_body_size;
+    return true;
+}
+
 static void pump_receive(void)
 {
     // One exchange at a time: nothing new is parsed while an answer is still

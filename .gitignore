@@ -27,3 +27,5 @@ IMG_*.HEIC
 *.kicad_sch-bak
 *.kicad_pcb-bak
 **/.history/
+# Generated from the built browser application by bake-web.py
+web_files.h
