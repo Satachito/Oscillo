@@ -1,5 +1,7 @@
 # Episode 1 — shot list
 
+Japanese: [01-shot-list.ja.md](01-shot-list.ja.md).
+
 Two piles. **Screen** is a recording of the app or the page; **Bench** is a
 camera pointed at hardware. Nothing else is needed — no b-roll, no stock.
 
