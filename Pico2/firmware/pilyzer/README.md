@@ -114,6 +114,40 @@ descriptor set is 162 bytes rather than 178.
 The bytes were self-consistent all along, which is why a host-side probe that
 asked for the descriptor and checked its lengths reported it correct. Only
 Windows could tell that they were in the wrong place.
+### Over Wi-Fi, from a phone (Pico 2 W)
+
+Safari has no WebUSB — not on iOS, not anywhere — so a phone cannot reach the
+instrument the way a laptop does. A **Pico 2 W** can hand out the front panel
+itself instead, over a network, and then any browser will do.
+
+```sh
+cmake -S . -B build-w -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DPILYZER_WIFI=ON -DPILYZER_WIFI_SSID='your network' -DPILYZER_WIFI_PASSWORD='its password'
+cmake --build build-w
+```
+
+Then open **`http://pilyzer.local`**. There is no address to find and no
+network to join: the instrument joins yours, answers to a name over mDNS, and
+Safari resolves `.local` natively. The name is `-DPILYZER_HOSTNAME=` if one
+instrument is not enough.
+
+The credentials are cache variables, not files, so nothing of yours is in the
+repository. Without `-DPILYZER_WIFI=ON` the build is exactly what it was —
+`pico2`, no radio, 41 kB of flash against the Wi-Fi build's 397 kB.
+
+**How it works.** `bake-web.py` gzips the built application into flash, where
+118,636 bytes become 40,839. A small server hands those out and answers
+`POST /rpc` with the same packets USB carries — the protocol does not change,
+so both applications and the golden fixtures are untouched. The request head is
+parsed by `http_request.c`, which has no lwIP under it and a host test over it;
+the socket in `http_server.c` is the part only hardware can check.
+
+**What to expect of it.** The radio is roughly 1–2 Mbit/s against USB's
+measured 1 MB/s, so a full three-channel record takes 0.4–0.8 s to come across
+instead of 0.1. Single shots, the spectrum and the logger will not notice; a
+free-running sweep will. USB is still there and still faster, and the
+instrument works over it whether or not the network ever appears.
+
 ### A sine and three noises of its own (firmware 1.9)
 
 `setSignals` puts a 440 Hz sine on GPIO0 and white, pink and brown noise on

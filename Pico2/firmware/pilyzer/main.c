@@ -18,6 +18,10 @@
 #include "pico/stdlib.h"
 #include "pilyzer_protocol.h"
 #include "signals.h"
+#if PILYZER_WIFI
+#include "http_server.h"
+#include "wifi.h"
+#endif
 #include "tusb.h"
 
 #define MAX_REQUEST_PAYLOAD 64
@@ -522,7 +526,19 @@ int main(void)
     signals_init();
     tusb_init();
 
+#if PILYZER_WIFI
+    // The radio is a second way in, never the only one: if the network is not
+    // there the instrument still answers over USB, which is why nothing here
+    // is checked for failure beyond not starting the server.
+    if (wifi_start(PILYZER_WIFI_SSID, PILYZER_WIFI_PASSWORD, PILYZER_HOSTNAME)) {
+        http_server_start();
+    }
+#endif
+
     while (true) {
+#if PILYZER_WIFI
+        wifi_poll();
+#endif
         tud_task();
         analog_poll();
         logic_poll();
