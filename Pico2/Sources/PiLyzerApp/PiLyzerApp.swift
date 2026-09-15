@@ -1,3 +1,4 @@
+import AppKit
 import PiLyzerCore
 import SwiftUI
 
@@ -65,6 +66,11 @@ struct PiLyzerApp: App {
         }
     }
 
+    private func open(_ address: String) {
+        guard let url = URL(string: address) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
     var body: some Scene {
         Window("PiLyzer", id: "main") {
             ContentView(model: model)
@@ -88,6 +94,11 @@ struct PiLyzerApp: App {
                 Button("Measure Bias") { model.measureBias() }
                     .disabled(!model.isConnected)
                 Button("Reset Calibration") { model.resetCalibration() }
+            }
+
+            CommandGroup(replacing: .help) {
+                Button("PiLyzer on GitHub") { open("https://github.com/Satachito/Oscillo") }
+                Button("Sponsor this project") { open("https://github.com/sponsors/Satachito") }
             }
 
             CommandMenu("View") {
