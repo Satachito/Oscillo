@@ -1,0 +1,388 @@
+WEBVTT
+
+NOTE
+Timings are estimated from the script's beats, not from a recording. After the
+edit, fix the times here and copy them across to 01-captions.ja.vtt — the cue
+numbering is the same in both files, so only the timestamps move.
+
+1
+00:00:03.000 --> 00:00:05.500
+No probe.
+
+2
+00:00:05.500 --> 00:00:08.000
+No signal generator.
+
+3
+00:00:08.000 --> 00:00:12.000
+Nothing installed — no driver,
+no app, no account.
+
+4
+00:00:13.000 --> 00:00:18.000
+That's a Raspberry Pi Pico 2,
+one USB cable, and a browser tab.
+
+5
+00:00:18.000 --> 00:00:21.000
+The waveform is coming
+from the chip itself.
+
+6
+00:00:21.500 --> 00:00:25.000
+There's one decision in this
+that makes the screen look different
+
+7
+00:00:25.000 --> 00:00:28.000
+from every other oscilloscope
+you've used.
+
+8
+00:00:28.000 --> 00:00:30.000
+That's what this video is about.
+
+9
+00:00:31.000 --> 00:00:36.000
+PiLyzer. Three analogue channels,
+twelve bits.
+
+10
+00:00:36.000 --> 00:00:42.000
+An oscilloscope, a spectrum analyser,
+an eight-channel logic analyser, a logger.
+
+11
+00:00:42.000 --> 00:00:48.000
+Two front ends, one instrument:
+a native macOS app, and a web page
+
+12
+00:00:48.000 --> 00:00:52.000
+that talks to the board over WebUSB.
+Same protocol, same numbers.
+
+13
+00:00:52.000 --> 00:00:55.000
+All of it is open,
+and the link is below.
+
+14
+00:00:56.000 --> 00:01:02.000
+Plug the board in. Open the page.
+Connect — the browser asks which device,
+
+15
+00:01:02.000 --> 00:01:05.000
+and that's the only permission there is.
+Run.
+
+16
+00:01:06.000 --> 00:01:10.000
+A flat line, because nothing is attached.
+
+17
+00:01:10.000 --> 00:01:14.000
+So let's attach something —
+without attaching anything.
+
+18
+00:01:15.000 --> 00:01:19.000
+The firmware has a signal generator in it.
+
+19
+00:01:19.000 --> 00:01:25.000
+A sine, and white, pink and brown noise,
+on four pins of the board.
+
+20
+00:01:25.000 --> 00:01:30.000
+Wire one of them back to an input
+and the instrument measures itself.
+
+21
+00:01:31.000 --> 00:01:35.000
+Four hundred and forty hertz.
+There it is in the spectrum.
+
+22
+00:01:35.000 --> 00:01:40.000
+And that's the whole set-up cost:
+a board and a cable.
+
+23
+00:01:41.000 --> 00:01:46.000
+Chrome on Android is a WebUSB host too,
+so this also runs on a phone.
+
+24
+00:01:46.000 --> 00:01:49.000
+Same page. No app.
+
+25
+00:02:20.000 --> 00:02:24.000
+Here's the problem
+I could not design my way around.
+
+26
+00:02:25.000 --> 00:02:30.000
+A Pico's converter reads
+zero to three point three volts.
+
+27
+00:02:30.000 --> 00:02:33.000
+That's the whole range.
+There's no negative side.
+
+28
+00:02:33.000 --> 00:02:38.000
+There's no range switch, because there's
+nothing in front of it to switch.
+
+29
+00:02:39.000 --> 00:02:43.000
+A normal oscilloscope shows you
+volts at the probe tip.
+
+30
+00:02:43.000 --> 00:02:48.000
+It knows what's in front of it —
+an attenuator, a gain stage —
+
+31
+00:02:48.000 --> 00:02:53.000
+so it can work backwards and tell you
+what you actually connected.
+
+32
+00:02:53.000 --> 00:02:57.000
+A bare Pico knows none of that.
+
+33
+00:02:57.000 --> 00:03:02.000
+So when the number on screen says
+one point six five volts, what does it mean?
+
+34
+00:03:03.000 --> 00:03:08.000
+I made it mean the one thing
+it can always mean:
+
+35
+00:03:08.000 --> 00:03:11.000
+this is what the converter saw.
+
+36
+00:03:11.000 --> 00:03:16.000
+Not what I think you connected. Not a
+corrected number. The volts at the pin.
+
+37
+00:03:17.000 --> 00:03:22.000
+If your circuit sits at mid rail —
+and most single-supply circuits do —
+
+38
+00:03:22.000 --> 00:03:26.000
+the trace sits in the middle of the screen,
+
+39
+00:03:26.000 --> 00:03:31.000
+and the instrument draws that bias as a
+dotted line instead of quietly subtracting it.
+
+40
+00:03:32.000 --> 00:03:37.000
+You can tell it where the bias is.
+It will draw it. It will not take it out.
+
+41
+00:03:38.000 --> 00:03:44.000
+Because a number that has been silently
+adjusted is a number you cannot check.
+
+42
+00:03:44.000 --> 00:03:50.000
+And on a home-made front end, the thing most
+likely to be wrong is the adjustment.
+
+43
+00:03:51.000 --> 00:03:57.000
+When there's a correction — you measured a known
+voltage, and the divider was two per cent low —
+
+44
+00:03:57.000 --> 00:04:01.000
+it says so, as a percentage, on the panel.
+
+45
+00:04:01.000 --> 00:04:05.000
+Corrections you can see
+are corrections you can argue with.
+
+46
+00:04:05.000 --> 00:04:09.000
+That's the decision.
+Everything else follows from it.
+
+47
+00:04:15.000 --> 00:04:19.000
+Back to that generator, because
+there's something worth knowing.
+
+48
+00:04:20.000 --> 00:04:24.000
+The RP2350 has no
+digital-to-analogue converter.
+
+49
+00:04:24.000 --> 00:04:27.000
+So the sine is not a voltage.
+
+50
+00:04:27.000 --> 00:04:33.000
+It's a pulse-width carrier at five hundred
+and eighty-six kilohertz,
+
+51
+00:04:33.000 --> 00:04:36.000
+whose duty cycle follows a sine table.
+
+52
+00:04:37.000 --> 00:04:41.000
+Wire that straight to an input
+and this is what you get.
+
+53
+00:04:41.000 --> 00:04:47.000
+Garbage — you're sampling a square wave
+at half a megahertz, with a converter at
+
+54
+00:04:47.000 --> 00:04:51.000
+a few hundred kilohertz,
+and everything folds back on itself.
+
+55
+00:04:52.000 --> 00:04:58.000
+One resistor and one capacitor —
+a kilohm and ten nanofarads — and it's a sine.
+
+56
+00:04:58.000 --> 00:05:03.000
+Three point one five volts peak to peak,
+which is what it's designed to be.
+
+57
+00:05:04.000 --> 00:05:10.000
+That's a real lesson and not a detour:
+a digital pin is never a voltage
+
+58
+00:05:10.000 --> 00:05:13.000
+until something has averaged it.
+
+59
+00:05:45.000 --> 00:05:47.000
+Numbers, honestly.
+
+60
+00:05:48.000 --> 00:05:54.000
+One channel: about four hundred and
+ninety-five thousand samples a second.
+
+61
+00:05:54.000 --> 00:05:59.000
+Two: two hundred and forty-seven.
+Three: one hundred and sixty-five —
+
+62
+00:05:59.000 --> 00:06:03.000
+they share one converter,
+so they share the rate.
+
+63
+00:06:04.000 --> 00:06:10.000
+Twelve bits across three point three volts,
+which is eight hundred microvolts a count.
+
+64
+00:06:11.000 --> 00:06:17.000
+The logic analyser is eight channels,
+up to a hundred and fifty megasamples,
+
+65
+00:06:17.000 --> 00:06:21.000
+and it costs eight resistors and a header —
+
+66
+00:06:21.000 --> 00:06:25.000
+which makes it, per yen,
+the best thing on the board.
+
+67
+00:06:26.000 --> 00:06:31.000
+What it will not do: it will not read
+a negative voltage,
+
+68
+00:06:31.000 --> 00:06:35.000
+it will not read anything
+above three point three volts,
+
+69
+00:06:35.000 --> 00:06:38.000
+and it will survive neither.
+
+70
+00:06:38.000 --> 00:06:42.000
+On a bare Pico, that's the deal.
+There's nothing in front of the pin.
+
+71
+00:06:45.000 --> 00:06:48.000
+Which brings us to the next one.
+
+72
+00:06:49.000 --> 00:06:54.000
+Most things you want to measure
+swing about zero volts —
+
+73
+00:06:54.000 --> 00:06:58.000
+audio, a function generator,
+anything alternating.
+
+74
+00:06:58.000 --> 00:07:01.000
+A bare Pico cannot see them at all.
+
+75
+00:07:02.000 --> 00:07:08.000
+So next time: one op amp, a coupling capacitor
+and two resistors,
+
+76
+00:07:08.000 --> 00:07:13.000
+and a signal that swings about zero
+becomes a signal a Pico can read.
+
+77
+00:07:13.000 --> 00:07:18.000
+We'll also talk about the op amp I tried first
+that could not do it,
+
+78
+00:07:18.000 --> 00:07:22.000
+and the resistor I got wrong
+that cost me an afternoon —
+
+79
+00:07:22.000 --> 00:07:26.000
+and how the instrument itself
+is what caught both.
+
+80
+00:07:27.000 --> 00:07:32.000
+Link to the code below. If there's a Pico 2
+in a drawer, this is an afternoon.
