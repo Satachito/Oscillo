@@ -59,9 +59,11 @@ Plug the board in. Open the page. Connect — the browser asks which device, and
 that is the only permission there is. Run.
 
 > **On screen:** flat line. Let it sit for a beat. It should look boring.
+> The RC is already wired; the generator is simply off, which is what makes
+> the line genuinely flat rather than a floating pin picking up hum.
 
-A flat line, because nothing is attached. So let us attach something — without
-attaching anything.
+A flat line — nothing is driving that pin yet. So let us attach something —
+without attaching anything.
 
 > **On screen:** switch on Signal generator. The sine appears.
 

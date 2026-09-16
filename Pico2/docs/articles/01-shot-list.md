@@ -52,6 +52,28 @@ instead of letting it run off an edge.
 | B8 | The op amp on a breadboard, shallow focus, teasing | 6:45 | The next-episode shot. Deliberately not explained. |
 | B9 | Thumbnail frame: front panel with a trace, board and cable beside it | — | Shoot this last, when the set is tidy. |
 
+## Which board is on the bench when
+
+There are only two hardware states in this episode, plus a teaser, and it is
+worth knowing which is which before you start shooting.
+
+**Bare** — board and cable, nothing attached. B1 and B3 only.
+
+**Wired** — the board on a small breadboard with one jumper from a generator
+pin to an input, and the 1 kΩ + 10 nF across it. Everything from B2 onward is
+this, **including B2**, because the demo at 0:55 already needs it: the sine at
+1:35 arrives through that RC. B4 is the same breadboard with the RC removed —
+the deliberately wrong version that produces the mess in S10 — so shoot B4 and
+S10 together, then drop the parts in for B5 and S11 without moving the camera.
+
+**The teaser** (B8) is a different breadboard: the mini AFE, with the MCP6022
+on it. It never appears wired to anything in this episode. Keep it off the
+bench until the end so it cannot wander into an earlier frame.
+
+The board needs headers for any of the wired shots. If the one in B1 is a
+fresh unsoldered board, that is the better B1 — but make sure the headered one
+is what appears from B2 on, and shoot B1 before you solder.
+
 ## Recording setup (macOS)
 
 The built-in recorder is enough. **⇧⌘5** → *Record Selected Portion*. There is
