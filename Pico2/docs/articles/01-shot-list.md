@@ -54,25 +54,30 @@ instead of letting it run off an edge.
 
 ## Which board is on the bench when
 
-There are only two hardware states in this episode, plus a teaser, and it is
-worth knowing which is which before you start shooting.
+The bench is not simply bare and then wired. The 4:15 section deliberately
+rewinds and rebuilds, because that is the argument it is making, so the state
+goes:
 
-**Bare** — board and cable, nothing attached. B1 and B3 only.
+| Shot | State |
+| --- | --- |
+| B1 (0:15) | **Bare** — board and cable, nothing attached. |
+| B2 (0:55) | **Wired** — on a small breadboard, one jumper from a generator pin to an input, 1 kΩ + 10 nF across it. The demo needs this: the sine at 1:35 comes back through that RC. |
+| B3 (4:15) | **Bare** — a pinout overlay goes on this, and it wants clean silkscreen with nothing lying across it. |
+| B4 (4:30) | **Bare plus one jumper, no RC** — the deliberately wrong version that produces the mess in S10. |
+| B5 (4:50) | The R and C going in. Back to wired, on camera. |
+| B6 (6:15) | Wired. The logic header alongside. |
+| B7 (2:05) | Wired — it is the demo, with the phone. |
+| B8 (6:45) | A **different** breadboard: the mini AFE with the MCP6022, connected to nothing. |
 
-**Wired** — the board on a small breadboard with one jumper from a generator
-pin to an input, and the 1 kΩ + 10 nF across it. Everything from B2 onward is
-this, **including B2**, because the demo at 0:55 already needs it: the sine at
-1:35 arrives through that RC. B4 is the same breadboard with the RC removed —
-the deliberately wrong version that produces the mess in S10 — so shoot B4 and
-S10 together, then drop the parts in for B5 and S11 without moving the camera.
+So shoot B4/S10 and B5/S11 as one sitting **without moving the camera**, because
+they are a before and an after of the same frame.
 
-**The teaser** (B8) is a different breadboard: the mini AFE, with the MCP6022
-on it. It never appears wired to anything in this episode. Keep it off the
-bench until the end so it cannot wander into an earlier frame.
+B8 never appears wired in this episode. Keep it off the bench until the end so
+it cannot wander into an earlier frame.
 
-The board needs headers for any of the wired shots. If the one in B1 is a
-fresh unsoldered board, that is the better B1 — but make sure the headered one
-is what appears from B2 on, and shoot B1 before you solder.
+The board needs headers for anything in the wired state. If the one in B1 is a
+fresh unsoldered board, that is the better B1 — but shoot B1 and B3 before you
+solder, and use the headered board from B2 on.
 
 ## Recording setup (macOS)
 
