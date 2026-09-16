@@ -30,9 +30,15 @@ Record each one long; trim in the edit.
 
 ## Bench shots
 
-One rule, and it carries the whole pile: **light it, and shoot down onto a
-plain surface.** A desk lamp bounced off a white sheet of paper beats any
-camera setting.
+Two rules, and they carry the whole pile. **Light it, and shoot down onto a
+plain surface** — a desk lamp bounced off a white sheet of paper beats any
+camera setting. And **shoot landscape, always**: a portrait frame cropped to
+16:9 either loses the subject or arrives as a black-sided box. Landscape on a
+phone is 4032 x 2268, which is 4K with room to spare.
+
+Lay the board along the frame, or turn it about fifteen degrees so it reads as
+a photograph rather than a diagram, and coil loose cable inside the frame
+instead of letting it run off an edge.
 
 | # | Shot | Used at | Notes |
 | --- | --- | --- | --- |
