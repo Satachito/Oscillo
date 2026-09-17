@@ -5,7 +5,7 @@ import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, trigger
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
-const NUMERIC_CONTROLS = { 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', lpf: 'lpf', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+const NUMERIC_CONTROLS = { 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
 const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart'], ['signals-enabled', 'signalsEnabled']];
 const STORAGE_KEY = 'pilyzer.settings.v1';
 // The front panel comes back the way it was left, the per-channel zero
@@ -238,6 +238,18 @@ function frequencyControls(channels, allowed) {
   if (held) $('spectrum-held').textContent = `Drawn to ${fmt(nyquist, 'Hz')}: at this resolution, with ${channels} channel${channels === 1 ? '' : 's'} sharing the converter, the record does not reach ${fmt(settings.spectrumSpan, 'Hz')}.`;
   $('spectrum-alias').textContent = `Nothing filters the input before the converter, so a signal above ${fmt(nyquist, 'Hz')} — half the sample rate — folds back into the span as a false peak.`;
 }
+// A logarithmic slider gives the low end as much travel as the high end, as on
+// the Mac. Off has its own switch, so zero is never put through log10, and the
+// cutoff last used comes back when the filter is switched on again.
+let rememberedCutoff = 1000;
+function showLowPass() {
+  const on = settings.lpf > 0, unsupported = !!instrument && !(caps().flags & 8);
+  if (on) rememberedCutoff = settings.lpf;
+  $('lpf-enabled').checked = on; $('lpf-enabled').disabled = unsupported; $('lpf-1k').disabled = unsupported;
+  $('lpf').value = Math.log10(Math.max(on ? settings.lpf : rememberedCutoff, 100));
+  $('lpf').disabled = !on || unsupported;
+  $('lpf-value').value = on ? `${settings.lpf.toLocaleString()} Hz` : 'Off';
+}
 function synchronize() {
   const active = activeChannels(settings, caps());
   if (!active.includes(settings.source)) settings.source = active[0] ?? 0;
@@ -264,7 +276,7 @@ function synchronize() {
   // ranges on GPIO2-5, so its generator starts above them.
   $('signal-controls').hidden = !instrument || !(caps().flags & 32);
   $('signal-sine').disabled = !settings.signalsEnabled;
-  $('lpf').disabled = instrument && !(caps().flags & 8);
+  showLowPass();
   for (const op of $('record').options) op.disabled = Number(op.value) > caps().maxRecord;
   for (const op of $('logic-rate').options) op.disabled = Number(op.value) > caps().logicClock;
   for (const op of $('logic-record').options) op.disabled = Number(op.value) > caps().logicMaxRecord;
@@ -348,7 +360,7 @@ async function connect(demo) {
     // them, and a trigger level that works is not moved either.
     seedTriggerLevel();
     settings.record = Math.min(settings.record, caps().maxRecord);
-    if (!(caps().flags & 8)) { settings.lpf = 0; $('lpf').value = 0; }
+    if (!(caps().flags & 8)) settings.lpf = 0;
     synchronize();
     if (demo) acquisition.start(settings);
     else { await instrument.abort(); $('status').textContent = 'Connected · press Run'; }
@@ -369,6 +381,11 @@ $('export').onclick = () => {
   if (settings.mode === 'spectrum' && plot.spectra) text = spectrumCsv(plot.spectra);
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+$('lpf-enabled').addEventListener('change', () => { settings.lpf = $('lpf-enabled').checked ? rememberedCutoff : 0; synchronize(); changed(); });
+// The reading follows the thumb; the instrument hears about it when it stops.
+$('lpf').addEventListener('input', () => { settings.lpf = Math.round(10 ** Number($('lpf').value)); $('lpf-value').value = `${settings.lpf.toLocaleString()} Hz`; });
+$('lpf').addEventListener('change', () => { synchronize(); changed(); });
+$('lpf-1k').addEventListener('click', () => { settings.lpf = 1000; synchronize(); changed(); });
 $('spectrum-span').addEventListener('change', () => {
   setSpectrumSpan(settings, Number($('spectrum-span').value), caps(), activeChannels(settings, caps()).length);
   synchronize(); changed();
