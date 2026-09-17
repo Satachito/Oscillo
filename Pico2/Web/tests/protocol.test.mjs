@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, displayedTop, fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/instrument.mjs';
 import { HttpTransport, available } from '../src/net.mjs';
@@ -462,4 +462,40 @@ test('an https page does not probe for an instrument it could not talk to anyway
     assert.equal(await available('https://satachito.github.io/Oscillo/'), false);
     assert.equal(asked, false, 'mixed content makes the answer moot, so no request is made');
   } finally { globalThis.fetch = saved; }
+});
+
+// The same cases as the macOS app's SpectrumSpanTests.
+const spanCaps = { clock: 48000000, minCycles: 96, maxRecord: 16384 };
+test('the time on screen is the resolution', () => {
+  assert.ok(Math.abs(resolutionFor(.001) - 100) < 1e-9);
+  assert.ok(Math.abs(resolutionFor(.01) - 10) < 1e-9);
+});
+test('a span picks the shortest record that reaches it, and leaves the resolution', () => {
+  const settings = { ...makeSettings(), timebase: .01 };
+  setSpectrumSpan(settings, 5000, spanCaps, 1);
+  assert.equal(settings.record, 1024);
+  assert.equal(settings.spectrumSpan, 5000);
+  assert.equal(settings.timebase, .01);
+});
+test('a resolution keeps the span by choosing the record again', () => {
+  const settings = { ...makeSettings(), timebase: .01 };
+  setSpectrumSpan(settings, 5000, spanCaps, 1);
+  setSpectrumResolution(settings, .1, spanCaps, 1);
+  assert.equal(settings.record, 16384);
+});
+test('the whole band leaves the record alone', () => {
+  const settings = { ...makeSettings(), record: 4096 };
+  setSpectrumSpan(settings, 0, spanCaps, 1);
+  assert.equal(settings.record, 4096);
+});
+test('a span and resolution nothing can reach are refused', () => {
+  assert.equal(spectrumRecord(200000, 1, spanCaps, 1), null);
+  assert.equal(spectrumRecord(1000, 10000, spanCaps, 1), null);
+  assert.ok(!spectrumSpans(spanCaps, 3).includes(100000));
+  assert.equal(spectrumSpans(spanCaps, 1).at(-1), 200000);
+});
+test('the axis ends at the span, or where the record does if that is sooner', () => {
+  assert.equal(displayedTop(5000, 5120), 5000);
+  assert.equal(displayedTop(5000, 2560), 2560);
+  assert.equal(displayedTop(0, 5120), 5120);
 });

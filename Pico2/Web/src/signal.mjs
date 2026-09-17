@@ -53,7 +53,7 @@ export function spectrum(samples, period) {
     return { frequency: i * resolution, rms, db: 20 * Math.log10(Math.max(rms, 1e-9)) };
   });
   const peak = bins.slice(1).reduce((best, b) => b.rms > best.rms ? b : best, bins[1]);
-  return { bins, peak, peaks: peaks(bins, resolution), resolution };
+  return { bins, peak, peaks: peaks(bins, resolution, bins.length), resolution };
 }
 // Local maxima, strongest first, as the macOS app finds them. A tone between
 // two bins is read at its real frequency: a parabola through the log of the

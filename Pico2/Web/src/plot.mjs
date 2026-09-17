@@ -1,4 +1,4 @@
-import { scaleFor, fitScale } from './protocol.mjs';
+import { scaleFor, fitScale, displayedTop } from './protocol.mjs';
 import { fmt, spectrum } from './signal.mjs';
 export const COLORS = ['#e9c96b', '#79cdd8', '#c0a1ef', '#9ed190', '#d8ad7f', '#a6bcec', '#d592b9', '#afbf7a'];
 export class Plot {
@@ -135,14 +135,22 @@ export class Plot {
   // bury the traces they describe.
   fft(c, box) {
     const spectra = (this.spectra || []).filter(s => s.bins.length); if (!spectra.length) return;
-    const max = Math.ceil(Math.max(0, ...spectra.flatMap(s => s.bins.map(b => b.db))) / 20) * 20;
+    // The axis ends at the span; the bins past it are not drawn, but one more
+    // than fits is, so the trace runs to the edge and the clip trims it.
+    const top = this.fftTop = displayedTop(this.settings.spectrumSpan, 1 / this.frame.period / 2);
+    const resolution = spectra[0].resolution, last = Math.min(spectra[0].bins.length - 1, Math.ceil(top / resolution));
+    const shown = spectra.map(s => s.bins.slice(0, last + 1));
+    const max = Math.ceil(Math.max(0, ...shown.flatMap(bins => bins.map(b => b.db))) / 20) * 20;
     this.fftMax = max;
     const y = db => box.y + (max - db) / 120 * box.h;
-    for (const s of spectra) this.trace(c, s.bins, box, y, COLORS[s.index], b => b.db);
+    c.save(); c.beginPath(); c.rect(box.x, box.y, box.w, box.h); c.clip();
+    spectra.forEach((s, i) => this.trace(c, shown[i], { ...box, w: box.w * last * resolution / top }, y, COLORS[s.index], b => b.db));
+    c.restore();
     const limit = spectra.length > 1 ? 2 : 5;
     c.save(); c.textAlign = 'center'; c.lineWidth = 1;
-    for (const s of spectra) for (const peak of (s.peaks || []).slice(0, limit)) {
-      const px = box.x + peak.frequency * this.frame.period * 2 * box.w, py = y(peak.db);
+    // The strongest of what is on screen, not of the whole record.
+    for (const s of spectra) for (const peak of (s.peaks || []).filter(p => p.frequency <= top).slice(0, limit)) {
+      const px = box.x + peak.frequency / top * box.w, py = y(peak.db);
       if (px <= box.x + 1 || px > box.x + box.w) continue;
       c.strokeStyle = c.fillStyle = spectra.length > 1 ? COLORS[s.index] : '#d5e6bf';
       c.beginPath(); c.arc(px, py, 3, 0, 2 * Math.PI); c.stroke();
@@ -195,7 +203,7 @@ export class Plot {
     c.textAlign = 'center';
     for (let col = 0; col <= columns; col += 2) {
       let label;
-      if (this.spectra) label = fmt(col / columns / frame.period / 2, 'Hz');
+      if (this.spectra) label = fmt(col / columns * (this.fftTop || 1 / frame.period / 2), 'Hz');
       else if (frame.kind === 'meter') label = fmt(col / columns * (frame.history.at(-1)?.time || 0), 's');
       else if (this.xyMode) { const index = frame.traces[0].index, m = this.mapping(index, box); label = fmt(m.centre + (col - columns / 2 - this.settings.channels[index].offset) * m.perDiv, 'V'); }
       else label = fmt((col / columns * (frame.count - 1) - frame.triggerIndex) * frame.period, 's');

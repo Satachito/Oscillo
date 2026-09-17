@@ -1,7 +1,7 @@
 import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale } from './protocol.mjs';
+import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -219,6 +219,25 @@ function seedTriggerLevel() {
   settings.level = Number(biasVolts(scale).toPrecision(6));
   $('level').value = settings.level;
 }
+// The spectrum's horizontal controls, in its own terms. Each menu offers what
+// is reachable with the other as it stands, plus the current choice so the
+// menu still names it when it no longer is.
+function frequencyControls(channels, allowed) {
+  const c = caps(), reaches = (span, resolution) => spectrumRecord(span, resolution, c, channels) !== null;
+  const spans = spectrumSpans(c, channels).filter(span => reaches(span, resolutionFor(settings.timebase)));
+  if (settings.spectrumSpan && !spans.includes(settings.spectrumSpan)) spans.push(settings.spectrumSpan);
+  const times = allowed.filter(t => !settings.spectrumSpan || reaches(settings.spectrumSpan, resolutionFor(t)));
+  if (!times.includes(settings.timebase)) times.push(settings.timebase);
+  const floor = c.minCycles / c.clock * Math.max(channels, 1), duration = settings.timebase * 10;
+  const period = Math.max(duration / Math.min(settings.record, c.maxRecord), floor), nyquist = 1 / period / 2;
+  options('spectrum-span', [[0, `Full · ${fmt(nyquist, 'Hz')}`], ...spans.sort((a, b) => a - b).map(s => [s, fmt(s, 'Hz')])], settings.spectrumSpan);
+  options('spectrum-resolution', times.sort((a, b) => b - a).map(t => [t, fmt(resolutionFor(t), 'Hz')]), settings.timebase);
+  $('spectrum-plan').textContent = `${fmt(1 / period, 'Sa/s')} · ${Math.round(duration / period).toLocaleString()} points · a sweep every ${fmt(duration, 's')}`;
+  const held = settings.spectrumSpan > nyquist * (1 + 1e-9);
+  $('spectrum-held').hidden = !held;
+  if (held) $('spectrum-held').textContent = `Drawn to ${fmt(nyquist, 'Hz')}: at this resolution, with ${channels} channel${channels === 1 ? '' : 's'} sharing the converter, the record does not reach ${fmt(settings.spectrumSpan, 'Hz')}.`;
+  $('spectrum-alias').textContent = `Nothing filters the input before the converter, so a signal above ${fmt(nyquist, 'Hz')} — half the sample rate — folds back into the span as a false peak.`;
+}
 function synchronize() {
   const active = activeChannels(settings, caps());
   if (!active.includes(settings.source)) settings.source = active[0] ?? 0;
@@ -231,7 +250,11 @@ function synchronize() {
   options('source', (logic ? Array.from({ length: caps().logicChannels }, (_, i) => i) : active).map(i => [i, `${logic ? 'D' : 'CH'}${logic ? i : i + 1}`]), logic ? settings.logicSource : settings.source);
   $('active-count').textContent = `${active.length} channel${active.length === 1 ? '' : 's'} enabled`;
   $('max-rate').replaceChildren(document.createTextNode(fmt(caps().clock / caps().minCycles / Math.max(active.length, 1), 'Sa/s') + ' '), Object.assign(document.createElement('small'), { textContent: '/ channel max' }));
-  $('horizontal-controls').hidden = logic || meter; $('trigger-controls').hidden = meter; $('analog-trigger-extra').hidden = logic;
+  const spectrumMode = settings.mode === 'spectrum';
+  $('horizontal-controls').hidden = logic || meter || spectrumMode; $('frequency-controls').hidden = !spectrumMode;
+  $('record').value = settings.record;
+  if (spectrumMode) frequencyControls(active.length, allowed);
+  $('trigger-controls').hidden = meter; $('analog-trigger-extra').hidden = logic;
   $('logger-controls').hidden = !meter;
   $('channel-controls').hidden = logic; $('logic-controls').hidden = !logic;
   $('level').disabled = logic; $('xy').disabled = settings.mode !== 'scope' || active.length < 2;
@@ -346,6 +369,14 @@ $('export').onclick = () => {
   if (settings.mode === 'spectrum' && plot.spectra) text = spectrumCsv(plot.spectra);
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+$('spectrum-span').addEventListener('change', () => {
+  setSpectrumSpan(settings, Number($('spectrum-span').value), caps(), activeChannels(settings, caps()).length);
+  synchronize(); changed();
+});
+$('spectrum-resolution').addEventListener('change', () => {
+  setSpectrumResolution(settings, Number($('spectrum-resolution').value), caps(), activeChannels(settings, caps()).length);
+  synchronize(); changed();
+});
 for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) {
   $(id).addEventListener('change', () => {
     const value = Number($(id).value); if (!Number.isFinite(value)) return;

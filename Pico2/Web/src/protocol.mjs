@@ -178,3 +178,40 @@ export function splitAnalog(bytes, channels) {
   return Array.from({ length: channels }, (_, c) => Float64Array.from({ length: count }, (_, i) => v.getUint16((i * channels + c) * 2, true)));
 }
 export const demoCaps = Object.freeze({ channels: 3, bits: 12, logicChannels: 8, ranges: 2, clock: 48000000, minCycles: 97, maxRecord: 16384, maxPretrigger: 16383, logicClock: 150000000, logicMaxRecord: 65536, logicMaxPretrigger: 65535, reference: 3.3, flags: 11 | 32, fullScale: 65520 });
+
+// The spectrum's own words for the two settings a sweep is made of, as on the
+// Mac. The time on screen is the resolution — a bin is one over it — and the
+// points spread across it set the sample rate, half of which is the highest
+// frequency the record holds. Span and resolution are those settings said the
+// other way round, so the scope still shows the record a spectrum came from.
+// The record lengths are powers of two, which is also what the transform trims
+// a record to, so the resolution chosen is the bin width got.
+export const RECORD_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384];
+export const resolutionFor = timebase => 1 / (timebase * 10);
+const fastestRate = (caps, channels) => caps.clock / caps.minCycles / Math.max(channels, 1);
+// Spans in a 1–2–5 sequence, up to half the fastest rate these channels share.
+export function spectrumSpans(caps, channels) {
+  const top = fastestRate(caps, channels) / 2, spans = [];
+  for (let decade = 10; decade <= top; decade *= 10) for (const m of [1, 2, 5]) if (decade * m <= top) spans.push(decade * m);
+  return spans;
+}
+// The shortest record that reaches the span at the resolution, or null when
+// none can: the longest stops short, or it would sample faster than the converter.
+export function spectrumRecord(span, resolution, caps, channels, lengths = RECORD_LENGTHS) {
+  const fastest = fastestRate(caps, channels);
+  return [...lengths].sort((a, b) => a - b).find(length => length <= caps.maxRecord
+    && length * resolution / 2 >= span * (1 - 1e-9) && length * resolution <= fastest * (1 + 1e-9)) ?? null;
+}
+// Zero is everything the record holds, and leaves the record alone.
+export function setSpectrumSpan(settings, span, caps, channels) {
+  settings.spectrumSpan = span;
+  const record = span ? spectrumRecord(span, resolutionFor(settings.timebase), caps, channels) : null;
+  if (record) settings.record = record;
+}
+export function setSpectrumResolution(settings, timebase, caps, channels) {
+  settings.timebase = timebase;
+  const record = settings.spectrumSpan ? spectrumRecord(settings.spectrumSpan, resolutionFor(timebase), caps, channels) : null;
+  if (record) settings.record = record;
+}
+// The axis ends at the span, unless the record in hand does not reach it.
+export const displayedTop = (span, nyquist) => span > 0 ? Math.min(span, nyquist) : nyquist;
