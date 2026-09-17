@@ -374,7 +374,7 @@ struct VerticalSection: View {
     }
 
     var body: some View {
-        Section("Channel \(channel + 1)") {
+        Section("Channel \(channel + 1)", titleSize: 15) {
             Toggle("Enabled", isOn: Binding(
                 get: { model.settings.channels[channel].isEnabled },
                 set: { enabled in
@@ -383,90 +383,94 @@ struct VerticalSection: View {
                 }))
                 .disabled(model.settings.channels[channel].isEnabled && model.enabledAnalogChannels.count == 1)
 
-            if model.ranges.count > 1 {
-                Picker("Range", selection: binding.rangeIndex) {
-                    ForEach(0..<model.ranges.count, id: \.self) { Text(model.ranges[$0].name).tag($0) }
+            // A channel that is off has nothing to set: its settings are kept,
+            // just not shown, so turning it back on brings them all back.
+            if model.settings.channels[channel].isEnabled {
+                if model.ranges.count > 1 {
+                    Picker("Range", selection: binding.rangeIndex) {
+                        ForEach(0..<model.ranges.count, id: \.self) { Text(model.ranges[$0].name).tag($0) }
+                    }
                 }
-            }
 
-            Picker("Scale", selection: voltsPerDivision) {
-                ForEach(verticalSteps, id: \.self) { Text(Format.voltage($0) + "/div").tag($0) }
-            }
-
-            Picker("Probe", selection: binding.probeAttenuation) {
-                Text("1:1").tag(1.0)
-                Text("1:10").tag(10.0)
-            }
-
-            LabeledSlider(title: "Position", value: binding.positionDivisions,
-                          range: -4...4, format: { String(format: "%.1f div", $0) })
-
-            // Only the scope draws what this changes. The spectrum takes the
-            // mean out itself, because a DC offset through the window is a
-            // skirt over the low bins rather than a tall one at zero, and the
-            // meter's whole job is the reading the converter actually made.
-            Toggle("Remove mean (software AC)", isOn: binding.removesMean)
-                .disabled(!removesMeanApplies)
-                .help(removesMeanApplies
-                      ? "Centres the trace on zero, and the CSV with it."
-                      : "Scope only. The spectrum removes the mean itself, and "
-                        + "the meter logs what the converter read.")
-
-            // Each button sits under the field it writes, and Reset — which
-            // clears both of them — stands on its own.
-            HStack(spacing: 6) {
-                Text("Bias").font(.caption)
-                Spacer(minLength: 6)
-                VoltsField(volts: biasVolts)
-                Text("V").font(.caption).foregroundStyle(.secondary)
-            }
-            Text("Where the front end holds this input with nothing on it. Drawn as a "
-                 + "dotted line; readings stay as the converter saw them.")
-                .font(.caption).foregroundStyle(.secondary)
-            if let measured = model.settings.channels[channel].measuredBiasVolts,
-               let error = model.settings.channels[channel].offsetErrorVolts {
-                Text("Measured \(Format.voltage(measured)) — \(Format.voltage(abs(error))) "
-                     + (error < 0 ? "below" : "above") + " it, marked on the right.")
-                    .font(.caption).foregroundStyle(Theme.channelColor(channel))
-            }
-            HStack(spacing: 6) {
-                Button("Measure") { model.measureBias() }
-                    .help("Ground all inputs first: what they read now is the bias.")
-                    .disabled(!model.isConnected)
-                Button("Mid rail") { biasVolts.wrappedValue = midRailVolts }
-                    .help("Writes \(Format.voltage(midRailVolts)), the input that reads mid "
-                          + "scale: where a passive front end holds it.")
-            }
-
-            HStack(spacing: 6) {
-                Text("Applied").font(.caption)
-                Spacer(minLength: 6)
-                VoltsField(volts: binding.appliedVolts)
-                Text("V").font(.caption).foregroundStyle(.secondary)
-            }
-            Text("A known voltage on the input. Set gain measures the swing from the bias "
-                 + "and corrects the gain by what it is short of this — so measure the bias "
-                 + "first. The divider's 1% parts put it out by up to 2%.")
-                .font(.caption).foregroundStyle(.secondary)
-            HStack(spacing: 6) {
-                Button("Set gain") {
-                    model.calibrateGain(channel: channel,
-                                        appliedVolts: model.settings.channels[channel].appliedVolts)
+                Picker("Scale", selection: voltsPerDivision) {
+                    ForEach(verticalSteps, id: \.self) { Text(Format.voltage($0) + "/div").tag($0) }
                 }
-                .help("Reads this input now and takes the difference from the applied voltage.")
-                .disabled(!model.isConnected
-                          || abs(model.settings.channels[channel].appliedVolts) < 1e-6)
-                Spacer()
-                Button("Reset") { model.resetCalibration() }
-                    .help("Clears the zero and the gain correction on every channel.")
-            }
 
-            // A correction nobody can see is one nobody can question, and a
-            // reading past what the converter can reach is always one of these.
-            if abs(gainCorrection - 1) > 1e-9 {
-                Text(String(format: "Gain corrected by %+.2f%% — readings are scaled by it.",
-                            (gainCorrection - 1) * 100))
-                    .font(.caption).foregroundStyle(Theme.channelColor(channel))
+                Picker("Probe", selection: binding.probeAttenuation) {
+                    Text("1:1").tag(1.0)
+                    Text("1:10").tag(10.0)
+                }
+
+                LabeledSlider(title: "Position", value: binding.positionDivisions,
+                              range: -4...4, format: { String(format: "%.1f div", $0) })
+
+                // Only the scope draws what this changes. The spectrum takes the
+                // mean out itself, because a DC offset through the window is a
+                // skirt over the low bins rather than a tall one at zero, and the
+                // meter's whole job is the reading the converter actually made.
+                Toggle("Remove mean (software AC)", isOn: binding.removesMean)
+                    .disabled(!removesMeanApplies)
+                    .help(removesMeanApplies
+                          ? "Centres the trace on zero, and the CSV with it."
+                          : "Scope only. The spectrum removes the mean itself, and "
+                            + "the meter logs what the converter read.")
+
+                // Each button sits under the field it writes, and Reset — which
+                // clears both of them — stands on its own.
+                HStack(spacing: 6) {
+                    Text("Bias").font(.caption)
+                    Spacer(minLength: 6)
+                    VoltsField(volts: biasVolts)
+                    Text("V").font(.caption).foregroundStyle(.secondary)
+                }
+                Text("Where the front end holds this input with nothing on it. Drawn as a "
+                     + "dotted line; readings stay as the converter saw them.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let measured = model.settings.channels[channel].measuredBiasVolts,
+                   let error = model.settings.channels[channel].offsetErrorVolts {
+                    Text("Measured \(Format.voltage(measured)) — \(Format.voltage(abs(error))) "
+                         + (error < 0 ? "below" : "above") + " it, marked on the right.")
+                        .font(.caption).foregroundStyle(Theme.channelColor(channel))
+                }
+                HStack(spacing: 6) {
+                    Button("Measure") { model.measureBias() }
+                        .help("Ground all inputs first: what they read now is the bias.")
+                        .disabled(!model.isConnected)
+                    Button("Mid rail") { biasVolts.wrappedValue = midRailVolts }
+                        .help("Writes \(Format.voltage(midRailVolts)), the input that reads mid "
+                              + "scale: where a passive front end holds it.")
+                }
+
+                HStack(spacing: 6) {
+                    Text("Applied").font(.caption)
+                    Spacer(minLength: 6)
+                    VoltsField(volts: binding.appliedVolts)
+                    Text("V").font(.caption).foregroundStyle(.secondary)
+                }
+                Text("A known voltage on the input. Set gain measures the swing from the bias "
+                     + "and corrects the gain by what it is short of this — so measure the bias "
+                     + "first. The divider's 1% parts put it out by up to 2%.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Button("Set gain") {
+                        model.calibrateGain(channel: channel,
+                                            appliedVolts: model.settings.channels[channel].appliedVolts)
+                    }
+                    .help("Reads this input now and takes the difference from the applied voltage.")
+                    .disabled(!model.isConnected
+                              || abs(model.settings.channels[channel].appliedVolts) < 1e-6)
+                    Spacer()
+                    Button("Reset") { model.resetCalibration() }
+                        .help("Clears the zero and the gain correction on every channel.")
+                }
+
+                // A correction nobody can see is one nobody can question, and a
+                // reading past what the converter can reach is always one of these.
+                if abs(gainCorrection - 1) > 1e-9 {
+                    Text(String(format: "Gain corrected by %+.2f%% — readings are scaled by it.",
+                                (gainCorrection - 1) * 100))
+                        .font(.caption).foregroundStyle(Theme.channelColor(channel))
+                }
             }
         }
     }
@@ -619,11 +623,14 @@ struct LabeledSlider: View {
 struct Section<Content: View>: View {
     let title: String
     let tag: String?
+    let titleSize: CGFloat
     @ViewBuilder let content: () -> Content
 
-    init(_ title: String, tag: String? = nil, @ViewBuilder content: @escaping () -> Content) {
+    init(_ title: String, tag: String? = nil, titleSize: CGFloat = 11,
+         @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.tag = tag
+        self.titleSize = titleSize
         self.content = content
     }
 
@@ -631,7 +638,7 @@ struct Section<Content: View>: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: titleSize, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                 Spacer()
                 if let tag {
