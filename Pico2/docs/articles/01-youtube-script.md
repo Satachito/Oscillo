@@ -125,10 +125,11 @@ And on a home-made front end, the thing most likely to be wrong is the
 adjustment.
 
 > **On screen:** the gain correction note under a channel — "readings are
-> scaled by it".
+> scaled by it". Measured on the bench with two Eneloops at 2.56 V through
+> 1 kΩ into CH1: the bare Pico 2 read 1.6 % high, so the note says −1.60 %.
 
-When there is a correction — when you have measured a known voltage and told
-it the divider is two per cent low — it says so, as a percentage, on the panel.
+When there is a correction — when a known voltage on the input read one and a
+half per cent high — it says so, as a percentage, on the panel.
 Corrections you can see are corrections you can argue with.
 
 That is the decision. Everything else follows from it.
