@@ -429,17 +429,19 @@ final class ScopeModel: ObservableObject {
             // Each row is one logged interval, so the extremes within it are
             // part of the record rather than something only the screen knew.
             let stamp = ISO8601DateFormatter()
+            // The channels on screen, which are the ones switched on.
+            let channels = enabledAnalogChannels.filter { meter.history.indices.contains($0) }
             var header = ["time_s", "timestamp"]
-            for channel in meter.history.indices {
+            for channel in channels {
                 header += ["CH\(channel + 1)_min_V", "CH\(channel + 1)_mean_V", "CH\(channel + 1)_max_V"]
             }
             var lines = [header.joined(separator: ",")]
-            let count = meter.history.map(\.count).min() ?? 0
+            let count = channels.map { meter.history[$0].count }.min() ?? 0
             for index in 0..<count {
                 let seconds = Double(index) * meter.interval
                 var row = [String(format: "%.6g", seconds),
                            stamp.string(from: meter.start.addingTimeInterval(seconds))]
-                for channel in meter.history.indices {
+                for channel in channels {
                     let sample = meter.history[channel][index]
                     row += [String(format: "%.7g", sample.low),
                             String(format: "%.7g", sample.mean),

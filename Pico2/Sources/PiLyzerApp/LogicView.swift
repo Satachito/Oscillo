@@ -239,7 +239,9 @@ struct MeterView: View {
 
     private var readings: some View {
         HStack(spacing: 20) {
-            ForEach(model.availableAnalogChannels, id: \.self) { channel in
+            // The channels switched on, as everywhere else; the log keeps the
+            // rest, so switching one back on brings its history with it.
+            ForEach(model.enabledAnalogChannels, id: \.self) { channel in
                 VStack(alignment: .leading, spacing: 6) {
                     Text("CH\(channel + 1)")
                         .font(.system(size: 10, design: .monospaced))
@@ -270,8 +272,11 @@ struct MeterView: View {
     /// however much the signal was moving.
     private func drawHistory(_ context: inout GraphicsContext, size: CGSize) {
         guard let meter = model.meter else { return }
-        let series = meter.history.filter { !$0.isEmpty }
-        guard !series.isEmpty else { return }
+        // Indexed by channel, not by position among the non-empty ones, so a
+        // channel is always drawn in its own colour.
+        let shown = model.enabledAnalogChannels.filter { $0 < meter.history.count && !meter.history[$0].isEmpty }
+        guard !shown.isEmpty else { return }
+        let series = shown.map { meter.history[$0] }
 
         let low = series.flatMap { $0 }.map(\.low).min() ?? 0
         let high = series.flatMap { $0 }.map(\.high).max() ?? 1
@@ -279,7 +284,7 @@ struct MeterView: View {
         let y = { (volts: Double) in size.height * CGFloat(1 - (volts - low) / span) }
         let columns = max(Int(size.width), 2)
 
-        for (channel, values) in series.enumerated() {
+        for (channel, values) in zip(shown, series) {
             // One column of pixels a point, keeping the interval's extremes.
             let bands = envelope(values.map(\.low), width: columns)
             let highs = envelope(values.map(\.high), width: columns)
