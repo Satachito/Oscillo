@@ -299,7 +299,7 @@ struct ControlPanelView: View {
         let base = DeviceIdentity.signalBasePin
         return "GPIO\(base) sine, GPIO\(base + 1) white, GPIO\(base + 2) pink, "
             + "GPIO\(base + 3) brown — PWM at 586 kHz, so each pin wants an RC "
-            + "(1 kΩ and 100 nF) to come out as a voltage."
+            + "(1 kΩ and 10 nF) to come out as a voltage."
     }
 
     private var instrumentSection: some View {

@@ -153,7 +153,7 @@ instrument works over it whether or not the network ever appears.
 `setSignals` puts a 440 Hz sine on GPIO0 and white, pink and brown noise on
 GPIO1, 2 and 3 — enough to exercise a front end without a second board. Each is
 a 586 kHz PWM carrier whose duty follows a sample, 50,000 a second, so **each
-pin wants an RC** (1 kΩ and 100 nF) to come out as a voltage. All four sit on
+pin wants an RC** (1 kΩ and 10 nF) to come out as a voltage. All four sit on
 mid rail and use about 2.8 V of the 3.3 V a pin can swing.
 
 The generator costs one interrupt at 50 kHz. Acquisition is unaffected —

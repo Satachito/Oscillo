@@ -233,7 +233,7 @@ function synchronize() {
   for (const op of $('logic-rate').options) op.disabled = Number(op.value) > caps().logicClock;
   for (const op of $('logic-record').options) op.disabled = Number(op.value) > caps().logicMaxRecord;
   $('test-pin').textContent = instrument?.demo ? 'Demo is generated in this browser. Test output controls apply to a USB instrument.' : `GPIO${CALIBRATION_PIN} · 0–3.3 V square wave. Wire the output to an input to measure it.`;
-  $('signal-pins').textContent = `GPIO${SIGNAL_BASE_PIN} sine, GPIO${SIGNAL_BASE_PIN + 1} white, GPIO${SIGNAL_BASE_PIN + 2} pink, GPIO${SIGNAL_BASE_PIN + 3} brown — PWM at 586 kHz, so each pin wants an RC (1 kΩ and 100 nF) to come out as a voltage.`;
+  $('signal-pins').textContent = `GPIO${SIGNAL_BASE_PIN} sine, GPIO${SIGNAL_BASE_PIN + 1} white, GPIO${SIGNAL_BASE_PIN + 2} pink, GPIO${SIGNAL_BASE_PIN + 3} brown — PWM at 586 kHz, so each pin wants an RC (1 kΩ and 10 nF) to come out as a voltage.`;
   $('mode-title').textContent = { scope: 'Oscilloscope', spectrum: 'Spectrum analyser', logic: 'Logic analyser', meter: 'Voltage meter' }[settings.mode];
   document.body.classList.toggle('meter-mode', meter);
   document.querySelectorAll('[data-mode]').forEach(el => { const selected = el.dataset.mode === settings.mode; el.classList.toggle('selected', selected); el.setAttribute('aria-pressed', selected); });
