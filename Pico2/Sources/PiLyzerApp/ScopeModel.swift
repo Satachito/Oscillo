@@ -41,6 +41,9 @@ final class ScopeModel: ObservableObject {
     @Published var cursorsEnabled = false
     @Published var cursorA = 0.3
     @Published var cursorB = 0.7
+    /// Bumped whenever a button writes a number a volts field shows, so an edit
+    /// left open in that field gives way instead of being committed over it.
+    @Published var fieldWrites = 0
 
     private let engine = InstrumentEngine()
     private var spectrumHistory: [Int: [Spectrum]] = [:]
@@ -194,6 +197,7 @@ final class ScopeModel: ObservableObject {
 
     /// Every channel's zero and gain correction, from the menu.
     func resetCalibration() {
+        fieldWrites &+= 1
         for index in settings.channels.indices { clearCalibration(index) }
         statusText = "Calibration cleared"
     }
@@ -201,6 +205,7 @@ final class ScopeModel: ObservableObject {
     /// One channel's, from the Reset under that channel.
     func resetCalibration(channel: Int) {
         guard settings.channels.indices.contains(channel) else { return }
+        fieldWrites &+= 1
         clearCalibration(channel)
         statusText = "CH\(channel + 1) calibration cleared"
     }

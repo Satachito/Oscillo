@@ -490,7 +490,7 @@ struct VerticalSection: View {
                 HStack(spacing: 6) {
                     Text("Bias").font(.caption)
                     Spacer(minLength: 6)
-                    VoltsField(volts: biasVolts)
+                    VoltsField(volts: biasVolts, discardToken: model.fieldWrites)
                     Text("V").font(.caption).foregroundStyle(.secondary)
                 }
                 Text("Where the front end holds this input with nothing on it. Drawn as a "
@@ -506,7 +506,10 @@ struct VerticalSection: View {
                     Button("Measure") { model.measureBias() }
                         .help("Ground all inputs first: what they read now is the bias.")
                         .disabled(!model.isConnected)
-                    Button("Mid rail") { biasVolts.wrappedValue = midRailVolts }
+                    Button("Mid rail") {
+                        model.fieldWrites &+= 1
+                        biasVolts.wrappedValue = midRailVolts
+                    }
                         .help("Writes \(Format.voltage(midRailVolts)), the input that reads mid "
                               + "scale: where a passive front end holds it.")
                 }
@@ -514,7 +517,7 @@ struct VerticalSection: View {
                 HStack(spacing: 6) {
                     Text("Applied").font(.caption)
                     Spacer(minLength: 6)
-                    VoltsField(volts: binding.appliedVolts)
+                    VoltsField(volts: binding.appliedVolts, discardToken: model.fieldWrites)
                     Text("V").font(.caption).foregroundStyle(.secondary)
                 }
                 Text("A known voltage on the input. Set gain measures the swing from the bias "
@@ -617,59 +620,52 @@ private struct TriggerLowPassControl: View {
     }
 }
 
-/// A slider with its value spelled out beside the title.
-/// A volts field you can type a decimal point into.
+/// A volts field that takes its number when it is done with: on Return, or
+/// when focus leaves it. The reading and the dotted line do not follow every
+/// keystroke on the way to 1.65.
 ///
-/// `TextField(value:format:)` parses and reformats on every keystroke, so the
-/// moment the point in 1.65 is typed the value is still 1, the field redraws
-/// itself as "1", and the character is gone — the number can never grow a
-/// fraction at all.
+/// What is typed is kept as a draft rather than parsed as it goes, so the
+/// point in "1." survives — `TextField(value:format:)` reparses on every
+/// keystroke and redraws "1." as "1", eating the point.
 ///
-/// So the two directions are kept apart. What is typed goes into the number as
-/// it is typed, but is never redrawn; the text is only rewritten when the
-/// number changes to something the text does not already say — Mid rail or
-/// Measure, which click a button and leave the field's focus where it was.
+/// A button that writes the number while a draft is open — Mid rail, Reset —
+/// has to win. Clicking one leaves the field's focus where it was, so the
+/// draft would otherwise be committed afterwards, over the button's value;
+/// `discardToken` changes with every such write and throws the draft away.
 private struct VoltsField: View {
     @Binding var volts: Double
+    var discardToken: Int
 
-    @State private var text = ""
+    @State private var draft: String?
     @FocusState private var isEditing: Bool
 
     private static let style = FloatingPointFormatStyle<Double>()
         .precision(.fractionLength(0...4))
 
     var body: some View {
-        TextField("", text: $text)
+        TextField("", text: Binding(get: { draft ?? Self.style.format(volts) },
+                                    set: { draft = $0 }))
             .multilineTextAlignment(.trailing)
             .frame(width: 80)
             .focused($isEditing)
-            .onAppear { text = Self.style.format(volts) }
-            .onChange(of: text) { typed in
-                // The text this field just drew for the number is not news.
-                guard typed != Self.style.format(volts),
-                      let value = Self.parse(typed) else { return }
-                volts = value
-            }
-            .onChange(of: volts) { value in
-                if Self.parse(text) != value { text = Self.style.format(value) }
-            }
-            .onSubmit { tidy() }
+            .onSubmit { commit() }
             .onChange(of: isEditing) { editing in
-                if !editing { tidy() }
+                if !editing { commit() }
             }
+            .onChange(of: discardToken) { _ in draft = nil }
+            .onChange(of: volts) { _ in draft = nil }
     }
 
-    private static func parse(_ text: String) -> Double? {
-        try? style.parseStrategy.parse(text)
-    }
-
-    /// Once somebody is done, "1." becomes "1", and an empty field shows the
-    /// number that is still in the settings rather than reading as a zero.
-    private func tidy() {
-        text = Self.style.format(volts)
+    /// Text that will not parse is a change of mind, not a zero: the number
+    /// that is still in the settings comes back.
+    private func commit() {
+        guard let text = draft else { return }
+        draft = nil
+        if let value = try? Self.style.parseStrategy.parse(text) { volts = value }
     }
 }
 
+/// A slider with its value spelled out beside the title.
 struct LabeledSlider: View {
     let title: String
     @Binding var value: Double
