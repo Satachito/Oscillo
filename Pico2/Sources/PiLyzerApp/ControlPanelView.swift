@@ -16,7 +16,7 @@ struct ControlPanelView: View {
                     triggerSection
                     verticalSections
                 case .spectrum:
-                    horizontal
+                    frequencySection
                     spectrumSection
                     verticalSections
                 case .logic:
@@ -59,9 +59,12 @@ struct ControlPanelView: View {
                 Stepper(value: $model.settings.averaging, in: 1...100) {
                     Text("Average \(model.settings.averaging)×")
                 }
-                Picker("Record", selection: $model.settings.recordLength) {
-                    ForEach(Preferences.recordLengths, id: \.self) { count in
-                        Text("\(count) pt").tag(count)
+                // The spectrum chooses the record from its span.
+                if model.settings.mode == .scope {
+                    Picker("Record", selection: $model.settings.recordLength) {
+                        ForEach(Preferences.recordLengths, id: \.self) { count in
+                            Text("\(count) pt").tag(count)
+                        }
                     }
                 }
                 Toggle("X/Y", isOn: $model.settings.showsXY)
@@ -153,6 +156,73 @@ struct ControlPanelView: View {
     @ViewBuilder private var verticalSections: some View {
         ForEach(model.availableAnalogChannels, id: \.self) { channel in
             VerticalSection(model: model, channel: channel)
+        }
+    }
+
+    /// The spectrum's horizontal controls, in its own terms. Span and
+    /// resolution write the same time per division and record length the
+    /// scope's controls do, so both modes are looking at one sweep, and the
+    /// scope shows the record a spectrum was made from.
+    private var frequencySection: some View {
+        let channels = max(model.enabledAnalogChannels.count, 1)
+        let capabilities = model.capabilities
+        let settings = model.settings
+        let reaches = { (span: Double, resolution: Double) in
+            ScopeSettings.spectrumRecord(span: span, resolution: resolution,
+                                         lengths: Preferences.recordLengths,
+                                         capabilities: capabilities, channels: channels) != nil
+        }
+        // Only what can be reached with the other setting as it is — plus the
+        // current choice, so the menu still names it when it no longer can.
+        var spans = ScopeSettings.spectrumSpans(capabilities: capabilities, channels: channels)
+            .filter { reaches($0, settings.spectrumResolution) }
+        if let span = settings.spectrum.spanHz, !spans.contains(span) { spans.append(span); spans.sort() }
+        var timebases = model.timebases.filter { time in
+            guard let span = settings.spectrum.spanHz else { return true }
+            return reaches(span, ScopeSettings.resolution(secondsPerDivision: time))
+        }
+        if !timebases.contains(settings.secondsPerDivision) { timebases.append(settings.secondsPerDivision) }
+
+        let fastest = 1 / capabilities.minimumSamplePeriod(channels: channels)
+        // Until an instrument has answered there is no plan, so say what the
+        // settings will ask for.
+        let rate = model.plan.recordSamples > 0 && model.plan.sampleRate > 0
+            ? model.plan.sampleRate
+            : min(Double(settings.recordLength) / (settings.secondsPerDivision
+                                                    * Double(ScopeSettings.horizontalDivisions)), fastest)
+        let nyquist = rate / 2
+
+        return Section("Frequency") {
+            Picker("Span", selection: Binding(
+                get: { model.settings.spectrum.spanHz },
+                set: { model.settings.setSpectrumSpan($0, lengths: Preferences.recordLengths,
+                                                      capabilities: capabilities, channels: channels) })) {
+                Text("Full · \(Format.frequency(nyquist))").tag(Double?.none)
+                ForEach(spans, id: \.self) { Text(Format.frequency($0)).tag(Double?.some($0)) }
+            }
+            Picker("Resolution", selection: Binding(
+                get: { model.settings.secondsPerDivision },
+                set: { model.settings.setSpectrumResolution(secondsPerDivision: $0,
+                                                            lengths: Preferences.recordLengths,
+                                                            capabilities: capabilities,
+                                                            channels: channels) })) {
+                ForEach(timebases.sorted(by: >), id: \.self) { time in
+                    Text(Format.frequency(ScopeSettings.resolution(secondsPerDivision: time))).tag(time)
+                }
+            }
+            Text("\(model.planDescription) · a sweep every "
+                 + Format.time(settings.secondsPerDivision * Double(ScopeSettings.horizontalDivisions)))
+                .font(.caption).foregroundStyle(.secondary)
+            if let span = settings.spectrum.spanHz, span > nyquist * (1 + 1e-9) {
+                Text("Drawn to \(Format.frequency(nyquist)): at this resolution, with "
+                     + "\(channels) channel\(channels == 1 ? "" : "s") sharing the converter, "
+                     + "the record does not reach \(Format.frequency(span)).")
+                    .font(.caption).foregroundStyle(Theme.trigger)
+            }
+            Text("Nothing filters the input before the converter, so a signal above "
+                 + "\(Format.frequency(nyquist)) — half the sample rate — folds back into the "
+                 + "span as a false peak.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 

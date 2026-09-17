@@ -77,16 +77,29 @@ public struct SpectrumSettings: Codable, Equatable, Sendable {
     public var logarithmicFrequency: Bool
     public var showsPeakMarkers: Bool
     public var harmonicCount: Int
+    /// The highest frequency drawn, or nil for everything up to half the
+    /// sample rate. Choosing one also picks the record that reaches it; see
+    /// `ScopeSettings.setSpectrumSpan`.
+    public var spanHz: Double?
 
     public init(window: SpectrumWindow = .hann, scale: SpectrumScale = .dBV,
                 averaging: Int = 4, logarithmicFrequency: Bool = true,
-                showsPeakMarkers: Bool = true, harmonicCount: Int = 5) {
+                showsPeakMarkers: Bool = true, harmonicCount: Int = 5, spanHz: Double? = nil) {
         self.window = window
         self.scale = scale
         self.averaging = averaging
         self.logarithmicFrequency = logarithmicFrequency
         self.showsPeakMarkers = showsPeakMarkers
         self.harmonicCount = harmonicCount
+        self.spanHz = spanHz
+    }
+
+    /// Where the frequency axis ends: the span, unless the record in hand does
+    /// not reach that far — more channels share the converter than when the
+    /// span was chosen, say — and then half its sample rate.
+    public func displayedTop(nyquist: Double) -> Double {
+        guard let spanHz, spanHz > 0 else { return nyquist }
+        return min(spanHz, nyquist)
     }
 }
 

@@ -62,8 +62,10 @@ struct SpectrumView: View {
         }
     }
 
+    /// The right-hand end of the axis: the span, or as far as the record goes.
+    private var top: Double { max(settings.displayedTop(nyquist: axis.nyquist), 1) }
+
     private func x(_ frequency: Double, width: CGFloat) -> CGFloat {
-        let top = max(axis.nyquist, 1)
         if settings.logarithmicFrequency {
             let bottom = max(axis.binWidth, 1)
             guard frequency > bottom else { return 0 }
@@ -101,18 +103,18 @@ struct SpectrumView: View {
         }
 
         var vertical = Path()
-        let nyquist = max(axis.nyquist, 1)
+        let top = self.top
         var marks: [Double] = []
         if settings.logarithmicFrequency {
             var decade = 1.0
-            while decade <= nyquist {
-                for multiplier in [1.0, 2.0, 5.0] where decade * multiplier <= nyquist {
+            while decade <= top {
+                for multiplier in [1.0, 2.0, 5.0] where decade * multiplier <= top {
                     marks.append(decade * multiplier)
                 }
                 decade *= 10
             }
         } else {
-            marks = (1..<10).map { nyquist * Double($0) / 10 }
+            marks = (1..<10).map { top * Double($0) / 10 }
         }
         for mark in marks {
             let position = x(mark, width: size.width)
@@ -134,6 +136,8 @@ struct SpectrumView: View {
             points.reserveCapacity(spectrum.count)
             for index in 1..<spectrum.count {
                 let frequency = Double(index) * spectrum.binWidth
+                // One bin past the span, so the trace runs to the edge.
+                if frequency > top + spectrum.binWidth { break }
                 let level = spectrum.value(at: index, scale: settings.scale, fullScale: entry.fullScale)
                 points.append(CGPoint(x: x(frequency, width: size.width), y: y(level, height: size.height)))
             }
@@ -148,7 +152,9 @@ struct SpectrumView: View {
         let limit = model.spectra.count > 1 ? 2 : 5
         for entry in model.spectra {
             let colour = model.spectra.count > 1 ? Theme.channelColor(entry.channel) : Theme.trigger
-            for peak in entry.spectrum.peaks(limit: limit) {
+            // The strongest of what is on screen, not of the whole record.
+            for peak in entry.spectrum.peaks(limit: entry.spectrum.count)
+                .filter({ $0.frequency <= top }).prefix(limit) {
                 let position = CGPoint(x: x(peak.frequency, width: size.width),
                                        y: y(Spectrum.convert(amplitude: peak.amplitude,
                                                              scale: settings.scale,
