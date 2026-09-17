@@ -549,8 +549,12 @@ private struct TriggerLowPassControl: View {
 /// `TextField(value:format:)` parses and reformats on every keystroke, so the
 /// moment the point in 1.65 is typed the value is still 1, the field redraws
 /// itself as "1", and the character is gone — the number can never grow a
-/// fraction at all. This holds the typed text while the field has focus and
-/// converts it on the way out.
+/// fraction at all.
+///
+/// So the two directions are kept apart. What is typed goes into the number as
+/// it is typed, but is never redrawn; the text is only rewritten when the
+/// number changes to something the text does not already say — Mid rail or
+/// Measure, which click a button and leave the field's focus where it was.
 private struct VoltsField: View {
     @Binding var volts: Double
 
@@ -565,22 +569,29 @@ private struct VoltsField: View {
             .multilineTextAlignment(.trailing)
             .frame(width: 80)
             .focused($isEditing)
-            .onSubmit { commit() }
             .onAppear { text = Self.style.format(volts) }
-            .onChange(of: isEditing) { editing in
-                if !editing { commit() }
+            .onChange(of: text) { typed in
+                // The text this field just drew for the number is not news.
+                guard typed != Self.style.format(volts),
+                      let value = Self.parse(typed) else { return }
+                volts = value
             }
-            // Measure and Mid rail write the number from outside the field.
-            // Follow them, but never over somebody who is mid-word.
             .onChange(of: volts) { value in
-                if !isEditing { text = Self.style.format(value) }
+                if Self.parse(text) != value { text = Self.style.format(value) }
+            }
+            .onSubmit { tidy() }
+            .onChange(of: isEditing) { editing in
+                if !editing { tidy() }
             }
     }
 
-    /// Text that will not parse is a change of mind, not a zero: put the number
-    /// that is still in the settings back on screen.
-    private func commit() {
-        if let value = try? Self.style.parseStrategy.parse(text) { volts = value }
+    private static func parse(_ text: String) -> Double? {
+        try? style.parseStrategy.parse(text)
+    }
+
+    /// Once somebody is done, "1." becomes "1", and an empty field shows the
+    /// number that is still in the settings rather than reading as a zero.
+    private func tidy() {
         text = Self.style.format(volts)
     }
 }
