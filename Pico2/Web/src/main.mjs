@@ -344,6 +344,8 @@ function calibrationButtons() {
   const ready = !!frame && frame.kind === 'scope';
   for (const button of document.querySelectorAll('[data-zero], [data-gain]')) button.disabled = !ready;
 }
+// Measures decoded items in the type they are shown in.
+const chipText = Object.assign(document.createElement('canvas').getContext('2d'), { font: '10px ui-monospace, SFMono-Regular, Menlo, monospace' });
 function renderFrame() {
   calibrationButtons();
   plot.update(frame, settings, caps(), frontEnd());
@@ -425,9 +427,15 @@ function renderFrame() {
     $('decode-title').textContent = `${settings.decoder} · ${items.length.toLocaleString()} items`;
     $('decoded').replaceChildren();
     if (!items.length) { const el = document.createElement('span'); el.className = 'decode-empty'; el.textContent = 'Nothing decoded from this record yet.'; $('decoded').append(el); }
-    // Each item says when it happened, counted from the trigger.
+    // In columns of one width, as on the Mac, each wide enough for "0x72 'r'",
+    // so the items stay put while a live record redraws under them; one that
+    // needs more takes whole cells. Each says when it happened, from the trigger.
+    const gap = 6, padding = 14, cell = Math.ceil(chipText.measureText("0x72 'r'").width) + padding;
+    $('decoded').style.setProperty('--cell', `${cell}px`);
     for (const item of items.slice(0, 2000)) {
       const el = document.createElement('span'); el.className = `byte${item.kind === 'error' ? ' bad' : item.kind === 'control' ? ' control' : ''}`;
+      const cells = Math.max(1, Math.ceil((chipText.measureText(item.text).width + padding + gap) / (cell + gap)));
+      if (cells > 1) el.style.gridColumn = `span ${cells}`;
       el.textContent = item.text; el.title = fmt((item.start - frame.triggerIndex) * frame.period, 's'); $('decoded').append(el);
     }
   }
