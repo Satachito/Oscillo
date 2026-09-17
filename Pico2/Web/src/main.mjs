@@ -2,10 +2,10 @@ import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
 import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
-import { fmt, csv, decodeUART, spectrumCsv, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
+import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
-const NUMERIC_CONTROLS = { 'spectrum-averaging': 'spectrumAveraging', 'spectrum-harmonics': 'spectrumHarmonics', 'logic-trigger': 'logicTrigger', 'logic-source': 'logicSource', 'logic-slope': 'logicSlope', 'logic-position': 'logicPosition', averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+const NUMERIC_CONTROLS = { 'spi-clock': 'spiClock', 'spi-data': 'spiData', 'spi-select': 'spiSelect', 'i2c-clock': 'i2cClock', 'i2c-data': 'i2cData', 'spectrum-averaging': 'spectrumAveraging', 'spectrum-harmonics': 'spectrumHarmonics', 'logic-trigger': 'logicTrigger', 'logic-source': 'logicSource', 'logic-slope': 'logicSlope', 'logic-position': 'logicPosition', averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
 // Sliders show their value beside the label, as the Mac's LabeledSlider does.
 const SLIDER_READOUTS = {
   position: v => `${Math.round(v * 100)} %`, 'logic-position': v => `${Math.round(v * 100)} %`,
@@ -14,8 +14,8 @@ const SLIDER_READOUTS = {
 function showSliderReadouts() {
   for (const [id, format] of Object.entries(SLIDER_READOUTS)) $(`${id}-label`).value = format(settings[NUMERIC_CONTROLS[id]]);
 }
-const STRING_CONTROLS = [['spectrum-window', 'spectrumWindow'], ['spectrum-scale', 'spectrumScale']];
-const CHECK_CONTROLS = [['spectrum-log', 'spectrumLog'], ['spectrum-peaks', 'spectrumPeaks'], ['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart'], ['signals-enabled', 'signalsEnabled']];
+const STRING_CONTROLS = [['decoder', 'decoder'], ['uart-parity', 'uartParity'], ['spectrum-window', 'spectrumWindow'], ['spectrum-scale', 'spectrumScale']];
+const CHECK_CONTROLS = [['spectrum-log', 'spectrumLog'], ['spectrum-peaks', 'spectrumPeaks'], ['test-enabled', 'testEnabled'], ['xy', 'xy'], ['spi-uses-select', 'spiUsesSelect'], ['spi-idle-high', 'spiIdleHigh'], ['spi-second-edge', 'spiSecondEdge'], ['signals-enabled', 'signalsEnabled']];
 const STORAGE_KEY = 'pilyzer.settings.v1';
 // The front panel comes back the way it was left, the per-channel zero
 // included: it describes the wiring — the bias a front end adds — rather than
@@ -46,6 +46,8 @@ function loadSettings() {
     else if (accept(saved[key], value)) defaults[key] = saved[key];
   }
   if (!['scope', 'spectrum', 'logic', 'meter'].includes(defaults.mode)) defaults.mode = 'scope';
+  // The UART switch came before the decoder menu; a saved one still decodes.
+  if (saved.uart === true && saved.decoder === undefined) defaults.decoder = 'UART';
   return defaults;
 }
 function saveSettings() {
@@ -298,6 +300,13 @@ function synchronize() {
   $('normal-hint').hidden = settings.trigger !== 2;
   $('logger-controls').hidden = !meter;
   $('channel-controls').hidden = logic; $('logic-controls').hidden = !logic;
+  // Decode, as on the Mac: a section of its own, showing only what the chosen protocol needs.
+  $('decode-controls').hidden = !logic;
+  $('uart-controls').hidden = settings.decoder !== 'UART'; $('spi-controls').hidden = settings.decoder !== 'SPI'; $('i2c-controls').hidden = settings.decoder !== 'I²C';
+  $('spi-select-row').hidden = !settings.spiUsesSelect;
+  for (const [id, key] of [['uart-line', 'uartLine'], ['spi-clock', 'spiClock'], ['spi-data', 'spiData'], ['spi-select', 'spiSelect'], ['i2c-clock', 'i2cClock'], ['i2c-data', 'i2cData']]) $(id).value = settings[key];
+  const perBit = settings.logicRate / settings.uartBaud;
+  $('uart-advice').textContent = perBit < 4 ? `${perBit.toFixed(1)} samples a bit — sample faster for a reliable decode.` : `${Math.round(perBit)} samples a bit.`;
   $('xy').disabled = settings.mode !== 'scope' || active.length < 2;
   $('test-controls').hidden = instrument && !(caps().flags & 2);
   $('test-frequency').disabled = !settings.testEnabled;
@@ -347,6 +356,7 @@ function renderFrame() {
     $('legend').append(el);
   }
   if (settings.mode === 'logic') $('legend').textContent = 'D0–D7 · 3.3 V logic';
+  if (settings.mode === 'meter') $('legend').textContent = frame?.kind === 'meter' ? `logging every ${fmt(frame.interval, 's')} · min/mean/max` : '—';
   if (settings.mode === 'spectrum') {
     for (const el of $('legend').children) el.textContent = el.textContent.split(' ')[0];
     const resolution = plot.spectra?.[0]?.resolution;
@@ -399,14 +409,27 @@ function renderFrame() {
   else if (frame?.kind === 'meter') {
     $('meter-values').replaceChildren(...frame.values.map((value, i) => { const el = document.createElement('div'); el.className = 'meter-value'; el.style.color = COLORS[i]; const label = document.createElement('small'); label.textContent = `CH${i + 1}`; el.append(label, document.createTextNode(fmt(value, 'V', 4))); return el; }));
     const hint = document.createElement('div'); hint.className = 'measurement-placeholder'; hint.textContent = 'Meter readings are DC coupled. Ground the inputs before checking offsets.'; $('measurements').append(hint);
+  } else if (frame?.kind === 'logic') {
+    // A card an input, as on the Mac: its rate and duty, or which way it sits idle.
+    const activity = logicActivity(frame.samples, frame.period, caps().logicChannels);
+    $('measurements').style.setProperty('--cards', 4);
+    for (const a of activity) addCard(`D${a.channel}`, COLORS[a.channel], a.idle
+      ? [['State', a.idleHigh ? 'idle high' : 'idle low']]
+      : [['Frequency', fmt(a.frequency, 'Hz')], ['Duty', `${Math.round(a.duty * 100)} %`]]);
   } else {
-    const el = document.createElement('div'); el.className = 'measurement-placeholder'; el.textContent = frame?.kind === 'logic' ? 'Digital inputs D0–D7 · enable UART decode to inspect a serial signal.' : 'Measurements appear with your first capture.'; $('measurements').append(el);
+    const el = document.createElement('div'); el.className = 'measurement-placeholder'; el.textContent = 'Measurements appear with your first capture.'; $('measurements').append(el);
   }
-  $('decode-panel').hidden = !(frame?.kind === 'logic' && settings.uart);
+  $('decode-panel').hidden = !(frame?.kind === 'logic' && settings.decoder !== 'None');
   if (!$('decode-panel').hidden) {
-    const decoded = decodeUART(frame.samples, frame.period, settings.uartLine, settings.uartBaud);
-    $('decode-advice').textContent = decoded.advice; $('decoded').replaceChildren();
-    for (const item of decoded.result) { const el = document.createElement('span'); el.className = 'byte' + (item.error ? ' bad' : ''); el.textContent = item.value.toString(16).padStart(2, '0').toUpperCase(); el.title = `${fmt(item.time, 's')} · ${item.error ? 'framing error' : item.value >= 32 && item.value < 127 ? String.fromCharCode(item.value) : item.value}`; $('decoded').append(el); }
+    const items = decodeLogic(frame.samples, frame.period, settings);
+    $('decode-title').textContent = `${settings.decoder} · ${items.length.toLocaleString()} items`;
+    $('decoded').replaceChildren();
+    if (!items.length) { const el = document.createElement('span'); el.className = 'decode-empty'; el.textContent = 'Nothing decoded from this record yet.'; $('decoded').append(el); }
+    // Each item says when it happened, counted from the trigger.
+    for (const item of items.slice(0, 2000)) {
+      const el = document.createElement('span'); el.className = `byte${item.kind === 'error' ? ' bad' : item.kind === 'control' ? ' control' : ''}`;
+      el.textContent = item.text; el.title = fmt((item.start - frame.triggerIndex) * frame.period, 's'); $('decoded').append(el);
+    }
   }
   document.querySelectorAll('[data-zero]').forEach(el => { el.disabled = !frame || frame.kind !== 'scope'; });
 }
@@ -495,7 +518,8 @@ for (const el of document.querySelectorAll('[data-mode]')) el.onclick = async ()
 for (let i = 0; i < 8; i++) {
   const label = document.createElement('label'), input = document.createElement('input'); input.type = 'checkbox'; input.checked = true;
   input.onchange = () => { if (input.checked) settings.logicEnabled |= 1 << i; else settings.logicEnabled &= ~(1 << i); saveSettings(); renderFrame(); };
-  label.append(input, document.createTextNode(`D${i}`)); $('logic-lines').append(label); $('uart-line').add(option(i, `D${i}`));
+  label.append(input, document.createTextNode(`D${i}`)); $('logic-lines').append(label);
+  for (const select of document.querySelectorAll('[data-logic-line]')) select.add(option(i, `D${i}`));
 }
 if (navigator.usb) navigator.usb.addEventListener('disconnect', event => {
   if (instrument && !instrument.demo && event.device === instrument.transport.device) {

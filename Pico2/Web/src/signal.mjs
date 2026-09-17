@@ -176,17 +176,91 @@ export function spectrumQuality(s, harmonicCount) {
     sinad, enob: (sinad - 1.76) / 6.02,
   };
 }
-export function decodeUART(samples, period, line = 4, baud = 115200) {
-  const bit = 1 / baud / period, result = [];
-  if (bit < 4) return { result, advice: 'Increase the logic sample rate: UART needs at least 4 samples per bit.' };
-  const high = i => !!(samples[Math.min(Math.round(i), samples.length - 1)] & (1 << line));
-  for (let i = 1; i + 10 * bit < samples.length; i++) {
-    if (!high(i - 1) || high(i) || high(i + bit * .5)) continue;
-    let value = 0; for (let b = 0; b < 8; b++) if (high(i + (1.5 + b) * bit)) value |= 1 << b;
-    result.push({ time: i * period, value, error: !high(i + 9.5 * bit) }); i += Math.floor(9.5 * bit);
-    if (result.length >= 512) break;
+// Per channel, as the Mac summarises a logic record: how often it changes, its
+// rate from the rising edges when it looks periodic, and the share of samples
+// it spent high. A channel that never moves is idle, high or low.
+export function logicActivity(samples, period, channels = 8) {
+  if (!samples.length) return [];
+  return Array.from({ length: channels }, (_, channel) => {
+    const mask = 1 << channel; let previous = !!(samples[0] & mask), high = previous ? 1 : 0, transitions = 0; const rising = [];
+    for (let i = 1; i < samples.length; i++) {
+      const level = !!(samples[i] & mask); if (level) high++;
+      if (level !== previous) { transitions++; if (level) rising.push(i); previous = level; }
+    }
+    let frequency = null;
+    if (rising.length >= 2 && period > 0) { const cycle = (rising.at(-1) - rising[0]) / (rising.length - 1) * period; if (cycle > 0) frequency = 1 / cycle; }
+    return { channel, transitions, frequency, duty: high / samples.length, idle: transitions === 0, idleHigh: !!(samples[0] & mask) };
+  });
+}
+export const DECODERS = ['None', 'UART', 'SPI', 'I²C'];
+const printable = value => { const hex = `0x${value.toString(16).toUpperCase().padStart(2, '0')}`; return value >= 0x20 && value < 0x7f ? `${hex} '${String.fromCharCode(value)}'` : hex; };
+// Decodes a logic record the way the macOS app does, into items of kind
+// 'data', 'control' or 'error', each with the samples it spans.
+export function decodeLogic(samples, period, settings) {
+  const n = samples.length; if (n < 2) return [];
+  const at = (i, mask) => !!(samples[Math.min(Math.max(i, 0), n - 1)] & mask);
+  const items = [];
+  if (settings.decoder === 'UART') {
+    const baud = settings.uartBaud; if (!(baud > 0) || !(period > 0)) return [];
+    const perBit = 1 / (baud * period);
+    if (perBit < 2) return [{ start: 0, end: n - 1, text: `sample rate too low for ${baud} baud`, kind: 'error' }];
+    const mask = 1 << settings.uartLine, bits = 8, parity = settings.uartParity;
+    for (let i = 1; i < n - 1;) {
+      if (!at(i - 1, mask) || at(i, mask)) { i++; continue; }
+      const frameEnd = i + (1 + bits + (parity === 'None' ? 0 : 1) + 1) * perBit;
+      if (Math.floor(frameEnd) >= n) break;
+      // Bits are read in the middle, where the line has settled.
+      let value = 0, ones = 0;
+      for (let bit = 0; bit < bits; bit++) if (at(Math.round(i + perBit * (bit + 1.5)), mask)) { value |= 1 << bit; ones++; }
+      let valid = true, offset = bits + 1.5;
+      if (parity !== 'None') { if (at(Math.round(i + perBit * offset), mask)) ones++; valid = parity === 'Even' ? ones % 2 === 0 : ones % 2 === 1; offset++; }
+      const stop = at(Math.round(i + perBit * offset), mask), end = Math.floor(frameEnd);
+      items.push(!stop ? { start: i, end, text: 'framing error', kind: 'error' }
+        : !valid ? { start: i, end, text: `${printable(value)} parity`, kind: 'error' }
+        : { start: i, end, text: printable(value), kind: 'data' });
+      i = end;
+    }
+  } else if (settings.decoder === 'SPI') {
+    const clock = 1 << settings.spiClock, data = 1 << settings.spiData, select = settings.spiUsesSelect ? 1 << settings.spiSelect : 0;
+    // With CPHA = 0 the data is read on the first clock edge away from idle, and with CPHA = 1 on the second.
+    const sampleRising = settings.spiIdleHigh === settings.spiSecondEdge;
+    let value = 0, bits = 0, start = 0, previous = !!(samples[0] & clock);
+    for (let i = 1; i < n; i++) {
+      const sample = samples[i];
+      if (select && sample & select) {
+        if (bits > 0) items.push({ start, end: i, text: `${printable(value)} (${bits} bits)`, kind: 'error' });
+        bits = 0; value = 0; previous = !!(sample & clock); continue;
+      }
+      const level = !!(sample & clock), edge = level !== previous && level === sampleRising; previous = level;
+      if (!edge) continue;
+      if (bits === 0) start = i;
+      value = (value << 1) | (sample & data ? 1 : 0); bits++;
+      if (bits === 8) { items.push({ start, end: i, text: printable(value), kind: 'data' }); bits = 0; value = 0; }
+    }
+  } else if (settings.decoder === 'I²C') {
+    const clock = 1 << settings.i2cClock, data = 1 << settings.i2cData;
+    let previous = samples[0], inFrame = false, bits = 0, value = 0, start = 0, address = false;
+    for (let i = 1; i < n; i++) {
+      const sample = samples[i], clockHigh = !!(sample & clock), clockWasHigh = !!(previous & clock), dataHigh = !!(sample & data), dataWasHigh = !!(previous & data);
+      // START and STOP are the only times the data line moves while the clock is high.
+      if (clockHigh && clockWasHigh && dataWasHigh && !dataHigh) { items.push({ start: i, end: i, text: 'START', kind: 'control' }); inFrame = true; address = true; bits = 0; value = 0; }
+      else if (clockHigh && clockWasHigh && !dataWasHigh && dataHigh) { items.push({ start: i, end: i, text: 'STOP', kind: 'control' }); inFrame = false; bits = 0; value = 0; }
+      else if (inFrame && clockHigh && !clockWasHigh) {
+        if (bits === 0) start = i;
+        if (bits < 8) { value = (value << 1) | (dataHigh ? 1 : 0); bits++; }
+        else {
+          const ack = !dataHigh;
+          const text = address
+            ? `addr 0x${(value >> 1).toString(16).toUpperCase().padStart(2, '0')} ${value & 1 ? 'read' : 'write'} ${ack ? 'ACK' : 'NAK'}`
+            : `${printable(value)} ${ack ? 'ACK' : 'NAK'}`;
+          address = false;
+          items.push({ start, end: i, text, kind: ack ? 'data' : 'error' }); bits = 0; value = 0;
+        }
+      }
+      previous = sample;
+    }
   }
-  return { result, advice: 'UART · 8 data bits · no parity · 1 stop bit' };
+  return items;
 }
 export function csv(frame) {
   if (!frame) return '';

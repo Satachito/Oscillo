@@ -4,7 +4,7 @@ import { resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpect
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/instrument.mjs';
 import { HttpTransport, available } from '../src/net.mjs';
-import { measure, spectrum, spectrumCsv, csv, decodeUART, WINDOWS, averageSpectra, spectrumQuality, levelOf } from '../src/signal.mjs';
+import { measure, spectrum, spectrumCsv, csv, decodeLogic, logicActivity, WINDOWS, averageSpectra, spectrumQuality, levelOf } from '../src/signal.mjs';
 const caps = demoCaps;
 const afe = ranges(1), bare = ranges(0);
 for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, scale and 97-cycle rate floor`, () => {
@@ -153,8 +153,8 @@ test('CSV contains physical CH3 label and time relative to trigger', () => {
 test('UART decode samples bit centres and catches framing errors', () => {
   const bits = [1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1]; // A5, LSB first
   const samples = Uint8Array.from(bits.flatMap(bit => Array(16).fill(bit ? 16 : 0)));
-  const decoded = decodeUART(samples, 1 / (115200 * 16));
-  assert.equal(decoded.result[0].value, 0xa5); assert.equal(decoded.result[0].error, false);
+  const decoded = decodeLogic(samples, 1 / (115200 * 16), { ...makeSettings(), decoder: 'UART', uartLine: 4, uartBaud: 115200 });
+  assert.ok(decoded[0].text.startsWith('0xA5')); assert.equal(decoded[0].kind, 'data');
 });
 test('normal trigger waiting can be stopped without a frame', async () => {
   const frames = [], engine = new Acquisition(frame => frames.push(frame), () => {});
@@ -553,4 +553,49 @@ test('dBV is referenced to one volt RMS', () => {
 test('averaging spectra in power leaves a steady tone where it was', () => {
   const averaged = averageSpectra(Array.from({ length: 8 }, () => spectrum(tone(1, 64), 1 / toneRate, 'Hann')));
   assert.ok(Math.abs(averaged.amplitudes[64] - 1) < .01);
+});
+
+// The same cases as the macOS app's LogicTests.
+const logicDecoder = extra => ({ ...makeSettings(), ...extra });
+const uartLevels = (bytes, perBit, line) => {
+  const levels = Array(perBit * 4).fill(true);
+  for (const byte of bytes) for (const bit of [false, ...Array.from({ length: 8 }, (_, i) => !!(byte & (1 << i))), true]) levels.push(...Array(perBit).fill(bit));
+  levels.push(...Array(perBit * 4).fill(true));
+  return Uint8Array.from(levels, level => level ? 1 << line : 0);
+};
+test('a UART line decodes back to the bytes that were sent', () => {
+  const message = [...'Pi2'].map(ch => ch.charCodeAt(0));
+  const items = decodeLogic(uartLevels(message, 10, 4), 1 / 1152000, logicDecoder({ decoder: 'UART', uartLine: 4, uartBaud: 115200 })).filter(i => i.kind === 'data');
+  assert.equal(items.length, message.length);
+  items.forEach((item, i) => assert.ok(item.text.startsWith(`0x${message[i].toString(16).toUpperCase()}`)));
+});
+test('a UART decode below two samples a bit says so instead of guessing', () => {
+  const items = decodeLogic(uartLevels([0x55], 10, 0), 1 / 10000, logicDecoder({ decoder: 'UART', uartLine: 0, uartBaud: 115200 }));
+  assert.equal(items.length, 1); assert.equal(items[0].kind, 'error');
+});
+test('SPI bytes come back from clock and data lines', () => {
+  const levels = Array(8).fill(1 << 2);
+  for (const byte of [0xa5, 0x3c]) for (let bit = 7; bit >= 0; bit--) { const data = byte & (1 << bit) ? 1 << 1 : 0; levels.push(data, data | 1); }
+  levels.push(...Array(8).fill(1 << 2));
+  const items = decodeLogic(Uint8Array.from(levels), 1e-6, logicDecoder({ decoder: 'SPI', spiClock: 0, spiData: 1, spiSelect: 2, spiUsesSelect: true, spiIdleHigh: false, spiSecondEdge: false })).filter(i => i.kind === 'data');
+  assert.equal(items.length, 2); assert.ok(items[0].text.startsWith('0xA5')); assert.ok(items[1].text.startsWith('0x3C'));
+});
+test('an I²C transfer decodes to its address, its data and its markers', () => {
+  const levels = [], emit = (scl, sda, times = 2) => levels.push(...Array(times).fill((scl ? 1 : 0) | (sda ? 2 : 0)));
+  const bit = value => { emit(false, value); emit(true, value); };
+  emit(true, true, 4); emit(true, false, 2);
+  for (let i = 7; i >= 0; i--) bit(!!(0x48 & (1 << i))); bit(false);
+  for (let i = 7; i >= 0; i--) bit(!!(0x2a & (1 << i))); bit(false);
+  emit(true, false, 2); emit(true, true, 4);
+  const items = decodeLogic(Uint8Array.from(levels), 1e-6, logicDecoder({ decoder: 'I²C', i2cClock: 0, i2cData: 1 }));
+  assert.ok(items.some(i => i.text === 'START')); assert.ok(items.some(i => i.text === 'STOP'));
+  assert.ok(items.some(i => i.text.includes('addr 0x24') && i.text.includes('write')));
+  assert.ok(items.some(i => i.text.startsWith('0x2A')));
+});
+test('channel activity finds the rate of a square wave and notices a dead input', () => {
+  const activity = logicActivity(Uint8Array.from({ length: 1000 }, (_, i) => Math.floor(i / 10) % 2), 1e-6);
+  assert.ok(Math.abs(activity[0].frequency - 50000) < 500);
+  assert.ok(Math.abs(activity[0].duty - .5) < .02);
+  assert.equal(activity[1].idle, true);
+  assert.equal(activity[0].transitions, 99);
 });
