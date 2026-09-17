@@ -5,7 +5,15 @@ import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, trigger
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
-const NUMERIC_CONTROLS = { averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+const NUMERIC_CONTROLS = { 'logic-trigger': 'logicTrigger', 'logic-source': 'logicSource', 'logic-slope': 'logicSlope', 'logic-position': 'logicPosition', averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+// Sliders show their value beside the label, as the Mac's LabeledSlider does.
+const SLIDER_READOUTS = {
+  position: v => `${Math.round(v * 100)} %`, 'logic-position': v => `${Math.round(v * 100)} %`,
+  level: v => fmt(v, 'V'), hysteresis: v => `${(v * 100).toFixed(1)} %`,
+};
+function showSliderReadouts() {
+  for (const [id, format] of Object.entries(SLIDER_READOUTS)) $(`${id}-label`).value = format(settings[NUMERIC_CONTROLS[id]]);
+}
 const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart'], ['signals-enabled', 'signalsEnabled']];
 const STORAGE_KEY = 'pilyzer.settings.v1';
 // The front panel comes back the way it was left, the per-channel zero
@@ -47,7 +55,7 @@ function saveSettings() {
 function applyControls() {
   for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) $(id).value = settings[key];
   for (const [id, key] of CHECK_CONTROLS) $(id).checked = settings[key];
-  $('position-label').value = `${Math.round(settings.position * 100)} %`;
+  showSliderReadouts();
   $('logic-lines').querySelectorAll('input').forEach((input, i) => { input.checked = !!(settings.logicEnabled & (1 << i)); });
 }
 let settings = loadSettings(), instrument = null, frame = null, connecting = false;
@@ -259,17 +267,28 @@ function synchronize() {
   if (!allowed.includes(settings.timebase)) settings.timebase = allowed.find(v => v >= settings.timebase) || allowed.at(-1);
   options('timebase', allowed.map(v => [v, fmt(v, 's')]), settings.timebase);
   const logic = settings.mode === 'logic', meter = settings.mode === 'meter';
-  options('source', (logic ? Array.from({ length: caps().logicChannels }, (_, i) => i) : active).map(i => [i, `${logic ? 'D' : 'CH'}${logic ? i : i + 1}`]), logic ? settings.logicSource : settings.source);
+  options('source', active.map(i => [i, `CH${i + 1}`]), settings.source);
+  options('logic-source', Array.from({ length: caps().logicChannels }, (_, i) => [i, `D${i}`]), settings.logicSource);
+  // The level slider spans what the source channel reads, as on the Mac.
+  const levelScale = scaleFor(settings, caps(), frontEnd(), settings.source);
+  $('level').min = Math.min(levelScale.low, levelScale.high); $('level').max = Math.max(levelScale.low, levelScale.high);
+  $('level').step = 'any'; $('level').value = settings.level;
+  showSliderReadouts();
   $('active-count').textContent = `${active.length} channel${active.length === 1 ? '' : 's'} enabled`;
   $('max-rate').replaceChildren(document.createTextNode(fmt(caps().clock / caps().minCycles / Math.max(active.length, 1), 'Sa/s') + ' '), Object.assign(document.createElement('small'), { textContent: '/ channel max' }));
   const spectrumMode = settings.mode === 'spectrum';
   $('horizontal-controls').hidden = logic || meter || spectrumMode; $('frequency-controls').hidden = !spectrumMode;
   $('record').value = settings.record;
   if (spectrumMode) frequencyControls(active.length, allowed);
-  $('trigger-controls').hidden = meter; $('analog-trigger-extra').hidden = logic;
+  // The Mac shows trigger controls with the scope only; logic has its own.
+  $('trigger-controls').hidden = settings.mode !== 'scope';
+  $('analog-acquisition').hidden = settings.mode !== 'scope' && !spectrumMode; $('record-row').hidden = settings.mode !== 'scope';
+  $('lpf-hint').hidden = !settings.lpf;
+  $('lpf-hint').textContent = instrument && !(caps().flags & 8) ? 'Trigger LPF requires firmware 1.2 or later.' : 'LPF affects trigger timing; the trace is unchanged.';
+  $('normal-hint').hidden = settings.trigger !== 2;
   $('logger-controls').hidden = !meter;
   $('channel-controls').hidden = logic; $('logic-controls').hidden = !logic;
-  $('level').disabled = logic; $('xy').disabled = settings.mode !== 'scope' || active.length < 2;
+  $('xy').disabled = settings.mode !== 'scope' || active.length < 2;
   $('test-controls').hidden = instrument && !(caps().flags & 2);
   $('test-frequency').disabled = !settings.testEnabled;
   // Every board has one, but not on the same pins: a PL2407AFE switches its
@@ -318,7 +337,7 @@ function renderFrame() {
     $('legend').append(el);
   }
   if (settings.mode === 'logic') $('legend').textContent = 'D0–D7 · 3.3 V logic';
-  $('trigger-summary').textContent = settings.mode === 'meter' ? 'Logging all inputs · min/mean/max a point' : `Trigger: ${['Free run', 'Auto', 'Normal'][settings.trigger]}${settings.mode === 'logic' ? ` · D${settings.logicSource}` : ` · CH${settings.source + 1}`}${settings.lpf && settings.mode !== 'logic' ? ` · LPF ${fmt(settings.lpf, 'Hz')}` : ''}`;
+  $('trigger-summary').textContent = settings.mode === 'meter' ? 'Logging all inputs · min/mean/max a point' : `Trigger: ${['Free', 'Auto', 'Normal'][settings.mode === 'logic' ? settings.logicTrigger : settings.trigger]}${settings.mode === 'logic' ? ` · D${settings.logicSource}` : ` · CH${settings.source + 1}`}${settings.lpf && settings.mode !== 'logic' ? ` · LPF ${fmt(settings.lpf, 'Hz')}` : ''}`;
   $('timing').textContent = frame?.period ? `${fmt(1 / frame.period, 'Sa/s')} · ${frame.count.toLocaleString()} points${frame.decimation > 1 ? ` · ${frame.decimation}× decimation` : ''}` : frame?.kind === 'meter' ? logSummary(frame) : '— Sa/s · — points';
   if (settings.mode === 'meter') $('log-span').textContent = frame?.kind === 'meter' && frame.history.length ? `${frame.history.length} PT · ${fmt(frame.history.at(-1).time, 's').toUpperCase()}` : 'EMPTY';
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
@@ -326,7 +345,8 @@ function renderFrame() {
   $('measurements').replaceChildren();
   const cursorCard = frame?.kind === 'scope' && settings.mode === 'scope' && cursors.enabled;
   $('measurements').style.setProperty('--cards', Math.max(3, (frame?.kind === 'scope' ? frame.traces.length : 0) + (cursorCard ? 1 : 0)));
-  if (frame?.kind === 'scope') for (const trace of frame.traces) {
+  if (frame?.kind === 'scope') {
+  for (const trace of frame.traces) {
     const card = document.createElement('article'); card.className = 'measurement'; card.style.setProperty('--channel-color', COLORS[trace.index]);
     const title = document.createElement('h2'); title.innerHTML = `<i></i> CHANNEL ${trace.index + 1}`; card.append(title);
     const table = document.createElement('table');
@@ -344,6 +364,7 @@ function renderFrame() {
     const table = document.createElement('table'), span = Math.abs(cursors.b - cursors.a) * frame.count * frame.period;
     for (const [label, value] of [['Δt', fmt(span, 's')], ['1/Δt', span > 0 ? fmt(1 / span, 'Hz') : '—']]) { const row = table.insertRow(); row.insertCell().textContent = label; const td = row.insertCell(); td.className = 'value'; td.textContent = value; }
     card.append(table); $('measurements').append(card);
+  }
   }
   else if (frame?.kind === 'meter') {
     $('meter-values').replaceChildren(...frame.values.map((value, i) => { const el = document.createElement('div'); el.className = 'meter-value'; el.style.color = COLORS[i]; const label = document.createElement('small'); label.textContent = `CH${i + 1}`; el.append(label, document.createTextNode(fmt(value, 'V', 4))); return el; }));
@@ -428,15 +449,13 @@ for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) {
     // Points logged at one interval cannot share a time axis with points logged
     // at another, so changing it starts a new log.
     if (key === 'logInterval' && value !== settings[key]) { acquisition.resetLog(); frame = null; }
-    settings[key] = value; $('position-label').value = `${Math.round(settings.position * 100)} %`; synchronize(); changed();
+    settings[key] = value; synchronize(); changed();
   });
 }
-// The trigger position only reaches the instrument on the next capture, so the
-// drag has nothing to redraw — but the reading should still follow the thumb.
-$('position').addEventListener('input', () => {
-  $('position-label').value = `${Math.round(Number($('position').value) * 100)} %`;
-});
-$('source').onchange = () => { settings[settings.mode === 'logic' ? 'logicSource' : 'source'] = Number($('source').value); saveSettings(); changed(); renderFrame(); };
+// A slider only reaches the instrument when it is let go, so the drag has
+// nothing to redraw — but the reading beside it follows the thumb.
+for (const [id, format] of Object.entries(SLIDER_READOUTS)) $(id).addEventListener('input', () => { $(`${id}-label`).value = format(Number($(id).value)); });
+$('source').onchange = () => { settings.source = Number($('source').value); synchronize(); changed(); };
 for (const [id, key] of CHECK_CONTROLS) $(id).onchange = () => { settings[key] = $(id).checked; synchronize(); changed(); };
 for (const el of document.querySelectorAll('[data-mode]')) el.onclick = async () => {
   const wasRunning = acquisition.running; try { await acquisition.stop(); } catch (e) { showError(e.message); }

@@ -4,7 +4,7 @@ export const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 // Points kept before the oldest are dropped: at half a second that is nearly
 // three hours, at five minutes a little over two months.
 export const LOG_CAPACITY = 20000;
-export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, bias: 0, measuredBias: null, gain: [1, 1], applied: 1 })), testEnabled: true, testFrequency: 1000, signalsEnabled: false, signalSineHz: 440, spectrumSpan: 0, averaging: 1, xyX: 0, xyY: 1, logInterval: .5, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
+export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, bias: 0, measuredBias: null, gain: [1, 1], applied: 1 })), testEnabled: true, testFrequency: 1000, signalsEnabled: false, signalSineHz: 440, spectrumSpan: 0, averaging: 1, xyX: 0, xyY: 1, logicTrigger: 1, logicSlope: 0, logicPosition: .15, logInterval: .5, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
 const tone = (channel, t) => channel === 0 ? 2 * Math.sin(2 * Math.PI * 1000 * t) + .02 * Math.sin(2 * Math.PI * 3000 * t) : channel === 1 ? (Math.sin(2 * Math.PI * 500 * t) >= 0 ? 1 : -1) + .25 : 1.5 * Math.sin(2 * Math.PI * 194 * t);
 export class DemoInstrument {
   constructor() { this.demo = true; this.identity = { name: 'Demo signal', board: 1, firmware: '1.7' }; this.caps = demoCaps; this.ranges = ranges(1); }
@@ -45,7 +45,7 @@ function demoAnalog(instrument, settings) {
   return { columns, request: req, actual: { period, count, decimation: Math.max(1, Math.floor(period / (instrument.caps.minCycles / instrument.caps.clock * req.active.length))) }, triggered, triggerIndex: pretrigger };
 }
 function demoLogic(settings, caps) {
-  const period = Math.max(1 / settings.logicRate, 1 / caps.logicClock), count = Math.min(settings.logicRecord, caps.logicMaxRecord), pretrigger = Math.floor(count * settings.position);
+  const period = Math.max(1 / settings.logicRate, 1 / caps.logicClock), count = Math.min(settings.logicRecord, caps.logicMaxRecord), pretrigger = Math.floor(count * settings.logicPosition);
   const samples = Uint8Array.from({ length: count }, (_, i) => {
     const t = i * period; let value = 0;
     for (let b = 0; b < 4; b++) if ((t * 100000 / 2 ** b) % 1 < .5) value |= 1 << b;
@@ -56,7 +56,7 @@ function demoLogic(settings, caps) {
     else { if (spi * 1e6 % 1 >= .5) value |= 32; if (0xa5 & (1 << (7 - bit))) value |= 64; }
     return value;
   });
-  return { kind: 'logic', samples, period, count, triggerIndex: pretrigger, triggered: settings.trigger !== 0, timestamp: Date.now() };
+  return { kind: 'logic', samples, period, count, triggerIndex: pretrigger, triggered: settings.logicTrigger !== 0, timestamp: Date.now() };
 }
 // Generation tokens cancel polling; transactions remain serialized by the transport.
 export class Acquisition {
@@ -103,7 +103,7 @@ export class Acquisition {
       }
       while (token === this.token) {
         const before = performance.now();
-        this.onState(settings.trigger === 2 && settings.mode !== 'meter' ? 'Waiting for trigger' : 'Acquiring');
+        this.onState((settings.mode === 'logic' ? settings.logicTrigger : settings.trigger) === 2 && settings.mode !== 'meter' ? 'Waiting for trigger' : 'Acquiring');
         const frame = await this.capture(instrument, settings, prepared, token);
         if (token !== this.token) return;
         if (frame) { this.onFrame(frame); this.onState(frame.kind === 'meter' ? 'Meter' : frame.triggered ? 'Triggered' : 'Free running'); if (single) { this.running = false; this.onState('Single capture'); return; } }
@@ -182,7 +182,7 @@ export class Acquisition {
       if (result.state === 4) break;
       if (result.state === 6) throw new Error('Capture overrun. Use fewer channels or a slower timebase.');
       if (result.state === 5) return null;
-      if (settings.trigger !== 2 && performance.now() > deadline) throw new Error('The acquisition did not complete. Stop and reconnect.');
+      if ((logic ? settings.logicTrigger : settings.trigger) !== 2 && performance.now() > deadline) throw new Error('The acquisition did not complete. Stop and reconnect.');
       await pause(10);
     }
     if (token !== this.token) return null;

@@ -164,9 +164,9 @@ export function analogRequest(settings, caps, frontEnd) {
 export function logicRequest(settings, caps) {
   const count = Math.min(settings.logicRecord, caps.logicMaxRecord);
   return encodeLogicConfig({
-    triggerMode: settings.trigger, triggerChannel: settings.logicSource, triggerSlope: settings.slope,
+    triggerMode: settings.logicTrigger, triggerChannel: settings.logicSource, triggerSlope: settings.logicSlope,
     periodFs: Math.round(Math.max(1 / settings.logicRate, 1 / caps.logicClock) * 1e15),
-    record: count, pretrigger: Math.min(Math.floor(count * settings.position), caps.logicMaxPretrigger), timeoutUs: 100000,
+    record: count, pretrigger: Math.min(Math.floor(count * settings.logicPosition), caps.logicMaxPretrigger), timeoutUs: 100000,
   });
 }
 export function readRequest(offset, count) {
