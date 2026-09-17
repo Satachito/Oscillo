@@ -417,10 +417,7 @@ struct VerticalSection: View {
             HStack(spacing: 6) {
                 Text("Bias").font(.caption)
                 Spacer(minLength: 6)
-                TextField("", value: biasVolts,
-                          format: .number.precision(.fractionLength(0...4)))
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 80)
+                VoltsField(volts: biasVolts)
                 Text("V").font(.caption).foregroundStyle(.secondary)
             }
             Text("Where the front end holds this input with nothing on it. Drawn as a "
@@ -444,10 +441,7 @@ struct VerticalSection: View {
             HStack(spacing: 6) {
                 Text("Applied").font(.caption)
                 Spacer(minLength: 6)
-                TextField("", value: binding.appliedVolts,
-                          format: .number.precision(.fractionLength(0...4)))
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 80)
+                VoltsField(volts: binding.appliedVolts)
                 Text("V").font(.caption).foregroundStyle(.secondary)
             }
             Text("A known voltage on the input. Set gain measures the swing from the bias "
@@ -550,6 +544,47 @@ private struct TriggerLowPassControl: View {
 }
 
 /// A slider with its value spelled out beside the title.
+/// A volts field you can type a decimal point into.
+///
+/// `TextField(value:format:)` parses and reformats on every keystroke, so the
+/// moment the point in 1.65 is typed the value is still 1, the field redraws
+/// itself as "1", and the character is gone — the number can never grow a
+/// fraction at all. This holds the typed text while the field has focus and
+/// converts it on the way out.
+private struct VoltsField: View {
+    @Binding var volts: Double
+
+    @State private var text = ""
+    @FocusState private var isEditing: Bool
+
+    private static let style = FloatingPointFormatStyle<Double>()
+        .precision(.fractionLength(0...4))
+
+    var body: some View {
+        TextField("", text: $text)
+            .multilineTextAlignment(.trailing)
+            .frame(width: 80)
+            .focused($isEditing)
+            .onSubmit { commit() }
+            .onAppear { text = Self.style.format(volts) }
+            .onChange(of: isEditing) { editing in
+                if !editing { commit() }
+            }
+            // Measure and Mid rail write the number from outside the field.
+            // Follow them, but never over somebody who is mid-word.
+            .onChange(of: volts) { value in
+                if !isEditing { text = Self.style.format(value) }
+            }
+    }
+
+    /// Text that will not parse is a change of mind, not a zero: put the number
+    /// that is still in the settings back on screen.
+    private func commit() {
+        if let value = try? Self.style.parseStrategy.parse(text) { volts = value }
+        text = Self.style.format(volts)
+    }
+}
+
 struct LabeledSlider: View {
     let title: String
     @Binding var value: Double
