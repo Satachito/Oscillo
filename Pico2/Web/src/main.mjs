@@ -80,11 +80,26 @@ function updateButtons() {
 }
 function option(value, label) { const el = document.createElement('option'); el.value = value; el.textContent = label; return el; }
 function options(id, values, selected) { $(id).replaceChildren(...values.map(([value, label]) => option(value, label))); $(id).value = selected; }
+// A volts field whose number goes into the settings as it is typed. Committing
+// on change instead rebuilt every channel card as the field lost focus — which
+// happens on the press of the next button — so a click on Mid rail or Set gain
+// straight after typing landed on a card that had just been replaced, and did
+// nothing. Leaving the field only tidies what it shows.
+function voltsField(input, read, write, after) {
+  const show = () => { input.value = Number(read().toPrecision(6)); };
+  show();
+  input.addEventListener('input', () => {
+    const value = Number(input.value);
+    if (input.value.trim() === '' || !Number.isFinite(value)) return;
+    write(value); after(); saveSettings();
+  });
+  input.addEventListener('change', show);
+}
 function channelControls() {
   $('channels').replaceChildren();
   for (let i = 0; i < caps().channels; i++) {
     const ch = settings.channels[i], el = document.createElement('div'); el.className = 'channel-card'; el.style.setProperty('--channel-color', COLORS[i]);
-    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="check-row" data-ac-row><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><label class="field">Bias <span class="unit">V</span><input data-bias type="number" step="0.01" aria-label="CH${i + 1} bias volts"/></label><p class="hint">Where the front end holds this input with nothing on it. Drawn as a dotted line; readings stay as the converter saw them.</p><p class="hint" data-bias-note hidden></p><div class="channel-actions"><button class="zero-button" data-zero title="Ground this input and capture a trace first: what it reads is the bias.">Measure</button><button class="zero-button" data-afe>Mid rail</button></div><label class="field">Applied <span class="unit">V</span><input data-field="applied" type="number" step="0.1" aria-label="CH${i + 1} applied volts"/></label><p class="hint">A known voltage on the input. Set gain measures the swing from the bias and corrects the gain by what it is short of this — so measure the bias first. The divider's 1% parts put it out by up to 2%.</p><p class="hint" data-gain-note hidden></p><div class="channel-actions"><button class="zero-button" data-gain title="Put a known steady voltage on this input and capture a trace first.">Set gain</button><button class="zero-button" data-reset title="Clears this channel's bias and gain correction.">Reset</button></div>`;
+    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span></div><div class="channel-body"${ch.enabled ? '' : ' hidden'}><label class="field">Input range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale / div<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1×</option><option value="10">10×</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="check-row" data-ac-row><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><label class="field">Bias <span class="unit">V</span><input data-bias type="number" step="0.01" aria-label="CH${i + 1} bias volts"/></label><p class="hint">Where the front end holds this input with nothing on it. Drawn as a dotted line; readings stay as the converter saw them.</p><p class="hint" data-bias-note hidden></p><div class="channel-actions"><button class="zero-button" data-zero title="Ground this input and capture a trace first: what it reads is the bias.">Measure</button><button class="zero-button" data-afe>Mid rail</button></div><label class="field">Applied <span class="unit">V</span><input data-applied type="number" step="0.1" aria-label="CH${i + 1} applied volts"/></label><p class="hint">A known voltage on the input. Set gain measures the swing from the bias and corrects the gain by what it is short of this — so measure the bias first. The divider's 1% parts put it out by up to 2%.</p><p class="hint" data-gain-note hidden></p><div class="channel-actions"><button class="zero-button" data-gain title="Put a known steady voltage on this input and capture a trace first.">Set gain</button><button class="zero-button" data-reset title="Clears this channel's bias and gain correction.">Reset</button></div></div>`;
     const range = el.querySelector('[data-field=range]'); frontEnd().forEach((r, j) => range.add(option(j, r.name))); range.disabled = frontEnd().length < 2;
     const scale = el.querySelector('[data-field=scale]');
     SCALE_STEPS.forEach(v => scale.add(option(v, fmt(v, 'V'))));
@@ -120,13 +135,9 @@ function channelControls() {
         synchronize(); changed();
       });
     }
-    const bias = el.querySelector('[data-bias]');
-    bias.value = Number((ch.bias ?? 0).toPrecision(6));
-    bias.addEventListener('change', () => {
-      const value = Number(bias.value);
-      if (!Number.isFinite(value)) { bias.value = Number((ch.bias ?? 0).toPrecision(6)); return; }
-      ch.bias = value; synchronize(); changed();
-    });
+    voltsField(el.querySelector('[data-bias]'), () => ch.bias ?? 0, value => { ch.bias = value; },
+      () => { showMeasured(); renderFrame(); });
+    voltsField(el.querySelector('[data-applied]'), () => ch.applied, value => { ch.applied = value; }, () => {});
     const r = frontEnd()[ch.range] || frontEnd()[0];
     const midRail = midRailVolts(caps(), r);
     const afe = el.querySelector('[data-afe]');
@@ -161,12 +172,14 @@ function channelControls() {
       synchronize(); changed();
     };
     const measured = el.querySelector('[data-bias-note]');
-    measured.hidden = ch.measuredBias === null || ch.measuredBias === undefined;
-    if (!measured.hidden) {
+    function showMeasured() {
+      measured.hidden = ch.measuredBias === null || ch.measuredBias === undefined;
+      if (measured.hidden) return;
       const error = ch.measuredBias - (ch.bias ?? 0);
       measured.textContent = `Measured ${fmt(ch.measuredBias, 'V')} — ${fmt(Math.abs(error), 'V')} ${error < 0 ? 'below' : 'above'} it, marked on the right.`;
       measured.style.color = COLORS[i];
     }
+    showMeasured();
     const correction = ch.gain?.[ch.range] || 1;
     const note = el.querySelector('[data-gain-note]');
     note.hidden = Math.abs(correction - 1) < 1e-9;
