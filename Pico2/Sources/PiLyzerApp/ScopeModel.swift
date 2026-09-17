@@ -192,13 +192,23 @@ final class ScopeModel: ObservableObject {
         }
     }
 
+    /// Every channel's zero and gain correction, from the menu.
     func resetCalibration() {
-        for index in settings.channels.indices {
-            settings.channels[index].calibration = []
-            settings.channels[index].biasVolts = 0
-            settings.channels[index].measuredBiasVolts = nil
-        }
+        for index in settings.channels.indices { clearCalibration(index) }
         statusText = "Calibration cleared"
+    }
+
+    /// One channel's, from the Reset under that channel.
+    func resetCalibration(channel: Int) {
+        guard settings.channels.indices.contains(channel) else { return }
+        clearCalibration(channel)
+        statusText = "CH\(channel + 1) calibration cleared"
+    }
+
+    private func clearCalibration(_ index: Int) {
+        settings.channels[index].calibration = []
+        settings.channels[index].biasVolts = 0
+        settings.channels[index].measuredBiasVolts = nil
     }
 
     /// Second point of the calibration: the user says what is really on the

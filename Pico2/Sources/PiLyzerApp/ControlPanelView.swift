@@ -271,7 +271,9 @@ struct ControlPanelView: View {
             LabeledSlider(title: "Position", value: $model.settings.logic.triggerPosition,
                           range: 0...0.95, format: { Format.percent($0 * 100, digits: 0) })
 
-            HStack(spacing: 4) {
+            // Checkboxes four to a row, as in the browser application.
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 4),
+                      alignment: .leading, spacing: 8) {
                 ForEach(0..<model.capabilities.logicChannels, id: \.self) { channel in
                     Toggle(isOn: Binding(
                         get: { model.settings.logic.enabledChannels.contains(channel) },
@@ -279,13 +281,11 @@ struct ControlPanelView: View {
                             if on { model.settings.logic.enabledChannels.insert(channel) }
                             else { model.settings.logic.enabledChannels.remove(channel) }
                         })) {
-                            Text("\(channel)")
+                            Text("D\(channel)").font(.system(size: 10, design: .monospaced))
                         }
-                        .toggleStyle(.button)
-                        .tint(Theme.logicColor(channel))
+                        .toggleStyle(.checkbox)
                 }
             }
-            .font(.caption)
         }
     }
 
@@ -530,8 +530,8 @@ struct VerticalSection: View {
                     .disabled(!model.isConnected
                               || abs(model.settings.channels[channel].appliedVolts) < 1e-6)
                     Spacer()
-                    Button("Reset") { model.resetCalibration() }
-                        .help("Clears the zero and the gain correction on every channel.")
+                    Button("Reset") { model.resetCalibration(channel: channel) }
+                        .help("Clears this channel's bias and gain correction.")
                 }
 
                 // A correction nobody can see is one nobody can question, and a
