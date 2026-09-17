@@ -468,6 +468,8 @@ $('disconnect').onclick = async () => {
 $('run').onclick = async () => { showError(); if (acquisition.running) { try { await acquisition.stop(); } catch (e) { showError(e.message); } } else acquisition.start(settings); updateButtons(); };
 $('single').onclick = () => { showError(); acquisition.start(settings, true); updateButtons(); };
 $('clear').onclick = () => { frame = null; acquisition.resetLog(); plot.resetSpectrum(); renderFrame(); };
+// The Logger has its own, as on the Mac, beside the interval it logs at.
+$('clear-log').onclick = () => $('clear').onclick();
 $('export').onclick = () => {
   let text = csv(frame), name = `pilyzer-${settings.mode}-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
   if (settings.mode === 'spectrum' && plot.spectra) text = spectrumCsv(plot.spectra);
