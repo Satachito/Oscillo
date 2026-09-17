@@ -91,7 +91,7 @@ struct PiLyzerApp: App {
                     .disabled(!model.isConnected || model.isRunning)
                 Button("Clear") { model.clear() }
                 Divider()
-                Button("Measure Bias") { model.measureBias() }
+                Button("Measure Bias") { model.measureBias(channels: model.enabledAnalogChannels) }
                     .disabled(!model.isConnected)
                 Button("Reset Calibration") { model.resetCalibration() }
             }

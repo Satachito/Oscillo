@@ -503,8 +503,8 @@ struct VerticalSection: View {
                         .font(.caption).foregroundStyle(Theme.channelColor(channel))
                 }
                 HStack(spacing: 6) {
-                    Button("Measure") { model.measureBias() }
-                        .help("Ground all inputs first: what they read now is the bias.")
+                    Button("Measure") { model.measureBias(channels: [channel]) }
+                        .help("Ground this input first: what it reads now is its bias.")
                         .disabled(!model.isConnected)
                     Button("Mid rail") {
                         model.fieldWrites &+= 1

@@ -171,11 +171,18 @@ final class ScopeModel: ObservableObject {
     /// Measures the bias: with nothing on the inputs, whatever each channel
     /// reads is where its front end holds it. The reading is not corrected by
     /// it — the screen draws a line there instead.
-    func measureBias() {
+    ///
+    /// Only the channels asked for: the Measure under a channel measures that
+    /// one, and the menu the ones switched on. A channel that is off has
+    /// nothing wired to it more often than not, and a floating input wanders
+    /// enough to be refused — which used to stop CH1's Measure with a
+    /// complaint about CH2 and CH3.
+    func measureBias(channels requested: [Int]) {
         engine.measureSteady { [weak self] volts, spread in
             guard let self else { return }
             var moved: [Int] = []
-            for (index, value) in volts.enumerated() where index < self.settings.channels.count {
+            for (index, value) in volts.enumerated()
+            where index < self.settings.channels.count && requested.contains(index) {
                 guard index < spread.count, spread[index] <= self.steadyLimit(index) else {
                     moved.append(index + 1)
                     continue
@@ -191,7 +198,7 @@ final class ScopeModel: ObservableObject {
             let names = moved.map { "CH\($0)" }.joined(separator: ", ")
             self.errorText = "\(names) had a signal on the input, so the bias was not measured there. "
                 + "Ground the input, or switch the signal off, and try again."
-            self.statusText = moved.count == volts.count ? "Bias not measured" : "Bias measured"
+            self.statusText = moved.count == requested.count ? "Bias not measured" : "Bias measured"
         }
     }
 
