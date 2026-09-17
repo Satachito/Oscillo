@@ -20,7 +20,7 @@ Record each one long; trim in the edit.
 | S4 | The real connect: plug in, open page, Connect, the browser's device chooser, Run | 0:55 | **One take, no cuts.** The chooser is the point — it is the only permission there is. |
 | S5 | The flat line, held | 1:20 | Must look boring. Five seconds is not too long. |
 | S6 | Signal generator switched on, the sine appearing | 1:35 | Catch the moment it appears, not just the after. |
-| S7 | Switch to Spectrum, the 440 Hz peak settling | 1:55 | Let it settle on camera. |
+| S7 | Switch to Spectrum, the 1 kHz peak settling | 1:55 | Let it settle on camera. |
 | S8 | The panel with the dotted bias line toggling on and off | 3:30 | The single most important shot in the episode. |
 | S9 | The gain-correction note under a channel | 4:00 | Zoom in during the edit, not in the app. |
 | S10 | The raw carrier with no RC — the mess | 4:45 | Same window position as S11 so they cut together. |

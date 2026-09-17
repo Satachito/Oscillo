@@ -66,16 +66,18 @@ that is the only permission there is. Run.
 A flat line — nothing is driving that pin yet. So let us attach something —
 without attaching anything.
 
-> **On screen:** switch on Signal generator. The sine appears.
+> **On screen:** switch on Signal generator. The sine appears. Sine set to
+> 1 kHz, not the page's 440 Hz default: the recording that was kept used it,
+> and through the 1 kΩ + 10 nF it still reads 3.15 V peak to peak.
 
 The firmware has a signal generator in it. A sine, and white, pink and brown
 noise, on four pins of the board. Wire one of them back to an input and the
 instrument measures itself.
 
-> **On screen:** the sine, then switch to Spectrum and let the 440 Hz peak
+> **On screen:** the sine, then switch to Spectrum and let the 1 kHz peak
 > settle. Then Logic, then back.
 
-Four hundred and forty hertz. There it is in the spectrum. And that is the
+One kilohertz. There it is in the spectrum. And that is the
 whole set-up cost: a board and a cable.
 
 > **On screen:** the same page on an Android phone, on a USB-C cable.
