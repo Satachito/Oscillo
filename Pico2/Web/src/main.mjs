@@ -2,10 +2,10 @@ import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
 import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
-import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
+import { fmt, csv, decodeUART, spectrumCsv, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
-const NUMERIC_CONTROLS = { 'logic-trigger': 'logicTrigger', 'logic-source': 'logicSource', 'logic-slope': 'logicSlope', 'logic-position': 'logicPosition', averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+const NUMERIC_CONTROLS = { 'spectrum-averaging': 'spectrumAveraging', 'spectrum-harmonics': 'spectrumHarmonics', 'logic-trigger': 'logicTrigger', 'logic-source': 'logicSource', 'logic-slope': 'logicSlope', 'logic-position': 'logicPosition', averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
 // Sliders show their value beside the label, as the Mac's LabeledSlider does.
 const SLIDER_READOUTS = {
   position: v => `${Math.round(v * 100)} %`, 'logic-position': v => `${Math.round(v * 100)} %`,
@@ -14,7 +14,8 @@ const SLIDER_READOUTS = {
 function showSliderReadouts() {
   for (const [id, format] of Object.entries(SLIDER_READOUTS)) $(`${id}-label`).value = format(settings[NUMERIC_CONTROLS[id]]);
 }
-const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart'], ['signals-enabled', 'signalsEnabled']];
+const STRING_CONTROLS = [['spectrum-window', 'spectrumWindow'], ['spectrum-scale', 'spectrumScale']];
+const CHECK_CONTROLS = [['spectrum-log', 'spectrumLog'], ['spectrum-peaks', 'spectrumPeaks'], ['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart'], ['signals-enabled', 'signalsEnabled']];
 const STORAGE_KEY = 'pilyzer.settings.v1';
 // The front panel comes back the way it was left, the per-channel zero
 // included: it describes the wiring — the bias a front end adds — rather than
@@ -55,6 +56,7 @@ function saveSettings() {
 function applyControls() {
   for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) $(id).value = settings[key];
   for (const [id, key] of CHECK_CONTROLS) $(id).checked = settings[key];
+  for (const [id, key] of STRING_CONTROLS) $(id).value = settings[key];
   showSliderReadouts();
   $('logic-lines').querySelectorAll('input').forEach((input, i) => { input.checked = !!(settings.logicEnabled & (1 << i)); });
 }
@@ -280,6 +282,14 @@ function synchronize() {
   $('horizontal-controls').hidden = logic || meter || spectrumMode; $('frequency-controls').hidden = !spectrumMode;
   $('record').value = settings.record;
   if (spectrumMode) frequencyControls(active.length, allowed);
+  $('spectrum-controls').hidden = !spectrumMode;
+  if (!WINDOWS[settings.spectrumWindow]) settings.spectrumWindow = 'Hann';
+  if (!SPECTRUM_SCALES.includes(settings.spectrumScale)) settings.spectrumScale = 'dBV';
+  settings.spectrumAveraging = Math.min(Math.max(Math.round(settings.spectrumAveraging) || 1, 1), 64);
+  settings.spectrumHarmonics = Math.min(Math.max(Math.round(settings.spectrumHarmonics) || 2, 2), 12);
+  for (const [id, key] of STRING_CONTROLS) $(id).value = settings[key];
+  $('spectrum-averaging').value = settings.spectrumAveraging; $('spectrum-harmonics').value = settings.spectrumHarmonics;
+  $('spectrum-window-advice').textContent = WINDOWS[settings.spectrumWindow].advice;
   // The Mac shows trigger controls with the scope only; logic has its own.
   $('trigger-controls').hidden = settings.mode !== 'scope';
   $('analog-acquisition').hidden = settings.mode !== 'scope' && !spectrumMode; $('record-row').hidden = settings.mode !== 'scope';
@@ -337,6 +347,14 @@ function renderFrame() {
     $('legend').append(el);
   }
   if (settings.mode === 'logic') $('legend').textContent = 'D0–D7 · 3.3 V logic';
+  if (settings.mode === 'spectrum') {
+    for (const el of $('legend').children) el.textContent = el.textContent.split(' ')[0];
+    const resolution = plot.spectra?.[0]?.resolution;
+    for (const text of [settings.spectrumWindow, `${settings.spectrumAveraging}× avg`, resolution ? `${fmt(resolution, 'Hz')} per bin` : null]) {
+      if (!text) continue;
+      const el = document.createElement('span'); el.className = 'legend-note'; el.textContent = text; $('legend').append(el);
+    }
+  }
   $('trigger-summary').textContent = settings.mode === 'meter' ? 'Logging all inputs · min/mean/max a point' : `Trigger: ${['Free', 'Auto', 'Normal'][settings.mode === 'logic' ? settings.logicTrigger : settings.trigger]}${settings.mode === 'logic' ? ` · D${settings.logicSource}` : ` · CH${settings.source + 1}`}${settings.lpf && settings.mode !== 'logic' ? ` · LPF ${fmt(settings.lpf, 'Hz')}` : ''}`;
   $('timing').textContent = frame?.period ? `${fmt(1 / frame.period, 'Sa/s')} · ${frame.count.toLocaleString()} points${frame.decimation > 1 ? ` · ${frame.decimation}× decimation` : ''}` : frame?.kind === 'meter' ? logSummary(frame) : '— Sa/s · — points';
   if (settings.mode === 'meter') $('log-span').textContent = frame?.kind === 'meter' && frame.history.length ? `${frame.history.length} PT · ${fmt(frame.history.at(-1).time, 's').toUpperCase()}` : 'EMPTY';
@@ -345,18 +363,30 @@ function renderFrame() {
   $('measurements').replaceChildren();
   const cursorCard = frame?.kind === 'scope' && settings.mode === 'scope' && cursors.enabled;
   $('measurements').style.setProperty('--cards', Math.max(3, (frame?.kind === 'scope' ? frame.traces.length : 0) + (cursorCard ? 1 : 0)));
-  if (frame?.kind === 'scope') {
-  for (const trace of frame.traces) {
-    const card = document.createElement('article'); card.className = 'measurement'; card.style.setProperty('--channel-color', COLORS[trace.index]);
-    const title = document.createElement('h2'); title.innerHTML = `<i></i> CHANNEL ${trace.index + 1}`; card.append(title);
+  const addCard = (titleText, colour, rows) => {
+    const card = document.createElement('article'); card.className = 'measurement'; if (colour) card.style.setProperty('--channel-color', colour);
+    const title = document.createElement('h2'); title.innerHTML = colour ? '<i></i> ' : ''; title.append(titleText.toUpperCase()); card.append(title);
     const table = document.createElement('table');
-    const s = settings.mode === 'spectrum' && plot.spectra?.find(entry => entry.index === trace.index);
-    const rows = s?.peak
-      ? [['Peak', fmt(s.peak.frequency, 'Hz')], ['Level', `${s.peak.db.toFixed(1)} dBV`], ['Resolution', fmt(s.resolution, 'Hz')]]
-      : [['Peak to peak', fmt(trace.stats.pp, 'V')], ['Mean', fmt(trace.stats.mean, 'V')], ['RMS', fmt(trace.stats.rms, 'V')], ['AC RMS', fmt(trace.stats.acRms, 'V')],
-         ['Frequency', fmt(trace.stats.frequency, 'Hz')], ['Duty', trace.stats.duty === null ? '—' : `${(trace.stats.duty * 100).toFixed(1)} %`], ['Rise', fmt(trace.stats.rise, 's')]];
     for (const [label, value] of rows) { const row = table.insertRow(); row.insertCell().textContent = label; const td = row.insertCell(); td.className = 'value'; td.textContent = value; }
     card.append(table); $('measurements').append(card);
+  };
+  if (frame?.kind === 'scope' && settings.mode === 'spectrum') {
+    // Distortion and noise from the spectrum on screen, as the Mac shows them:
+    // a card a channel, and the harmonics beside it when there is only one.
+    const measured = (plot.spectra || []).filter(entry => entry.quality);
+    const percent = v => `${(v * 100).toFixed(2)} %`, decibels = v => Number.isFinite(v) ? `${v.toFixed(1)} dB` : '—';
+    for (const entry of measured) addCard(`Channel ${entry.index + 1}`, COLORS[entry.index], [
+      ['Frequency', fmt(entry.quality.fundamental.frequency, 'Hz')], ['Level', fmt(entry.quality.fundamental.amplitude, 'V')],
+      ['THD', percent(entry.quality.thd)], ['THD+N', percent(entry.quality.thdPlusNoise)],
+      ['SNR', decibels(entry.quality.snr)], ['SINAD', decibels(entry.quality.sinad)], ['ENOB', `${entry.quality.enob.toFixed(1)} bits`]]);
+    if (measured.length === 1) addCard('Harmonics', '', measured[0].quality.harmonics.slice(0, 5).map((peak, i) => [`H${i + 2}`, fmt(peak.amplitude, 'V')]));
+    $('measurements').style.setProperty('--cards', Math.max(3, measured.length + (measured.length === 1 ? 1 : 0)));
+    if (!measured.length) { const el = document.createElement('div'); el.className = 'measurement-placeholder'; el.textContent = 'A tone has to be on screen before its distortion can be measured.'; $('measurements').append(el); }
+  }
+  else if (frame?.kind === 'scope') {
+  for (const trace of frame.traces) {
+    addCard(`Channel ${trace.index + 1}`, COLORS[trace.index], [['Peak to peak', fmt(trace.stats.pp, 'V')], ['Mean', fmt(trace.stats.mean, 'V')], ['RMS', fmt(trace.stats.rms, 'V')], ['AC RMS', fmt(trace.stats.acRms, 'V')],
+      ['Frequency', fmt(trace.stats.frequency, 'Hz')], ['Duty', trace.stats.duty === null ? '—' : `${(trace.stats.duty * 100).toFixed(1)} %`], ['Rise', fmt(trace.stats.rise, 's')]]);
   }
   if (cursorCard) {
     const card = document.createElement('article'); card.className = 'measurement'; card.style.setProperty('--channel-color', CURSOR_COLOR);
@@ -414,7 +444,7 @@ $('disconnect').onclick = async () => {
 };
 $('run').onclick = async () => { showError(); if (acquisition.running) { try { await acquisition.stop(); } catch (e) { showError(e.message); } } else acquisition.start(settings); updateButtons(); };
 $('single').onclick = () => { showError(); acquisition.start(settings, true); updateButtons(); };
-$('clear').onclick = () => { frame = null; acquisition.resetLog(); renderFrame(); };
+$('clear').onclick = () => { frame = null; acquisition.resetLog(); plot.resetSpectrum(); renderFrame(); };
 $('export').onclick = () => {
   let text = csv(frame), name = `pilyzer-${settings.mode}-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
   if (settings.mode === 'spectrum' && plot.spectra) text = spectrumCsv(plot.spectra);
@@ -457,9 +487,10 @@ for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) {
 for (const [id, format] of Object.entries(SLIDER_READOUTS)) $(id).addEventListener('input', () => { $(`${id}-label`).value = format(Number($(id).value)); });
 $('source').onchange = () => { settings.source = Number($('source').value); synchronize(); changed(); };
 for (const [id, key] of CHECK_CONTROLS) $(id).onchange = () => { settings[key] = $(id).checked; synchronize(); changed(); };
+for (const [id, key] of STRING_CONTROLS) $(id).onchange = () => { settings[key] = $(id).value; synchronize(); changed(); };
 for (const el of document.querySelectorAll('[data-mode]')) el.onclick = async () => {
   const wasRunning = acquisition.running; try { await acquisition.stop(); } catch (e) { showError(e.message); }
-  settings.mode = el.dataset.mode; frame = null; synchronize(); if (wasRunning) acquisition.start(settings);
+  settings.mode = el.dataset.mode; frame = null; plot.resetSpectrum(); synchronize(); if (wasRunning) acquisition.start(settings);
 };
 for (let i = 0; i < 8; i++) {
   const label = document.createElement('label'), input = document.createElement('input'); input.type = 'checkbox'; input.checked = true;

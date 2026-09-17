@@ -4,7 +4,7 @@ import { resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpect
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport } from '../src/instrument.mjs';
 import { HttpTransport, available } from '../src/net.mjs';
-import { measure, spectrum, spectrumCsv, csv, decodeUART } from '../src/signal.mjs';
+import { measure, spectrum, spectrumCsv, csv, decodeUART, WINDOWS, averageSpectra, spectrumQuality, levelOf } from '../src/signal.mjs';
 const caps = demoCaps;
 const afe = ranges(1), bare = ranges(0);
 for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, scale and 97-cycle rate floor`, () => {
@@ -520,4 +520,37 @@ test('averaged sweeps come back as one frame of the average', async () => {
   assert.equal(frame.kind, 'scope');
   assert.equal(frame.traces.length, 3);
   assert.equal(frame.traces[0].samples.length, frame.count);
+});
+
+// The same cases as the macOS app's SpectrumTests: 4096 points at 48 kSa/s.
+const toneRate = 48000, toneLength = 4096;
+const tone = (amplitude, bin, harmonic = 0) => Float64Array.from({ length: toneLength }, (_, i) => {
+  const f = bin * toneRate / toneLength, t = i / toneRate;
+  return amplitude * Math.sin(2 * Math.PI * f * t) + amplitude * harmonic * Math.sin(2 * Math.PI * 3 * f * t);
+});
+for (const window of Object.keys(WINDOWS)) test(`a one volt tone reads one volt through the ${window} window`, () => {
+  const s = spectrum(tone(1, 100), 1 / toneRate, window);
+  assert.equal(s.amplitudes.length, toneLength / 2 + 1);
+  assert.ok(Math.abs(s.amplitudes[100] - 1) < .01, `read ${s.amplitudes[100]}`);
+});
+test('distortion is measured as the ratio it was built with', () => {
+  const q = spectrumQuality(spectrum(tone(1, 120, .01), 1 / toneRate, 'Hann'), 5);
+  assert.ok(Math.abs(q.thd - .01) < .002, `read ${q.thd}`);
+  assert.ok(q.snr > 60, `read ${q.snr}`);
+});
+test('a tone low in the spectrum does not report its own skirt as distortion', () => {
+  const q = spectrumQuality(spectrum(tone(2, 5, .01), 1 / toneRate, 'Hann'), 5);
+  assert.ok(Math.abs(q.fundamental.amplitude - 2) < .05);
+  assert.ok(q.thd < .02, `read ${q.thd}`);
+});
+test('a clean tone reports no distortion worth speaking of', () => {
+  assert.ok(spectrumQuality(spectrum(tone(1, 200), 1 / toneRate, 'Hann'), 5).thd < .001);
+});
+test('dBV is referenced to one volt RMS', () => {
+  assert.ok(Math.abs(levelOf(Math.SQRT2, 'dBV', 1)) < 1e-9);
+  assert.ok(Math.abs(levelOf(Math.SQRT2 / 2, 'dBV', 1) + 6.0206) < .001);
+});
+test('averaging spectra in power leaves a steady tone where it was', () => {
+  const averaged = averageSpectra(Array.from({ length: 8 }, () => spectrum(tone(1, 64), 1 / toneRate, 'Hann')));
+  assert.ok(Math.abs(averaged.amplitudes[64] - 1) < .01);
 });

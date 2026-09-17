@@ -1,5 +1,5 @@
 import { scaleFor, fitScale, displayedTop } from './protocol.mjs';
-import { fmt, spectrum } from './signal.mjs';
+import { fmt, spectrum, averageSpectra, spectrumQuality, levelOf } from './signal.mjs';
 export const CURSOR_COLOR = '#e58b72';
 export const COLORS = ['#e9c96b', '#79cdd8', '#c0a1ef', '#9ed190', '#d8ad7f', '#a6bcec', '#d592b9', '#afbf7a'];
 export class Plot {
@@ -7,7 +7,31 @@ export class Plot {
     this.canvas = canvas; this.context = canvas.getContext('2d');
     this.observer = new ResizeObserver(() => this.draw()); this.observer.observe(canvas);
   }
-  update(frame, settings, caps, frontEnd) { this.frame = frame; this.settings = settings; this.caps = caps; this.frontEnd = frontEnd; this.spectra = frame?.kind === 'scope' && settings.mode === 'spectrum' ? frame.traces.map(t => ({ index: t.index, ...spectrum(t.samples, frame.period) })) : null; this.draw(); }
+  update(frame, settings, caps, frontEnd) {
+    this.frame = frame; this.settings = settings; this.caps = caps; this.frontEnd = frontEnd;
+    this.spectra = frame?.kind === 'scope' && settings.mode === 'spectrum' ? this.averagedSpectra(frame, settings, caps, frontEnd) : null;
+    this.draw();
+  }
+  // Each channel keeps its own run of spectra for averaging, as the Mac does,
+  // and starts again when anything that changes what goes into them changes.
+  resetSpectrum() { this.history = new Map(); this.historyFrame = null; }
+  averagedSpectra(frame, settings, caps, frontEnd) {
+    const key = JSON.stringify([settings.channels, settings.timebase, settings.record, settings.trigger, settings.slope, settings.level, settings.position, settings.hysteresis, settings.lpf, settings.source, settings.averaging, settings.spectrumWindow, settings.testEnabled, settings.testFrequency, settings.signalsEnabled, settings.signalSineHz]);
+    if (key !== this.historyKey || !this.history) { this.resetSpectrum(); this.historyKey = key; }
+    const depth = Math.min(Math.max(Math.round(settings.spectrumAveraging) || 1, 1), 64);
+    if (frame !== this.historyFrame) {
+      for (const trace of frame.traces) {
+        const run = this.history.get(trace.index) || [];
+        run.push(spectrum(trace.samples, frame.period, settings.spectrumWindow));
+        this.history.set(trace.index, run.slice(-depth));
+      }
+      this.historyFrame = frame;
+    }
+    return frame.traces.map(trace => {
+      const averaged = averageSpectra((this.history.get(trace.index) || []).slice(-depth));
+      return { index: trace.index, ...averaged, fullScale: Math.abs(scaleFor(settings, caps, frontEnd, trace.index).span) / 2, quality: spectrumQuality(averaged, settings.spectrumHarmonics) };
+    });
+  }
   draw() {
     const { canvas, context: c } = this, width = canvas.clientWidth, height = canvas.clientHeight;
     if (!width || !height) return;
@@ -30,7 +54,10 @@ export class Plot {
     const columns = this.xyMode ? 8 : 10;
     c.font = '9px ui-monospace, SFMono-Regular, monospace';
     c.lineWidth = .6;
+    // The spectrum draws its own frequency lines, which sit at 1–2–5 on a log axis.
+    const spectrumGrid = !!this.spectra?.some(entry => entry.amplitudes.length);
     for (let col = 0; col <= columns; col++) {
+      if (spectrumGrid && col > 0 && col < columns) continue;
       const x = box.x + col / columns * box.w;
       c.strokeStyle = this.xyMode && col === columns / 2 ? '#607160' : '#344238';
       c.beginPath(); c.moveTo(x, box.y); c.lineTo(x, box.y + box.h); c.stroke();
@@ -146,30 +173,47 @@ export class Plot {
     c.fillText(`X: CH${first.index + 1}   Y: CH${second.index + 1}`, box.x + 8, box.y + 14);
   }
   // Every channel on one axis: an input and an output read against each other
-  // is what makes two channels worth having here. Peaks are ringed and labelled
-  // with their frequency, as on the Mac: the strongest five of one channel, or
-  // two apiece in each channel's colour when there are more, or the labels
-  // bury the traces they describe.
+  // is what makes two channels worth having here. The axes and the peak marks
+  // follow the Mac: dB scales fixed at -120 to 0 or +20, a linear one from zero
+  // to the highest bin; frequency to the span, logarithmic by default; the
+  // strongest five peaks of one channel, or two apiece in each channel's
+  // colour when there are more, or the labels bury the traces they describe.
   fft(c, box) {
-    const spectra = (this.spectra || []).filter(s => s.bins.length); if (!spectra.length) return;
-    // The axis ends at the span; the bins past it are not drawn, but one more
-    // than fits is, so the trace runs to the edge and the clip trims it.
-    const top = this.fftTop = displayedTop(this.settings.spectrumSpan, 1 / this.frame.period / 2);
-    const resolution = spectra[0].resolution, last = Math.min(spectra[0].bins.length - 1, Math.ceil(top / resolution));
-    const shown = spectra.map(s => s.bins.slice(0, last + 1));
-    const max = Math.ceil(Math.max(0, ...shown.flatMap(bins => bins.map(b => b.db))) / 20) * 20;
-    this.fftMax = max;
-    const y = db => box.y + (max - db) / 120 * box.h;
-    c.save(); c.beginPath(); c.rect(box.x, box.y, box.w, box.h); c.clip();
-    spectra.forEach((s, i) => this.trace(c, shown[i], { ...box, w: box.w * last * resolution / top }, y, COLORS[s.index], b => b.db));
-    c.restore();
+    const spectra = (this.spectra || []).filter(entry => entry.amplitudes.length); if (!spectra.length) return;
+    const settings = this.settings, scale = settings.spectrumScale, resolution = spectra[0].resolution;
+    const top = this.fftTop = displayedTop(settings.spectrumSpan, 1 / this.frame.period / 2);
+    const last = Math.min(spectra[0].amplitudes.length - 1, Math.ceil(top / resolution) + 1);
+    let low = -120, high = scale === 'dBFS' ? 0 : 20;
+    if (scale === 'V') { low = 0; high = 1e-9; for (const entry of spectra) for (let i = 1; i <= last; i++) high = Math.max(high, entry.amplitudes[i]); }
+    this.fftRange = { low, high, scale };
+    const y = v => box.y + (1 - Math.min(Math.max((v - low) / (high - low), 0), 1)) * box.h;
+    const bottom = Math.max(resolution, 1);
+    const x = this.fftX = f => settings.spectrumLog
+      ? (f <= bottom || top <= bottom ? box.x : box.x + box.w * Math.log10(f / bottom) / Math.log10(top / bottom))
+      : box.x + f / top * box.w;
+    const marks = [];
+    if (settings.spectrumLog) { for (let decade = 1; decade <= top; decade *= 10) for (const m of [1, 2, 5]) if (decade * m <= top) marks.push(decade * m); }
+    else for (let i = 1; i < 10; i++) marks.push(top * i / 10);
+    this.fftMarks = marks.filter(f => x(f) > box.x + 1);
+    c.lineWidth = .6; c.strokeStyle = '#344238';
+    for (const f of this.fftMarks) { const px = x(f); c.beginPath(); c.moveTo(px, box.y); c.lineTo(px, box.y + box.h); c.stroke(); }
+    for (const entry of spectra) {
+      // Several bins to a pixel are drawn as that pixel's lowest to highest.
+      c.strokeStyle = COLORS[entry.index]; c.lineWidth = 1.25; c.beginPath();
+      let column = null, lo = 0, hi = 0, started = false;
+      const flush = () => { if (column === null) return; if (started) c.lineTo(column, lo); else { c.moveTo(column, lo); started = true; } if (hi !== lo) c.lineTo(column, hi); };
+      for (let i = 1; i <= last; i++) {
+        const px = Math.round(x(i * resolution)), py = y(levelOf(entry.amplitudes[i], scale, entry.fullScale));
+        if (px !== column) { flush(); column = px; lo = hi = py; } else { lo = Math.min(lo, py); hi = Math.max(hi, py); }
+      }
+      flush(); c.stroke();
+    }
+    if (!settings.spectrumPeaks) return;
     const limit = spectra.length > 1 ? 2 : 5;
     c.save(); c.textAlign = 'center'; c.lineWidth = 1;
-    // The strongest of what is on screen, not of the whole record.
-    for (const s of spectra) for (const peak of (s.peaks || []).filter(p => p.frequency <= top).slice(0, limit)) {
-      const px = box.x + peak.frequency / top * box.w, py = y(peak.db);
-      if (px <= box.x + 1 || px > box.x + box.w) continue;
-      c.strokeStyle = c.fillStyle = spectra.length > 1 ? COLORS[s.index] : '#d5e6bf';
+    for (const entry of spectra) for (const peak of (entry.peaks || []).filter(p => p.frequency <= top && x(p.frequency) > box.x + 1).slice(0, limit)) {
+      const px = x(peak.frequency), py = y(levelOf(peak.amplitude, scale, entry.fullScale));
+      c.strokeStyle = c.fillStyle = spectra.length > 1 ? COLORS[entry.index] : '#d5e6bf';
       c.beginPath(); c.arc(px, py, 3, 0, 2 * Math.PI); c.stroke();
       c.fillText(fmt(peak.frequency, 'Hz'), Math.min(Math.max(px, box.x + 24), box.x + box.w - 24), Math.max(py - 8, box.y + 9));
     }
@@ -211,9 +255,18 @@ export class Plot {
       const index = (this.xyMode ? this.xyTraces()[1] : frame.traces[0]).index;
       const map = this.mapping(index, box), offset = this.settings.channels[index].offset;
       for (let r = 0; r <= 8; r += 2) c.fillText(fmt(map.centre + (4 - r - offset) * map.perDiv, 'V'), box.x - 7, box.y + r / 8 * box.h + 3);
-    } else if (this.spectra) {
-      for (let r = 0; r <= 8; r += 2) c.fillText(`${(this.fftMax || 0) - r / 8 * 120}`, box.x - 7, box.y + r / 8 * box.h + 3);
-      c.fillText('dBV', box.x - 7, box.y - 6);
+    } else if (this.spectra && this.fftRange) {
+      const { low, high, scale } = this.fftRange;
+      for (let r = 0; r <= 8; r += 2) { const v = high - (high - low) * r / 8; c.fillText(scale === 'V' ? fmt(v, 'V') : v.toFixed(0), box.x - 7, box.y + r / 8 * box.h + 3); }
+      if (scale !== 'V') c.fillText(scale, box.x - 7, box.y - 6);
+      // Frequency labels at the lines the spectrum drew, skipping any that
+      // would run into the one before.
+      c.textAlign = 'center'; let previous = -Infinity;
+      for (const f of this.fftMarks || []) {
+        const px = this.fftX(f); if (px - previous < 44) continue;
+        c.fillText(fmt(f, 'Hz'), px, box.y + box.h + 19); previous = px;
+      }
+      return;
     } else if (this.meterRange && frame.kind === 'meter') {
       for (let r = 0; r <= 8; r += 2) c.fillText(fmt(this.meterRange.high - r / 8 * (this.meterRange.high - this.meterRange.low), 'V'), box.x - 7, box.y + r / 8 * box.h + 3);
     }
