@@ -53,7 +53,23 @@ export function spectrum(samples, period) {
     return { frequency: i * resolution, rms, db: 20 * Math.log10(Math.max(rms, 1e-9)) };
   });
   const peak = bins.slice(1).reduce((best, b) => b.rms > best.rms ? b : best, bins[1]);
-  return { bins, peak, resolution };
+  return { bins, peak, peaks: peaks(bins, resolution), resolution };
+}
+// Local maxima, strongest first, as the macOS app finds them. A tone between
+// two bins is read at its real frequency: a parabola through the log of the
+// three bins around it is the standard correction.
+export function peaks(bins, resolution, limit = 8, floor = 1e-7) {
+  const found = [];
+  for (let i = 1; i < bins.length - 1; i++) {
+    const value = bins[i].rms;
+    if (value <= floor || value < bins[i - 1].rms || value <= bins[i + 1].rms) continue;
+    const left = Math.log(Math.max(bins[i - 1].rms, 1e-18)), centre = Math.log(value), right = Math.log(Math.max(bins[i + 1].rms, 1e-18));
+    const denominator = left - 2 * centre + right;
+    const shift = Math.abs(denominator) < 1e-15 ? 0 : .5 * (left - right) / denominator;
+    const rms = Math.exp(centre - .25 * (left - right) * shift);
+    found.push({ frequency: (i + shift) * resolution, rms, db: 20 * Math.log10(Math.max(rms, 1e-9)) });
+  }
+  return found.sort((a, b) => b.rms - a.rms).slice(0, limit);
 }
 export function decodeUART(samples, period, line = 4, baud = 115200) {
   const bit = 1 / baud / period, result = [];

@@ -129,18 +129,26 @@ export class Plot {
     c.stroke();
   }
   // Every channel on one axis: an input and an output read against each other
-  // is what makes two channels worth having here. Each peak takes its
-  // channel's colour so the dots say which trace they belong to.
+  // is what makes two channels worth having here. Peaks are ringed and labelled
+  // with their frequency, as on the Mac: the strongest five of one channel, or
+  // two apiece in each channel's colour when there are more, or the labels
+  // bury the traces they describe.
   fft(c, box) {
     const spectra = (this.spectra || []).filter(s => s.bins.length); if (!spectra.length) return;
     const max = Math.ceil(Math.max(0, ...spectra.flatMap(s => s.bins.map(b => b.db))) / 20) * 20;
     this.fftMax = max;
     const y = db => box.y + (max - db) / 120 * box.h;
     for (const s of spectra) this.trace(c, s.bins, box, y, COLORS[s.index], b => b.db);
-    for (const s of spectra) if (s.peak) {
-      c.fillStyle = spectra.length > 1 ? COLORS[s.index] : '#d5e6bf';
-      c.beginPath(); c.arc(box.x + s.peak.frequency * this.frame.period * 2 * box.w, y(s.peak.db), 3, 0, 2 * Math.PI); c.fill();
+    const limit = spectra.length > 1 ? 2 : 5;
+    c.save(); c.textAlign = 'center'; c.lineWidth = 1;
+    for (const s of spectra) for (const peak of (s.peaks || []).slice(0, limit)) {
+      const px = box.x + peak.frequency * this.frame.period * 2 * box.w, py = y(peak.db);
+      if (px <= box.x + 1 || px > box.x + box.w) continue;
+      c.strokeStyle = c.fillStyle = spectra.length > 1 ? COLORS[s.index] : '#d5e6bf';
+      c.beginPath(); c.arc(px, py, 3, 0, 2 * Math.PI); c.stroke();
+      c.fillText(fmt(peak.frequency, 'Hz'), Math.min(Math.max(px, box.x + 24), box.x + box.w - 24), Math.max(py - 8, box.y + 9));
     }
+    c.restore();
   }
   logic(c, box) {
     const active = Array.from({ length: 8 }, (_, i) => i).filter(i => this.settings.logicEnabled & (1 << i));

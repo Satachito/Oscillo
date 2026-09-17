@@ -355,6 +355,16 @@ test('the log drops its oldest points rather than growing without limit', async 
   assert.equal(frame.history.length, LOG_CAPACITY);
 });
 
+test('spectrum peaks are strongest first, at the tone\'s own frequency between bins', () => {
+  const rate = 50000, n = 4096, period = 1 / rate;
+  // Neither tone lands on a bin centre: the bins are 12.2 Hz apart.
+  const samples = Float64Array.from({ length: n }, (_, i) => Math.sin(2 * Math.PI * 1003 * i * period) + .25 * Math.sin(2 * Math.PI * 3007 * i * period));
+  const f = spectrum(samples, period);
+  assert.ok(f.peaks.length >= 2);
+  assert.ok(f.peaks[0].rms > f.peaks[1].rms);
+  assert.ok(Math.abs(f.peaks[0].frequency - 1003) < f.resolution / 10, `read ${f.peaks[0].frequency}`);
+  assert.ok(Math.abs(f.peaks[1].frequency - 3007) < f.resolution / 10, `read ${f.peaks[1].frequency}`);
+});
 test('the spectrum is the same whether or not the panel removed the mean', () => {
   // Remove mean is a scope setting; a DC offset through the window becomes a
   // skirt over the low bins, not a tall bin 0, so the transform takes it out.
