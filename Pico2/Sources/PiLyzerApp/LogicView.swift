@@ -115,15 +115,21 @@ struct LogicActivityRow: View {
             if model.logicActivity.isEmpty {
                 MeasurementPlaceholder(text: "Digital inputs D0–D7 · pick a decoder to inspect a serial signal.")
             } else {
-                ForEach(model.logicActivity) { activity in
-                    MeasurementCard(title: "D\(activity.channel)",
-                                    colour: Theme.logicColor(activity.channel)) {
-                        if activity.isIdle {
-                            MeasurementRow("State", model.logicFrame.level(activity.channel, at: 0)
-                                           ? "idle high" : "idle low")
-                        } else {
-                            MeasurementRow("Frequency", activity.frequency.map(Format.frequency))
-                            MeasurementRow("Duty", activity.dutyCycle.map { Format.percent($0 * 100, digits: 0) })
+                // Four to a row, as in the browser application: eight cards
+                // side by side leave each too narrow to hold "Frequency".
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
+                                         count: 4),
+                          alignment: .leading, spacing: 12) {
+                    ForEach(model.logicActivity) { activity in
+                        MeasurementCard(title: "D\(activity.channel)",
+                                        colour: Theme.logicColor(activity.channel)) {
+                            if activity.isIdle {
+                                MeasurementRow("State", model.logicFrame.level(activity.channel, at: 0)
+                                               ? "idle high" : "idle low")
+                            } else {
+                                MeasurementRow("Frequency", activity.frequency.map(Format.frequency))
+                                MeasurementRow("Duty", activity.dutyCycle.map { Format.percent($0 * 100, digits: 0) })
+                            }
                         }
                     }
                 }
