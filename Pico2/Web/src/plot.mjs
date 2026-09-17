@@ -231,14 +231,15 @@ export class Plot {
   // between its points.
   meter(c, box) {
     const history = this.frame.history; if (!history.length) return;
+    const shown = this.frame.channels ?? this.frame.values.map((_, i) => i);
     let low = Infinity, high = -Infinity;
-    for (const row of history) for (let i = 0; i < row.low.length; i++) { low = Math.min(low, row.low[i]); high = Math.max(high, row.high[i]); }
+    for (const row of history) for (const i of shown) { low = Math.min(low, row.low[i]); high = Math.max(high, row.high[i]); }
     if (!Number.isFinite(low)) return;
     const span = Math.max(.1, high - low); low -= span * .1; high += span * .1;
     this.meterRange = { low, high };
     const x = i => box.x + i / Math.max(history.length - 1, 1) * box.w;
     const y = v => box.y + (high - v) / (high - low) * box.h;
-    for (let i = 0; i < this.frame.values.length; i++) {
+    for (const i of shown) {
       c.fillStyle = COLORS[i] + '2e';
       c.beginPath();
       for (let n = 0; n < history.length; n++) c.lineTo(x(n), y(history[n].high[i]));

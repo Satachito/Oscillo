@@ -149,7 +149,9 @@ export class Acquisition {
         // interval the log is labelled with.
         do { this.pointDue += interval; } while (this.pointDue <= now);
       }
-      return { kind: 'meter', values, history: this.history.slice(), interval, start: this.logStart, timestamp: Date.now() };
+      // Every input is logged; the channels switched on are the ones shown and
+      // exported, so switching one back on brings its history with it.
+      return { kind: 'meter', values, channels: activeChannels(settings, instrument.caps), history: this.history.slice(), interval, start: this.logStart, timestamp: Date.now() };
     }
     if (settings.mode === 'logic') return instrument.demo ? demoLogic(settings, instrument.caps) : this.sweep(instrument, settings, actual, token);
     // Averaging is of whole sweeps, in converter codes, as the Mac's engine

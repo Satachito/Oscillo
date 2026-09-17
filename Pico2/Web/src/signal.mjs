@@ -272,11 +272,11 @@ export function csv(frame) {
   // One row a logged interval, so the extremes within it are part of the record
   // rather than something only the screen knew.
   if (frame.kind === 'meter') {
-    const header = ['time_s', 'timestamp'];
-    frame.values.forEach((_, i) => header.push(`CH${i + 1}_min_V`, `CH${i + 1}_mean_V`, `CH${i + 1}_max_V`));
+    const header = ['time_s', 'timestamp'], shown = frame.channels ?? frame.values.map((_, i) => i);
+    shown.forEach(i => header.push(`CH${i + 1}_min_V`, `CH${i + 1}_mean_V`, `CH${i + 1}_max_V`));
     const rows = frame.history.map(row => {
       const cells = [row.time.toPrecision(9), new Date((frame.start + row.time) * 1000).toISOString()];
-      row.mean.forEach((_, i) => cells.push(row.low[i].toPrecision(9), row.mean[i].toPrecision(9), row.high[i].toPrecision(9)));
+      shown.forEach(i => cells.push(row.low[i].toPrecision(9), row.mean[i].toPrecision(9), row.high[i].toPrecision(9)));
       return cells.join(',');
     });
     return [header.join(','), ...rows].join('\n') + '\n';

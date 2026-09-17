@@ -599,3 +599,10 @@ test('channel activity finds the rate of a square wave and notices a dead input'
   assert.equal(activity[1].idle, true);
   assert.equal(activity[0].transitions, 99);
 });
+test('the meter log exports the channels switched on, and only those', () => {
+  const frame = { kind: 'meter', values: [1, 2, 3], channels: [0, 2], start: 0, interval: .5,
+    history: [{ time: 0, low: [1, 2, 3], mean: [1.1, 2.1, 3.1], high: [1.2, 2.2, 3.2] }] };
+  const [header, row] = csv(frame).trim().split('\n');
+  assert.equal(header, 'time_s,timestamp,CH1_min_V,CH1_mean_V,CH1_max_V,CH3_min_V,CH3_mean_V,CH3_max_V');
+  assert.deepEqual(row.split(',').slice(2).map(Number), [1, 1.1, 1.2, 3, 3.1, 3.2]);
+});

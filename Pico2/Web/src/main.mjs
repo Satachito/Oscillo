@@ -414,7 +414,7 @@ function renderFrame() {
   }
   }
   else if (frame?.kind === 'meter') {
-    $('meter-values').replaceChildren(...frame.values.map((value, i) => { const el = document.createElement('div'); el.className = 'meter-value'; el.style.color = COLORS[i]; const label = document.createElement('small'); label.textContent = `CH${i + 1}`; el.append(label, document.createTextNode(fmt(value, 'V', 4))); return el; }));
+    $('meter-values').replaceChildren(...(frame.channels ?? frame.values.map((_, i) => i)).map(i => { const value = frame.values[i]; const el = document.createElement('div'); el.className = 'meter-value'; el.style.color = COLORS[i]; const label = document.createElement('small'); label.textContent = `CH${i + 1}`; el.append(label, document.createTextNode(fmt(value, 'V', 4))); return el; }));
     const hint = document.createElement('div'); hint.className = 'measurement-placeholder'; hint.textContent = 'Meter readings are DC coupled. Ground the inputs before checking offsets.'; $('measurements').append(hint);
   } else if (frame?.kind === 'logic') {
     // A card an input, as on the Mac: its rate and duty, or which way it sits idle.
