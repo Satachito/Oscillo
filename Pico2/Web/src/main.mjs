@@ -3,9 +3,9 @@ import { connect as connectOverNetwork, available as servedByInstrument } from '
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
 import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
 import { fmt, csv, decodeUART, spectrumCsv } from './signal.mjs';
-import { COLORS, Plot } from './plot.mjs';
+import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
-const NUMERIC_CONTROLS = { 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
+const NUMERIC_CONTROLS = { averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
 const CHECK_CONTROLS = [['test-enabled', 'testEnabled'], ['xy', 'xy'], ['uart', 'uart'], ['signals-enabled', 'signalsEnabled']];
 const STORAGE_KEY = 'pilyzer.settings.v1';
 // The front panel comes back the way it was left, the per-channel zero
@@ -275,7 +275,15 @@ function synchronize() {
   // Every board has one, but not on the same pins: a PL2407AFE switches its
   // ranges on GPIO2-5, so its generator starts above them.
   $('signal-controls').hidden = !instrument || !(caps().flags & 32);
-  $('signal-sine').disabled = !settings.signalsEnabled;
+  $('signal-sine-row').hidden = !settings.signalsEnabled;
+  settings.averaging = Math.min(Math.max(Math.round(settings.averaging) || 1, 1), 100); $('averaging').value = settings.averaging;
+  $('averaging-row').hidden = settings.mode !== 'scope' && settings.mode !== 'spectrum';
+  // X/Y picks its channels from the enabled ones, as on the Mac.
+  $('xy-axes').hidden = !settings.xy || settings.mode !== 'scope';
+  if (!active.includes(settings.xyX)) settings.xyX = active[0] ?? 0;
+  if (!active.includes(settings.xyY) || settings.xyY === settings.xyX) settings.xyY = active.find(i => i !== settings.xyX) ?? settings.xyX;
+  options('xy-x', active.map(i => [i, `CH${i + 1}`]), settings.xyX);
+  options('xy-y', active.map(i => [i, `CH${i + 1}`]), settings.xyY);
   showLowPass();
   for (const op of $('record').options) op.disabled = Number(op.value) > caps().maxRecord;
   for (const op of $('logic-rate').options) op.disabled = Number(op.value) > caps().logicClock;
@@ -316,6 +324,8 @@ function renderFrame() {
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
   $('meter-values').hidden = frame?.kind !== 'meter';
   $('measurements').replaceChildren();
+  const cursorCard = frame?.kind === 'scope' && settings.mode === 'scope' && cursors.enabled;
+  $('measurements').style.setProperty('--cards', Math.max(3, (frame?.kind === 'scope' ? frame.traces.length : 0) + (cursorCard ? 1 : 0)));
   if (frame?.kind === 'scope') for (const trace of frame.traces) {
     const card = document.createElement('article'); card.className = 'measurement'; card.style.setProperty('--channel-color', COLORS[trace.index]);
     const title = document.createElement('h2'); title.innerHTML = `<i></i> CHANNEL ${trace.index + 1}`; card.append(title);
@@ -323,8 +333,16 @@ function renderFrame() {
     const s = settings.mode === 'spectrum' && plot.spectra?.find(entry => entry.index === trace.index);
     const rows = s?.peak
       ? [['Peak', fmt(s.peak.frequency, 'Hz')], ['Level', `${s.peak.db.toFixed(1)} dBV`], ['Resolution', fmt(s.resolution, 'Hz')]]
-      : [['Peak to peak', fmt(trace.stats.pp, 'V')], ['Frequency', fmt(trace.stats.frequency, 'Hz')], ['RMS', fmt(trace.stats.rms, 'V')], ['Mean', fmt(trace.stats.mean, 'V')]];
+      : [['Peak to peak', fmt(trace.stats.pp, 'V')], ['Mean', fmt(trace.stats.mean, 'V')], ['RMS', fmt(trace.stats.rms, 'V')], ['AC RMS', fmt(trace.stats.acRms, 'V')],
+         ['Frequency', fmt(trace.stats.frequency, 'Hz')], ['Duty', trace.stats.duty === null ? '—' : `${(trace.stats.duty * 100).toFixed(1)} %`], ['Rise', fmt(trace.stats.rise, 's')]];
     for (const [label, value] of rows) { const row = table.insertRow(); row.insertCell().textContent = label; const td = row.insertCell(); td.className = 'value'; td.textContent = value; }
+    card.append(table); $('measurements').append(card);
+  }
+  if (cursorCard) {
+    const card = document.createElement('article'); card.className = 'measurement'; card.style.setProperty('--channel-color', CURSOR_COLOR);
+    const title = document.createElement('h2'); title.innerHTML = '<i></i> CURSORS'; card.append(title);
+    const table = document.createElement('table'), span = Math.abs(cursors.b - cursors.a) * frame.count * frame.period;
+    for (const [label, value] of [['Δt', fmt(span, 's')], ['1/Δt', span > 0 ? fmt(1 / span, 'Hz') : '—']]) { const row = table.insertRow(); row.insertCell().textContent = label; const td = row.insertCell(); td.className = 'value'; td.textContent = value; }
     card.append(table); $('measurements').append(card);
   }
   else if (frame?.kind === 'meter') {
@@ -381,6 +399,16 @@ $('export').onclick = () => {
   if (settings.mode === 'spectrum' && plot.spectra) text = spectrumCsv(plot.spectra);
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+// Cursors belong to the session rather than the saved settings, as on the Mac.
+const cursors = { enabled: false, a: .3, b: .7 };
+plot.cursors = cursors;
+function showCursors() {
+  $('cursors-enabled').checked = cursors.enabled; $('cursor-controls').hidden = !cursors.enabled;
+  for (const key of ['a', 'b']) { $(`cursor-${key}`).value = cursors[key]; $(`cursor-${key}-value`).value = `${Math.round(cursors[key] * 100)} %`; }
+}
+$('cursors-enabled').addEventListener('change', () => { cursors.enabled = $('cursors-enabled').checked; showCursors(); renderFrame(); });
+for (const key of ['a', 'b']) $(`cursor-${key}`).addEventListener('input', () => { cursors[key] = Number($(`cursor-${key}`).value); showCursors(); renderFrame(); });
+showCursors();
 $('lpf-enabled').addEventListener('change', () => { settings.lpf = $('lpf-enabled').checked ? rememberedCutoff : 0; synchronize(); changed(); });
 // The reading follows the thumb; the instrument hears about it when it stops.
 $('lpf').addEventListener('input', () => { settings.lpf = Math.round(10 ** Number($('lpf').value)); $('lpf-value').value = `${settings.lpf.toLocaleString()} Hz`; });

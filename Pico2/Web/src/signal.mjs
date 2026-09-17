@@ -1,17 +1,43 @@
+// As the macOS app measures. Every timing figure comes from crossings of the
+// half-way level with a 5 % guard band, so noise at a crossing does not invent
+// edges; the period comes from whichever edge was seen at least twice, since a
+// short record may hold only one of the other; rise and fall are 10 % to 90 %.
 export function measure(samples, period) {
-  if (!samples.length) return { min: 0, max: 0, mean: 0, rms: 0, acRms: 0, pp: 0, frequency: null };
+  const result = { min: 0, max: 0, mean: 0, rms: 0, acRms: 0, pp: 0, frequency: null, period: null, duty: null, rise: null, fall: null };
+  const n = samples.length; if (!n) return result;
   let min = Infinity, max = -Infinity, sum = 0, squares = 0;
   for (const x of samples) { min = Math.min(min, x); max = Math.max(max, x); sum += x; squares += x * x; }
-  const mean = sum / samples.length, rms = Math.sqrt(squares / samples.length), pp = max - min;
-  const crossings = []; let armed = false;
-  if (pp > 1e-5) for (let i = 1; i < samples.length; i++) {
-    if (samples[i] < mean - pp * .1) armed = true;
-    if (armed && samples[i - 1] < mean && samples[i] >= mean) {
-      crossings.push(i - 1 + (mean - samples[i - 1]) / (samples[i] - samples[i - 1])); armed = false;
-    }
+  const mean = sum / n, pp = max - min;
+  Object.assign(result, { min, max, mean, pp, rms: Math.sqrt(squares / n), acRms: Math.sqrt(Math.max(0, squares / n - mean * mean)) });
+  if (pp <= 1e-9 || !(period > 0)) return result;
+  const cross = (i, level) => { const step = samples[i] - samples[i - 1]; return Math.abs(step) < 1e-15 ? i : i - 1 + (level - samples[i - 1]) / step; };
+  const middle = (max + min) / 2, guard = pp * .05, rising = [], falling = [];
+  let above = samples[0] > middle;
+  for (let i = 1; i < n; i++) {
+    if (!above && samples[i] > middle + guard) { above = true; rising.push(cross(i, middle)); }
+    else if (above && samples[i] < middle - guard) { above = false; falling.push(cross(i, middle)); }
   }
-  const frequency = crossings.length > 1 ? (crossings.length - 1) / ((crossings.at(-1) - crossings[0]) * period) : null;
-  return { min, max, mean, rms, acRms: Math.sqrt(Math.max(0, rms * rms - mean * mean)), pp, frequency };
+  const edges = rising.length >= 2 ? rising : falling;
+  if (edges.length >= 2) {
+    const cycle = (edges.at(-1) - edges[0]) / (edges.length - 1) * period;
+    if (cycle > 0) { result.period = cycle; result.frequency = 1 / cycle; }
+  }
+  if (rising.length && result.period) {
+    const fall = falling.find(f => f > rising[0]);
+    if (fall !== undefined) result.duty = Math.min(Math.max((fall - rising[0]) * period / result.period, 0), 1);
+  }
+  const low = min + pp * .1, high = min + pp * .9;
+  const transition = up => {
+    let start = null;
+    for (let i = 1; i < n; i++) {
+      const a = samples[i - 1], b = samples[i];
+      if (up) { if (a < low && b >= low) start = cross(i, low); if (start !== null && a < high && b >= high) return (cross(i, high) - start) * period; }
+      else { if (a > high && b <= high) start = cross(i, high); if (start !== null && a > low && b <= low) return (cross(i, low) - start) * period; }
+    }
+    return null;
+  };
+  result.rise = transition(true); result.fall = transition(false);
+  return result;
 }
 // One column pair per channel. Every trace comes from the same record, so the
 // bins line up and one frequency column serves them all.

@@ -1,5 +1,6 @@
 import { scaleFor, fitScale, displayedTop } from './protocol.mjs';
 import { fmt, spectrum } from './signal.mjs';
+export const CURSOR_COLOR = '#e58b72';
 export const COLORS = ['#e9c96b', '#79cdd8', '#c0a1ef', '#9ed190', '#d8ad7f', '#a6bcec', '#d592b9', '#afbf7a'];
 export class Plot {
   constructor(canvas) {
@@ -71,9 +72,23 @@ export class Plot {
     }
     c.stroke();
   }
+  // The channels X/Y was asked for, or the first two there are when one of them
+  // is not in this frame.
+  xyTraces() {
+    const traces = this.frame.traces, x = traces.find(t => t.index === this.settings.xyX) || traces[0];
+    return [x, traces.find(t => t.index === this.settings.xyY && t !== x) || traces.find(t => t !== x)];
+  }
   scope(c, box) {
     this.bias(c, box);
     for (const trace of this.frame.traces) this.trace(c, trace.samples, box, this.mapping(trace.index, box).y, COLORS[trace.index]);
+    if (this.cursors?.enabled) {
+      c.save(); c.strokeStyle = CURSOR_COLOR; c.globalAlpha = .8; c.lineWidth = 1;
+      for (const fraction of [this.cursors.a, this.cursors.b]) {
+        const x = box.x + Math.min(Math.max(fraction, 0), 1) * box.w;
+        c.beginPath(); c.moveTo(x, box.y); c.lineTo(x, box.y + box.h); c.stroke();
+      }
+      c.restore();
+    }
     if (this.settings.trigger !== 0) {
       const x = box.x + this.frame.triggerIndex / Math.max(this.frame.count - 1, 1) * box.w;
       c.strokeStyle = '#a3cd87'; c.lineWidth = .8; c.setLineDash([3, 5]); c.beginPath(); c.moveTo(x, box.y); c.lineTo(x, box.y + box.h); c.stroke(); c.setLineDash([]);
@@ -118,7 +133,7 @@ export class Plot {
     }
   }
   xy(c, box) {
-    const [first, second] = this.frame.traces, xmap = this.mapping(first.index, box), ymap = this.mapping(second.index, box);
+    const [first, second] = this.xyTraces(), xmap = this.mapping(first.index, box), ymap = this.mapping(second.index, box);
     const offset = this.settings.channels[first.index].offset;
     const x = v => box.x + box.w / 2 + ((v - xmap.centre) / xmap.perDiv + offset) * box.w / 8;
     c.strokeStyle = '#b8e89b'; c.lineWidth = 1; c.beginPath();
@@ -127,6 +142,8 @@ export class Plot {
       if (i) c.lineTo(px, py); else c.moveTo(px, py);
     }
     c.stroke();
+    c.fillStyle = '#8c9e90'; c.textAlign = 'left';
+    c.fillText(`X: CH${first.index + 1}   Y: CH${second.index + 1}`, box.x + 8, box.y + 14);
   }
   // Every channel on one axis: an input and an output read against each other
   // is what makes two channels worth having here. Peaks are ringed and labelled
@@ -191,7 +208,7 @@ export class Plot {
     const frame = this.frame;
     if (frame.kind === 'scope' && this.settings.mode !== 'spectrum') {
       // In X/Y the vertical axis belongs to the second trace, not the first.
-      const index = (this.xyMode ? frame.traces[1] : frame.traces[0]).index;
+      const index = (this.xyMode ? this.xyTraces()[1] : frame.traces[0]).index;
       const map = this.mapping(index, box), offset = this.settings.channels[index].offset;
       for (let r = 0; r <= 8; r += 2) c.fillText(fmt(map.centre + (4 - r - offset) * map.perDiv, 'V'), box.x - 7, box.y + r / 8 * box.h + 3);
     } else if (this.spectra) {
@@ -205,7 +222,7 @@ export class Plot {
       let label;
       if (this.spectra) label = fmt(col / columns * (this.fftTop || 1 / frame.period / 2), 'Hz');
       else if (frame.kind === 'meter') label = fmt(col / columns * (frame.history.at(-1)?.time || 0), 's');
-      else if (this.xyMode) { const index = frame.traces[0].index, m = this.mapping(index, box); label = fmt(m.centre + (col - columns / 2 - this.settings.channels[index].offset) * m.perDiv, 'V'); }
+      else if (this.xyMode) { const index = this.xyTraces()[0].index, m = this.mapping(index, box); label = fmt(m.centre + (col - columns / 2 - this.settings.channels[index].offset) * m.perDiv, 'V'); }
       else label = fmt((col / columns * (frame.count - 1) - frame.triggerIndex) * frame.period, 's');
       c.fillText(label, box.x + col / columns * box.w, box.y + box.h + 19);
     }

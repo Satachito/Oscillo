@@ -499,3 +499,25 @@ test('the axis ends at the span, or where the record does if that is sooner', ()
   assert.equal(displayedTop(5000, 2560), 2560);
   assert.equal(displayedTop(0, 5120), 5120);
 });
+
+// Duty and rise, measured as the macOS app's Measurements does.
+test('a square wave reads its duty cycle, and a ramp its 10–90 % rise time', () => {
+  const rate = 100000, period = 1 / rate;
+  const square = Float64Array.from({ length: 10000 }, (_, i) => (i % 1000) < 300 ? 3.3 : 0);
+  const m = measure(square, period);
+  assert.ok(Math.abs(m.frequency - 100) < .01, `read ${m.frequency}`);
+  assert.ok(Math.abs(m.duty - .3) < .002, `read ${m.duty}`);
+  // 0 V to 1 V over 100 samples, then held: 10 % to 90 % is 80 samples.
+  const ramp = Float64Array.from({ length: 400 }, (_, i) => Math.min(Math.max((i - 100) / 100, 0), 1));
+  assert.ok(Math.abs(measure(ramp, period).rise - 80 * period) < period / 10);
+  assert.equal(measure(new Float64Array(64).fill(1.65), period).duty, null);
+});
+test('averaged sweeps come back as one frame of the average', async () => {
+  const settings = { ...makeSettings(), averaging: 4, trigger: 0 };
+  const acquisition = new Acquisition(() => {}, () => {});
+  acquisition.attach(new DemoInstrument());
+  const frame = await acquisition.capture(acquisition.instrument, settings, null, acquisition.token);
+  assert.equal(frame.kind, 'scope');
+  assert.equal(frame.traces.length, 3);
+  assert.equal(frame.traces[0].samples.length, frame.count);
+});

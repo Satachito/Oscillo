@@ -4,19 +4,19 @@ export const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 // Points kept before the oldest are dropped: at half a second that is nearly
 // three hours, at five minutes a little over two months.
 export const LOG_CAPACITY = 20000;
-export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, bias: 0, measuredBias: null, gain: [1, 1], applied: 1 })), testEnabled: true, testFrequency: 1000, signalsEnabled: false, signalSineHz: 440, spectrumSpan: 0, logInterval: .5, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
+export const makeSettings = () => ({ mode: 'scope', timebase: .001, record: 2048, source: 0, trigger: 1, slope: 0, level: 0, position: .15, hysteresis: .004, lpf: 0, channels: Array.from({ length: 3 }, () => ({ enabled: true, range: 0, probe: 1, scale: 0, offset: 0, ac: false, bias: 0, measuredBias: null, gain: [1, 1], applied: 1 })), testEnabled: true, testFrequency: 1000, signalsEnabled: false, signalSineHz: 440, spectrumSpan: 0, averaging: 1, xyX: 0, xyY: 1, logInterval: .5, logicRate: 1000000, logicRecord: 4096, logicSource: 0, logicEnabled: 255, uart: false, uartLine: 4, uartBaud: 115200, xy: false });
 const tone = (channel, t) => channel === 0 ? 2 * Math.sin(2 * Math.PI * 1000 * t) + .02 * Math.sin(2 * Math.PI * 3000 * t) : channel === 1 ? (Math.sin(2 * Math.PI * 500 * t) >= 0 ? 1 : -1) + .25 : 1.5 * Math.sin(2 * Math.PI * 194 * t);
 export class DemoInstrument {
   constructor() { this.demo = true; this.identity = { name: 'Demo signal', board: 1, firmware: '1.7' }; this.caps = demoCaps; this.ranges = ranges(1); }
   async abort() {} async close() {} async setRange() {} async setTest(on, hz) { return hz; }
   async setSignals(on, hz) { return on ? hz : 0; }
 }
-function columnsToFrame(columns, request, settings, instrument, actual, triggered, triggerIndex) {
+function columnsToFrame(columns, request, settings, instrument, actual, triggered, triggerIndex, clipped) {
   const traces = request.active.map((index, slot) => {
     const scale = scaleFor(settings, instrument.caps, instrument.ranges, index);
     const raw = columns[slot], volts = Float64Array.from(raw, scale.volts);
     const stats = measure(volts, actual.period), mean = settings.channels[index].ac ? stats.mean : 0;
-    return { index, samples: Float64Array.from(volts, v => v - mean), removedMean: mean, stats, clipped: raw.some(v => v === 0 || v >= instrument.caps.fullScale) };
+    return { index, samples: Float64Array.from(volts, v => v - mean), removedMean: mean, stats, clipped: clipped ? clipped[slot] : raw.some(v => v === 0 || v >= instrument.caps.fullScale) };
   });
   return { kind: 'scope', traces, period: actual.period, count: actual.count, triggerIndex, triggered, decimation: actual.decimation, timestamp: Date.now() };
 }
@@ -42,7 +42,7 @@ function demoAnalog(instrument, settings) {
     const r = scaleFor(settings, instrument.caps, instrument.ranges, c).r;
     return Float64Array.from({ length: count }, (_, i) => Math.max(0, Math.min(4095, Math.round((tone(c, start + i * period) * r.gain + r.offset) / instrument.caps.reference * 4095))) * 16);
   });
-  return columnsToFrame(columns, req, settings, instrument, { period, count, decimation: Math.max(1, Math.floor(period / (instrument.caps.minCycles / instrument.caps.clock * req.active.length))) }, triggered, pretrigger);
+  return { columns, request: req, actual: { period, count, decimation: Math.max(1, Math.floor(period / (instrument.caps.minCycles / instrument.caps.clock * req.active.length))) }, triggered, triggerIndex: pretrigger };
 }
 function demoLogic(settings, caps) {
   const period = Math.max(1 / settings.logicRate, 1 / caps.logicClock), count = Math.min(settings.logicRecord, caps.logicMaxRecord), pretrigger = Math.floor(count * settings.position);
@@ -151,7 +151,29 @@ export class Acquisition {
       }
       return { kind: 'meter', values, history: this.history.slice(), interval, start: this.logStart, timestamp: Date.now() };
     }
-    if (instrument.demo) return settings.mode === 'logic' ? demoLogic(settings, instrument.caps) : demoAnalog(instrument, settings);
+    if (settings.mode === 'logic') return instrument.demo ? demoLogic(settings, instrument.caps) : this.sweep(instrument, settings, actual, token);
+    // Averaging is of whole sweeps, in converter codes, as the Mac's engine
+    // does it: a sweep that never came makes the whole average not come, a
+    // channel that clipped in any sweep is marked clipped, and the frame is
+    // triggered only if every sweep in it was.
+    const sweeps = Math.min(Math.max(Math.round(settings.averaging) || 1, 1), 100);
+    let sum = null, clipped = null, last = null, triggered = true;
+    for (let n = 0; n < sweeps; n++) {
+      const raw = instrument.demo ? demoAnalog(instrument, settings) : await this.sweep(instrument, settings, actual, token);
+      if (!raw || token !== this.token) return null;
+      last = raw; triggered = triggered && raw.triggered;
+      sum ??= raw.columns.map(column => new Float64Array(column.length));
+      clipped ??= raw.columns.map(() => false);
+      raw.columns.forEach((column, i) => {
+        for (let j = 0; j < column.length; j++) sum[i][j] += column[j];
+        if (column.some(v => v === 0 || v >= instrument.caps.fullScale)) clipped[i] = true;
+      });
+    }
+    return columnsToFrame(sum.map(column => column.map(v => v / sweeps)), last.request, settings, instrument, last.actual, triggered, last.triggerIndex, clipped);
+  }
+  // One sweep from the instrument: a logic frame, or an analogue sweep's raw
+  // columns for capture to average.
+  async sweep(instrument, settings, actual, token) {
     const logic = settings.mode === 'logic', arm = logic ? OP.logicArm : OP.analogArm, poll = logic ? OP.logicStatus : OP.analogStatus;
     await instrument.command(arm);
     let result, deadline = performance.now() + actual.period * actual.count * 1000 + 3000;
@@ -176,6 +198,6 @@ export class Acquisition {
     if (logic) return { kind: 'logic', samples: bytes, period: actual.period, count: actual.count, triggerIndex: result.triggerIndex, triggered: result.triggered, timestamp: Date.now() };
     const request = analogRequest(settings, instrument.caps, instrument.ranges);
     if (actual.mask !== request.mask || actual.channels !== request.active.length) throw new Error('The instrument returned an unexpected channel mask');
-    return columnsToFrame(splitAnalog(bytes, actual.channels), request, settings, instrument, actual, result.triggered, result.triggerIndex);
+    return { columns: splitAnalog(bytes, actual.channels), request, actual, triggered: result.triggered, triggerIndex: result.triggerIndex };
   }
 }
