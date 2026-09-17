@@ -167,17 +167,19 @@ struct FlowingBytes: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
-        // Each item as wide as its own text, wrapped onto as many lines as it
-        // takes: a fixed column narrower than "0x72 'r'" broke it over three.
+        // In columns of one width, each wide enough for "0x72 'r'", so the
+        // items stay put while a live record redraws under them; one that
+        // needs more — "framing error", an I²C address — takes whole cells.
         // A record can decode to thousands, so the page stops where the
         // browser's does.
-        WrappingLayout(spacing: 5) {
+        WrappingLayout(spacing: 5, cell: Self.cellWidth) {
             ForEach(items.prefix(2000)) { item in
                 Text(item.text)
                     .font(Theme.monoSmall)
                     .lineLimit(1)
                     .fixedSize()
                     .padding(.horizontal, 6).padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(background(for: item.kind),
                                 in: RoundedRectangle(cornerRadius: 4))
                     .foregroundStyle(foreground(for: item.kind))
@@ -185,6 +187,12 @@ struct FlowingBytes: View {
             }
         }
     }
+
+    /// Eight characters of the chips' monospaced type, and their padding.
+    private static let cellWidth: CGFloat = {
+        let font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        return ceil(("0x72 'r'" as NSString).size(withAttributes: [.font: font]).width) + 12
+    }()
 
     private func background(for kind: DecodedItem.Kind) -> Color {
         switch kind {
@@ -292,10 +300,20 @@ struct MeterView: View {
     }
 }
 
-/// Lays its children out left to right at their own widths, starting a new
-/// line when the next one would not fit.
+/// Lays its children out left to right, starting a new line when the next one
+/// would not fit. Each takes a whole number of cells, so they line up in
+/// columns however long their own contents are.
 struct WrappingLayout: Layout {
     var spacing: CGFloat
+    var cell: CGFloat
+
+    /// The narrowest run of whole cells, with the gaps between them, that holds
+    /// this subview.
+    private func width(of subview: LayoutSubview) -> CGFloat {
+        let natural = subview.sizeThatFits(.unspecified).width
+        let cells = max(1, ceil((natural + spacing) / (cell + spacing)))
+        return cells * cell + (cells - 1) * spacing
+    }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let lines = arrange(width: proposal.width ?? .infinity, subviews: subviews)
@@ -309,9 +327,11 @@ struct WrappingLayout: Layout {
         for line in arrange(width: bounds.width, subviews: subviews) {
             var x = bounds.minX
             for index in line.indices {
-                let size = subviews[index].sizeThatFits(.unspecified)
-                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-                x += size.width + spacing
+                let width = width(of: subviews[index])
+                let height = subviews[index].sizeThatFits(.unspecified).height
+                subviews[index].place(at: CGPoint(x: x, y: y),
+                                      proposal: ProposedViewSize(width: width, height: height))
+                x += width + spacing
             }
             y += line.height + spacing
         }
@@ -322,7 +342,8 @@ struct WrappingLayout: Layout {
     private func arrange(width: CGFloat, subviews: Subviews) -> [Line] {
         var lines: [Line] = [Line()]
         for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
+            let size = CGSize(width: self.width(of: subviews[index]),
+                              height: subviews[index].sizeThatFits(.unspecified).height)
             let needed = lines[lines.count - 1].indices.isEmpty ? size.width : lines[lines.count - 1].width + spacing + size.width
             if needed > width, !lines[lines.count - 1].indices.isEmpty {
                 lines.append(Line())
