@@ -92,20 +92,23 @@ function updateButtons() {
 }
 function option(value, label) { const el = document.createElement('option'); el.value = value; el.textContent = label; return el; }
 function options(id, values, selected) { $(id).replaceChildren(...values.map(([value, label]) => option(value, label))); $(id).value = selected; }
-// A volts field whose number goes into the settings as it is typed. Committing
-// on change instead rebuilt every channel card as the field lost focus — which
-// happens on the press of the next button — so a click on Mid rail or Set gain
-// straight after typing landed on a card that had just been replaced, and did
-// nothing. Leaving the field only tidies what it shows.
+// A volts field that takes its number when it is done with: on Enter, or when
+// focus leaves it, as on the Mac — not the dotted line walking through 1 and
+// 1.6 on the way to 1.65. Taking it must not rebuild the channel cards: focus
+// leaves on the press of the next button, and a rebuild then would replace
+// the card under the pointer and swallow that click. The browser blurs the
+// field before the click, so Mid rail still writes last.
 function voltsField(input, read, write, after) {
   const show = () => { input.value = Number(read().toPrecision(6)); };
   show();
-  input.addEventListener('input', () => {
+  const commit = () => {
     const value = Number(input.value);
-    if (input.value.trim() === '' || !Number.isFinite(value)) return;
-    write(value); after(); saveSettings();
-  });
-  input.addEventListener('change', show);
+    if (input.value.trim() !== '' && Number.isFinite(value) && value !== read()) { write(value); after(); saveSettings(); }
+    show();
+  };
+  input.addEventListener('change', commit);
+  // A number field does not report a change on Enter, only when it loses focus.
+  input.addEventListener('keydown', event => { if (event.key === 'Enter') commit(); });
 }
 function channelControls() {
   $('channels').replaceChildren();
