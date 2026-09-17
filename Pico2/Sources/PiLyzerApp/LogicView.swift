@@ -28,10 +28,12 @@ struct LogicView: View {
                 }
             }
         } readings: {
-            if model.decoderKind == .none {
+            // Choosing a decoder adds what it read rather than taking the
+            // inputs' readings away: a line whose bytes will not decode is
+            // exactly when its rate is worth seeing.
+            VStack(alignment: .leading, spacing: 12) {
                 LogicActivityRow(model: model)
-            } else {
-                DecodedRow(model: model)
+                if model.decoderKind != .none { DecodedRow(model: model) }
             }
         }
     }
@@ -165,13 +167,17 @@ struct FlowingBytes: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 34), spacing: 5)],
-                  alignment: .leading, spacing: 5) {
-            ForEach(items) { item in
+        // Each item as wide as its own text, wrapped onto as many lines as it
+        // takes: a fixed column narrower than "0x72 'r'" broke it over three.
+        // A record can decode to thousands, so the page stops where the
+        // browser's does.
+        WrappingLayout(spacing: 5) {
+            ForEach(items.prefix(2000)) { item in
                 Text(item.text)
                     .font(Theme.monoSmall)
+                    .lineLimit(1)
+                    .fixedSize()
                     .padding(.horizontal, 6).padding(.vertical, 4)
-                    .frame(maxWidth: .infinity)
                     .background(background(for: item.kind),
                                 in: RoundedRectangle(cornerRadius: 4))
                     .foregroundStyle(foreground(for: item.kind))
@@ -283,5 +289,50 @@ struct MeterView: View {
             context.strokeTrace(means.indices.map { CGPoint(x: x($0), y: y(means[$0].high)) },
                                 color: Theme.channelColor(channel), width: 1.2)
         }
+    }
+}
+
+/// Lays its children out left to right at their own widths, starting a new
+/// line when the next one would not fit.
+struct WrappingLayout: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let lines = arrange(width: proposal.width ?? .infinity, subviews: subviews)
+        let width = lines.map(\.width).max() ?? 0
+        let height = lines.map(\.height).reduce(0, +) + spacing * CGFloat(max(lines.count - 1, 0))
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in arrange(width: bounds.width, subviews: subviews) {
+            var x = bounds.minX
+            for index in line.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += line.height + spacing
+        }
+    }
+
+    private struct Line { var indices: [Int] = []; var width: CGFloat = 0; var height: CGFloat = 0 }
+
+    private func arrange(width: CGFloat, subviews: Subviews) -> [Line] {
+        var lines: [Line] = [Line()]
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let needed = lines[lines.count - 1].indices.isEmpty ? size.width : lines[lines.count - 1].width + spacing + size.width
+            if needed > width, !lines[lines.count - 1].indices.isEmpty {
+                lines.append(Line())
+            }
+            var line = lines[lines.count - 1]
+            line.width = line.indices.isEmpty ? size.width : line.width + spacing + size.width
+            line.height = max(line.height, size.height)
+            line.indices.append(index)
+            lines[lines.count - 1] = line
+        }
+        return lines.filter { !$0.indices.isEmpty }
     }
 }
