@@ -4,6 +4,7 @@
 #include "pilyzer_protocol.h"
 #include "web_files.h"
 
+#include "lwip/sys.h"
 #include "lwip/tcp.h"
 
 #include <string.h>
@@ -33,12 +34,17 @@ typedef struct {
     bool     in_use;
     bool     close_when_sent;
     bool     holds_reply;           // this connection owns the shared reply buffers
+    uint32_t last_used;             // sys_now() of the last byte either way
 } connection_t;
 
 // A browser loading the page opens up to six connections at once, one per
 // module it has found, and a refused one is a module that never arrives - the
-// page then shows but nothing on it runs. Each costs about 1.6 kB.
-#define CONNECTIONS 6
+// page then shows but nothing on it runs. Safari on an iPhone also keeps the
+// ones it has finished with open for a while, so six fill up with idle ones
+// and the next module is refused: the page stopped half loaded. There is room
+// for twelve, and when they are all taken the one idle longest is closed to
+// make room (see on_accept). Each costs about 1.4 kB.
+#define CONNECTIONS 12
 static connection_t connections[CONNECTIONS];
 // The reply lives in buffers the command layer owns, so only one connection
 // may be carrying one at a time.
@@ -49,6 +55,36 @@ static void release(connection_t *c)
     if (c->holds_reply) { reply_in_flight = false; c->holds_reply = false; }
     c->in_use = false;
     c->pcb = NULL;
+}
+
+// Set when a connection is aborted inside one of lwIP's callbacks. lwIP frees
+// an aborted pcb at once, and the callback must then return ERR_ABRT so that
+// it does not touch it again; returning ERR_OK instead is a use after free,
+// which a page load with a dozen connections found within seconds.
+static bool aborted;
+
+static void abort_connection(connection_t *c)
+{
+    struct tcp_pcb *pcb = c->pcb;
+    release(c);
+    if (!pcb) return;
+    tcp_arg(pcb, NULL);
+    tcp_abort(pcb);
+    aborted = true;
+}
+
+/// Hands the pcb back to lwIP to close in its own time. It keeps it for a
+/// while - the last bytes still to be acknowledged, then TIME_WAIT - and must
+/// not call back into this slot meanwhile, since the slot may already belong
+/// to the next connection.
+static void close_connection(connection_t *c)
+{
+    struct tcp_pcb *pcb = c->pcb;
+    if (!pcb) { release(c); return; }
+    tcp_arg(pcb, NULL);
+    tcp_recv(pcb, NULL); tcp_sent(pcb, NULL); tcp_err(pcb, NULL); tcp_poll(pcb, NULL, 0);
+    release(c);
+    if (tcp_close(pcb) != ERR_OK) { tcp_abort(pcb); aborted = true; }
 }
 
 static void reset_response(connection_t *c)
@@ -83,14 +119,14 @@ static void pump(connection_t *c)
         // so lwIP may point at them rather than copy them.
         err_t error = tcp_write(c->pcb, c->span[index] + at, take, 0);
         if (error == ERR_MEM) break;
-        if (error != ERR_OK) { tcp_abort(c->pcb); release(c); return; }
+        if (error != ERR_OK) { abort_connection(c); return; }
         c->sent += take;
     }
     tcp_output(c->pcb);
 
     if (c->sent == c->total) {
         if (c->holds_reply) { reply_in_flight = false; c->holds_reply = false; }
-        if (c->close_when_sent) { tcp_close(c->pcb); release(c); }
+        if (c->close_when_sent) close_connection(c);
         else { reset_response(c); c->have = 0; }
     }
 }
@@ -102,7 +138,7 @@ static void plain(connection_t *c, int status, const char *message)
     uint32_t n = http_response_head(c->head, sizeof c->head, status, "text/plain; charset=utf-8",
                                     NULL, length, true);
     c->close_when_sent = true;
-    if (!n) { tcp_abort(c->pcb); release(c); return; }
+    if (!n) { abort_connection(c); return; }
     add_span(c, c->head, n);
     add_span(c, message, length);
     pump(c);
@@ -126,7 +162,7 @@ static void answer(connection_t *c, const http_request_t *request)
         reply_in_flight = c->holds_reply = true;
         uint32_t n = http_response_head(c->head, sizeof c->head, 200, "application/octet-stream",
                                         NULL, head_size + body_size, c->close_when_sent);
-        if (!n) { tcp_abort(c->pcb); release(c); return; }
+        if (!n) { abort_connection(c); return; }
         add_span(c, c->head, n);
         add_span(c, head, head_size);
         if (body_size) add_span(c, body, body_size);
@@ -139,7 +175,7 @@ static void answer(connection_t *c, const http_request_t *request)
     if (!file) { plain(c, 404, "No such file on this instrument."); return; }
     uint32_t n = http_response_head(c->head, sizeof c->head, 200, http_type_for(file->path),
                                     "gzip", file->length, c->close_when_sent);
-    if (!n) { tcp_abort(c->pcb); release(c); return; }
+    if (!n) { abort_connection(c); return; }
     add_span(c, c->head, n);
     add_span(c, file->data, file->length);
     pump(c);
@@ -147,30 +183,45 @@ static void answer(connection_t *c, const http_request_t *request)
 
 static err_t on_sent(void *arg, struct tcp_pcb *pcb, u16_t length)
 {
-    (void)pcb; (void)length;
+    (void)length;
     connection_t *c = arg;
-    if (c && c->in_use) pump(c);
-    return ERR_OK;
+    aborted = false;
+    if (c && c->in_use && c->pcb == pcb) { c->last_used = sys_now(); pump(c); }
+    return aborted ? ERR_ABRT : ERR_OK;
 }
 
-// Every second or so while a connection is open. A write that found lwIP's
+// Every half second while a connection is open. A write that found lwIP's
 // segment pool empty waits for an acknowledgement to go round again, and a
 // connection with nothing in flight has none coming; this is its second go.
 static err_t on_poll(void *arg, struct tcp_pcb *pcb)
 {
-    (void)pcb;
     connection_t *c = arg;
-    if (c && c->in_use && c->sent < c->total) pump(c);
-    return ERR_OK;
+    aborted = false;
+    if (c && c->in_use && c->pcb == pcb && c->sent < c->total) pump(c);
+    return aborted ? ERR_ABRT : ERR_OK;
 }
+
+static void receive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t error);
 
 static err_t on_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t error)
 {
-    connection_t *c = arg;
-    if (!c || !c->in_use) { if (p) pbuf_free(p); return ERR_OK; }
-    if (!p) { tcp_close(pcb); release(c); return ERR_OK; }          // the other end went away
-    if (error != ERR_OK) { pbuf_free(p); tcp_abort(pcb); release(c); return ERR_ABRT; }
+    aborted = false;
+    receive(arg, pcb, p, error);
+    return aborted ? ERR_ABRT : ERR_OK;
+}
 
+static void receive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t error)
+{
+    connection_t *c = arg;
+    if (!c || !c->in_use || c->pcb != pcb) {
+        // Nothing of ours: a pcb already handed back to be closed.
+        if (p) { tcp_recved(pcb, p->tot_len); pbuf_free(p); }
+        return;
+    }
+    if (!p) { close_connection(c); return; }                         // the other end went away
+    if (error != ERR_OK) { pbuf_free(p); abort_connection(c); return; }
+
+    c->last_used = sys_now();
     uint32_t room = REQUEST_BUFFER - c->have;
     uint32_t take = p->tot_len < room ? p->tot_len : room;
     pbuf_copy_partial(p, c->in + c->have, (u16_t)take, 0);
@@ -178,19 +229,18 @@ static err_t on_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t error
     tcp_recved(pcb, p->tot_len);
     bool overflowed = p->tot_len > room;
     pbuf_free(p);
-    if (overflowed) { plain(c, 400, "That request is too big for this instrument."); return ERR_OK; }
+    if (overflowed) { plain(c, 400, "That request is too big for this instrument."); return; }
 
     http_request_t request;
     switch (http_parse((const char *)c->in, c->have, &request)) {
-    case HTTP_PARSE_INCOMPLETE: return ERR_OK;                      // more is coming
-    case HTTP_PARSE_TOO_LONG:   plain(c, 400, "That request head is too long."); return ERR_OK;
-    case HTTP_PARSE_MALFORMED:  plain(c, 400, "That is not a request this instrument understands."); return ERR_OK;
+    case HTTP_PARSE_INCOMPLETE: return;                             // more is coming
+    case HTTP_PARSE_TOO_LONG:   plain(c, 400, "That request head is too long."); return;
+    case HTTP_PARSE_MALFORMED:  plain(c, 400, "That is not a request this instrument understands."); return;
     case HTTP_PARSE_OK: break;
     }
     // The body may still be arriving behind the head.
-    if (c->have < request.head_size + request.content_length) return ERR_OK;
+    if (c->have < request.head_size + request.content_length) return;
     answer(c, &request);
-    return ERR_OK;
 }
 
 static void on_error(void *arg, err_t error)
@@ -200,24 +250,46 @@ static void on_error(void *arg, err_t error)
     if (c) { c->pcb = NULL; release(c); }                           // lwIP has freed the pcb
 }
 
+/// A connection between requests: nothing half received, nothing still to
+/// send. Closing one of those loses nothing; a browser that meant to reuse it
+/// opens another.
+static bool idle(const connection_t *c)
+{
+    return c->in_use && c->have == 0 && c->sent == c->total && !c->holds_reply;
+}
+
+static connection_t *free_slot(void)
+{
+    connection_t *oldest = NULL;
+    for (unsigned i = 0; i < CONNECTIONS; ++i) {
+        connection_t *c = &connections[i];
+        if (!c->in_use) return c;
+        if (idle(c) && (!oldest || (int32_t)(c->last_used - oldest->last_used) < 0)) oldest = c;
+    }
+    if (!oldest) return NULL;
+    close_connection(oldest);
+    aborted = false;       // that was another pcb, not the one being accepted
+    return oldest;
+}
+
 static err_t on_accept(void *arg, struct tcp_pcb *pcb, err_t error)
 {
     (void)arg;
     if (error != ERR_OK || !pcb) return ERR_VAL;
-    for (unsigned i = 0; i < sizeof connections / sizeof connections[0]; ++i) {
-        connection_t *c = &connections[i];
-        if (c->in_use) continue;
+    connection_t *c = free_slot();
+    if (c) {
         memset(c, 0, sizeof *c);
+        c->last_used = sys_now();
         c->in_use = true; c->pcb = pcb;
         tcp_arg(pcb, c);
         tcp_recv(pcb, on_recv);
         tcp_sent(pcb, on_sent);
         tcp_err(pcb, on_error);
-        tcp_poll(pcb, on_poll, 2);
+        tcp_poll(pcb, on_poll, 1);
         return ERR_OK;
     }
-    // Every buffer is busy. Refusing is better than queueing a connection
-    // there is nowhere to put.
+    // Every one is busy mid-request. Refusing is better than queueing a
+    // connection there is nowhere to put.
     tcp_abort(pcb);
     return ERR_ABRT;
 }

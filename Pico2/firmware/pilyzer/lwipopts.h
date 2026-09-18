@@ -11,13 +11,13 @@
 #define MEM_ALIGNMENT               4
 // The records are the reason for the size: a reply can be most of 100 kB, and
 // it is handed out in segments as they are acknowledged.
-#define MEM_SIZE                    16000
-#define MEMP_NUM_TCP_SEG            64
-// Six connections for the six the browser opens (http_server.c), and room
-// beside them for ones still closing. Replies point into flash rather than
-// being copied, and each of those pieces is a PBUF.
-#define MEMP_NUM_TCP_PCB            12
-#define MEMP_NUM_PBUF               64
+#define MEM_SIZE                    32000
+#define MEMP_NUM_TCP_SEG            128
+// Twelve connections (http_server.c), and room beside them for ones still
+// closing. Replies point into flash rather than being copied, and each of
+// those pieces is a PBUF.
+#define MEMP_NUM_TCP_PCB            20
+#define MEMP_NUM_PBUF               128
 #define MEMP_NUM_ARP_QUEUE          10
 #define PBUF_POOL_SIZE              24
 
