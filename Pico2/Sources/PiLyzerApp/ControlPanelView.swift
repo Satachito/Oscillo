@@ -7,6 +7,34 @@ struct ControlPanelView: View {
     @ObservedObject var model: ScopeModel
 
     var body: some View {
+        panel
+            // Run, Single and Clear head the column and stay there while the
+            // rest of it scrolls.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                transport
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.panel)
+                    .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
+            }
+            .frame(width: 310)
+            .background(Theme.panel)
+    }
+
+    private var transport: some View {
+        HStack(spacing: 6) {
+            Button(model.isRunning ? "Stop" : "Run") { model.toggleRun() }
+                .keyboardShortcut("r")
+                .disabled(!model.isConnected)
+            Button("Single") { model.single() }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .disabled(!model.isConnected || model.isRunning)
+            Button("Clear") { model.clear() }
+        }
+    }
+
+    private var panel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 acquisition
@@ -35,8 +63,6 @@ struct ControlPanelView: View {
             }
             .padding(.horizontal, 20)
         }
-        .frame(width: 310)
-        .background(Theme.panel)
     }
 
     // MARK: - Sections
@@ -45,16 +71,6 @@ struct ControlPanelView: View {
         // The mode itself is chosen by the tabs above the screen, as it is in
         // the browser application, so it is not repeated here.
         Section("Acquisition", tag: sourceTag) {
-            HStack(spacing: 6) {
-                Button(model.isRunning ? "Stop" : "Run") { model.toggleRun() }
-                    .keyboardShortcut("r")
-                    .disabled(!model.isConnected)
-                Button("Single") { model.single() }
-                    .keyboardShortcut("s", modifiers: [.command, .shift])
-                    .disabled(!model.isConnected || model.isRunning)
-                Button("Clear") { model.clear() }
-            }
-
             if model.settings.mode == .scope || model.settings.mode == .spectrum {
                 Stepper(value: $model.settings.averaging, in: 1...100) {
                     Text("Average \(model.settings.averaging)×")

@@ -28,30 +28,17 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
 
     // MARK: - Heading
 
+    // No heading above the screen: it only repeated the selected tab.
     private var head: some View {
         HStack(alignment: .center, spacing: 20) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("YOUR BENCH, ON YOUR DESK")
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.7)
-                    .foregroundStyle(Theme.muted)
-                Text(title)
-                    .font(.system(size: 26, weight: .regular))
-                    .foregroundStyle(Theme.ink)
-            }
+            Text("YOUR BENCH, ON YOUR DESK")
+                .font(.system(size: 9, weight: .semibold))
+                .tracking(1.7)
+                .foregroundStyle(Theme.muted)
             Spacer(minLength: 12)
             ModeTabs(mode: $model.settings.mode)
         }
         .padding(.bottom, 16)
-    }
-
-    private var title: String {
-        switch model.settings.mode {
-        case .scope: return "Oscilloscope"
-        case .spectrum: return "Spectrum analyser"
-        case .logic: return "Logic analyser"
-        case .meter: return "Voltage meter"
-        }
     }
 
     // MARK: - The instrument
@@ -151,7 +138,7 @@ struct ModeTabs: View {
                 Button {
                     mode = candidate
                 } label: {
-                    Text(candidate.rawValue)
+                    Text(candidate == .scope ? "Oscilloscope" : candidate.rawValue)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(candidate == mode ? Theme.accent : Theme.muted)
                         .padding(.horizontal, 13)

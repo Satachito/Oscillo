@@ -47,6 +47,13 @@ struct ScopeDisplayView: View {
                         .foregroundStyle(Theme.channelColor(channel))
                     Text(Format.voltage(voltsPerDivision(channel)) + "/div")
                         .foregroundStyle(Theme.readout)
+                    // A moved trace says so, or the only sign is a trace drawn
+                    // somewhere its readings say it is not.
+                    let position = model.settings.channels[channel].positionDivisions
+                    if abs(position) >= 0.05 {
+                        Text("· " + (position > 0 ? "+" : "−") + String(format: "%.1f div", abs(position)))
+                            .foregroundStyle(Theme.readout)
+                    }
                     if model.settings.channels[channel].removesMean {
                         Text("· AC").foregroundStyle(Theme.readout)
                     }
