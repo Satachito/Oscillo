@@ -37,7 +37,10 @@ struct ControlPanelView: View {
     private var panel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                acquisition
+                // Averaging, record and X/Y are all the section holds, and only
+                // the scope and the spectrum have them; the logic analyser and
+                // the meter would get a heading over nothing.
+                if model.settings.mode == .scope || model.settings.mode == .spectrum { acquisition }
                 switch model.settings.mode {
                 case .scope:
                     horizontal
@@ -71,27 +74,25 @@ struct ControlPanelView: View {
         // The mode itself is chosen by the tabs above the screen, as it is in
         // the browser application, so it is not repeated here.
         Section("Acquisition", tag: sourceTag) {
-            if model.settings.mode == .scope || model.settings.mode == .spectrum {
-                Stepper(value: $model.settings.averaging, in: 1...100) {
-                    Text("Average \(model.settings.averaging)×")
-                }
-                // The spectrum chooses the record from its span.
-                if model.settings.mode == .scope {
-                    Choice("Record", selection: $model.settings.recordLength) {
-                        ForEach(Preferences.recordLengths, id: \.self) { count in
-                            Text("\(count) pt").tag(count)
-                        }
+            Stepper(value: $model.settings.averaging, in: 1...100) {
+                Text("Average \(model.settings.averaging)×")
+            }
+            // The spectrum chooses the record from its span.
+            if model.settings.mode == .scope {
+                Choice("Record", selection: $model.settings.recordLength) {
+                    ForEach(Preferences.recordLengths, id: \.self) { count in
+                        Text("\(count) pt").tag(count)
                     }
                 }
-                Toggle("X/Y", isOn: $model.settings.showsXY)
-                    .disabled(model.settings.mode != .scope)
-                if model.settings.showsXY && model.settings.mode == .scope {
-                    Choice("X axis", selection: $model.settings.xyHorizontal) {
-                        ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
-                    }
-                    Choice("Y axis", selection: $model.settings.xyVertical) {
-                        ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
-                    }
+            }
+            Toggle("X/Y", isOn: $model.settings.showsXY)
+                .disabled(model.settings.mode != .scope)
+            if model.settings.showsXY && model.settings.mode == .scope {
+                Choice("X axis", selection: $model.settings.xyHorizontal) {
+                    ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
+                }
+                Choice("Y axis", selection: $model.settings.xyVertical) {
+                    ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
                 }
             }
         }
