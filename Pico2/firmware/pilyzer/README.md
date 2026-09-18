@@ -53,12 +53,13 @@ Change these in `board_config.h`; the host reads the limits out of
 | CH1 | 26 (ADC0) |
 | CH2 | 27 (ADC1) |
 | CH3 | 28 (ADC2) |
-| Logic D0…D7 | 8…15, consecutive because PIO reads them in one instruction |
-| CH1 range switch | 16 |
-| CH2 range switch | 17 |
-| CH3 range switch | 18 |
-| Adjustable calibration square wave | 20 |
-| Unused pins | 0…7 |
+| Logic D0…D7 | 6…13, consecutive because PIO reads them in one instruction |
+| CH1 range switch | 2 |
+| CH2 range switch | 3 |
+| CH3 range switch | 4 |
+| Signal generator | 16…19 (sine, white, pink, brown) |
+| Adjustable calibration square wave | 22 |
+| Unused pins | 0, 1, 5, 14, 15 |
 | Status LED | the board's own |
 
 On a bare Pico 2 with nothing else attached, CH1, CH2 and CH3 read 0 V to 3.3 V
@@ -70,7 +71,8 @@ directly and **must not go outside that**. The front end in
 CH3 uses GPIO28/ADC2 and GPIO6 for its range switch; the three range controls
 are GPIO4/5/6, leaving GPIO16–19 to the generator. The adjustable test output
 is GPIO22; `setCalibrationOutput` and the app's `Test output` still control it.
-Logic GPIO8–15 is unchanged throughout.
+Firmware 1.13 moved logic to GPIO6–13 and the range controls to GPIO2–4, the
+pins the PL2407AFE already used, so every board has the same logic inputs.
 
 The enabled mask selects only the requested ADC inputs, in ascending order.
 Any nonempty subset of CH1/CH2/CH3 is supported. At the fastest ADC clock the

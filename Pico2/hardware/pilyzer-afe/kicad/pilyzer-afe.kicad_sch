@@ -2810,7 +2810,7 @@
 		)
 		(uuid "462734c8-3e1d-5f2c-934b-5ff4dce2cdbb")
 	)
-	(text "ADC GPIO26–28; logic GPIO8–15; range GPIO4–6; test GPIO22; generator GPIO16–19."
+	(text "ADC GPIO26–28; logic GPIO6–13; range GPIO2–4; test GPIO22; generator GPIO16–19."
 		(exclude_from_sim no)
 		(at 12.7 142.24 0)
 		(effects
@@ -2937,20 +2937,12 @@
 		(uuid "1f2e018d-cddc-5390-ba77-ebf7cdfd7a95")
 	)
 	(no_connect
-		(at 43.18 80.01)
-		(uuid "2b0ed9ed-c605-5dc3-b7d3-0e2ca02bcd57")
-	)
-	(no_connect
 		(at 114.3 97.79)
 		(uuid "2c45eb74-9089-56b2-b7bc-1e124376f016")
 	)
 	(no_connect
 		(at 147.32 138.43)
 		(uuid "69992897-f5d8-5eee-9cd8-94f8963e8e4c")
-	)
-	(no_connect
-		(at 43.18 64.77)
-		(uuid "6e0c54b4-0c37-5a78-bb4b-158817cd362d")
 	)
 	(no_connect
 		(at 114.3 59.69)
@@ -2963,10 +2955,6 @@
 	(no_connect
 		(at 43.18 59.69)
 		(uuid "8572fadd-53b1-5ae8-b45e-4e31bd3db307")
-	)
-	(no_connect
-		(at 43.18 67.31)
-		(uuid "8c9822c3-ad62-5ee3-bcc1-ebc1a6a85cb6")
 	)
 	(no_connect
 		(at 114.3 102.87)
@@ -3115,16 +3103,6 @@
 			(type default)
 		)
 		(uuid "1efe89f6-c255-5fd8-a243-9977fb2f7ce9")
-	)
-	(wire
-		(pts
-			(xy 43.18 105.41) (xy 35.56 105.41)
-		)
-		(stroke
-			(width 0.1524)
-			(type default)
-		)
-		(uuid "21d71df9-9b53-52d7-90e5-3c1634246cb6")
 	)
 	(wire
 		(pts
@@ -3318,16 +3296,6 @@
 	)
 	(wire
 		(pts
-			(xy 43.18 72.39) (xy 35.56 72.39)
-		)
-		(stroke
-			(width 0.1524)
-			(type default)
-		)
-		(uuid "5017a116-a2f6-51b8-8538-5ec2802b0b65")
-	)
-	(wire
-		(pts
 			(xy 280.67 54.61) (xy 280.67 49.53)
 		)
 		(stroke
@@ -3435,16 +3403,6 @@
 			(type default)
 		)
 		(uuid "6f050890-1a00-50bf-ae08-cdd7a48ebe76")
-	)
-	(wire
-		(pts
-			(xy 43.18 102.87) (xy 35.56 102.87)
-		)
-		(stroke
-			(width 0.1524)
-			(type default)
-		)
-		(uuid "7302a8aa-20f7-5fdb-9f8e-6ef4d02596ac")
 	)
 	(wire
 		(pts
@@ -4064,7 +4022,7 @@
 			)
 		)
 	)
-	(global_label "D4_GPIO12"
+	(global_label "D6_GPIO12"
 		(shape passive)
 		(at 35.56 95.25 180)
 		(effects
@@ -4086,7 +4044,7 @@
 			)
 		)
 	)
-	(global_label "D6_GPIO14"
+	(global_label "D6_GPIO12"
 		(shape passive)
 		(at 372.11 95.25 180)
 		(effects
@@ -4108,7 +4066,7 @@
 			)
 		)
 	)
-	(global_label "D5_GPIO13"
+	(global_label "D7_GPIO13"
 		(shape passive)
 		(at 35.56 97.79 180)
 		(effects
@@ -4218,7 +4176,7 @@
 			)
 		)
 	)
-	(global_label "D7_GPIO15"
+	(global_label "D7_GPIO13"
 		(shape passive)
 		(at 372.11 118.11 180)
 		(effects
@@ -4230,28 +4188,6 @@
 		(uuid "29205e40-26b8-514f-bac9-5459bff9086d")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 372.11 118.11 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.016 1.016)
-				)
-			)
-		)
-	)
-	(global_label "D7_GPIO15"
-		(shape passive)
-		(at 35.56 105.41 180)
-		(effects
-			(font
-				(size 1.016 1.016)
-			)
-			(justify right)
-		)
-		(uuid "2a588797-735f-5ce6-ab96-50d87396de36")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 35.56 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4284,7 +4220,7 @@
 			)
 		)
 	)
-	(global_label "D1_GPIO9"
+	(global_label "D3_GPIO9"
 		(shape passive)
 		(at 35.56 85.09 180)
 		(effects
@@ -4350,7 +4286,7 @@
 			)
 		)
 	)
-	(global_label "D4_GPIO12"
+	(global_label "D4_GPIO10"
 		(shape passive)
 		(at 351.79 54.61 0)
 		(effects
@@ -4372,7 +4308,7 @@
 			)
 		)
 	)
-	(global_label "D1_GPIO9"
+	(global_label "D1_GPIO7"
 		(shape passive)
 		(at 280.67 72.39 180)
 		(effects
@@ -4394,7 +4330,7 @@
 			)
 		)
 	)
-	(global_label "D0_GPIO8"
+	(global_label "D0_GPIO6"
 		(shape passive)
 		(at 280.67 49.53 180)
 		(effects
@@ -4416,7 +4352,7 @@
 			)
 		)
 	)
-	(global_label "D2_GPIO10"
+	(global_label "D2_GPIO8"
 		(shape passive)
 		(at 280.67 95.25 180)
 		(effects
@@ -4438,7 +4374,7 @@
 			)
 		)
 	)
-	(global_label "D3_GPIO11"
+	(global_label "D5_GPIO11"
 		(shape passive)
 		(at 35.56 92.71 180)
 		(effects
@@ -4570,7 +4506,7 @@
 			)
 		)
 	)
-	(global_label "RANGE_CH3"
+	(global_label "D0_GPIO6"
 		(shape passive)
 		(at 35.56 77.47 180)
 		(effects
@@ -4746,7 +4682,7 @@
 			)
 		)
 	)
-	(global_label "D4_GPIO12"
+	(global_label "D4_GPIO10"
 		(shape passive)
 		(at 372.11 49.53 180)
 		(effects
@@ -4812,28 +4748,6 @@
 			)
 		)
 	)
-	(global_label "RANGE_CH2"
-		(shape passive)
-		(at 35.56 72.39 180)
-		(effects
-			(font
-				(size 1.016 1.016)
-			)
-			(justify right)
-		)
-		(uuid "67bc5af9-2edf-57b2-8774-3e21c73d3c83")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 35.56 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.016 1.016)
-				)
-			)
-		)
-	)
 	(global_label "D6_IN"
 		(shape passive)
 		(at 334.01 100.33 180)
@@ -4856,7 +4770,7 @@
 			)
 		)
 	)
-	(global_label "D0_GPIO8"
+	(global_label "D0_GPIO6"
 		(shape passive)
 		(at 260.35 54.61 0)
 		(effects
@@ -4900,7 +4814,7 @@
 			)
 		)
 	)
-	(global_label "D5_GPIO13"
+	(global_label "D5_GPIO11"
 		(shape passive)
 		(at 351.79 77.47 0)
 		(effects
@@ -4966,7 +4880,7 @@
 			)
 		)
 	)
-	(global_label "D3_GPIO11"
+	(global_label "D3_GPIO9"
 		(shape passive)
 		(at 280.67 118.11 180)
 		(effects
@@ -4988,7 +4902,7 @@
 			)
 		)
 	)
-	(global_label "D2_GPIO10"
+	(global_label "D4_GPIO10"
 		(shape passive)
 		(at 35.56 90.17 180)
 		(effects
@@ -5054,7 +4968,7 @@
 			)
 		)
 	)
-	(global_label "RANGE_CH1"
+	(global_label "RANGE_CH3"
 		(shape passive)
 		(at 35.56 69.85 180)
 		(effects
@@ -5164,7 +5078,7 @@
 			)
 		)
 	)
-	(global_label "D7_GPIO15"
+	(global_label "D7_GPIO13"
 		(shape passive)
 		(at 351.79 123.19 0)
 		(effects
@@ -5274,7 +5188,7 @@
 			)
 		)
 	)
-	(global_label "D3_GPIO11"
+	(global_label "D3_GPIO9"
 		(shape passive)
 		(at 260.35 123.19 0)
 		(effects
@@ -5362,7 +5276,7 @@
 			)
 		)
 	)
-	(global_label "D2_GPIO10"
+	(global_label "D2_GPIO8"
 		(shape passive)
 		(at 260.35 100.33 0)
 		(effects
@@ -5406,7 +5320,7 @@
 			)
 		)
 	)
-	(global_label "D5_GPIO13"
+	(global_label "D5_GPIO11"
 		(shape passive)
 		(at 372.11 72.39 180)
 		(effects
@@ -5868,28 +5782,6 @@
 			)
 		)
 	)
-	(global_label "D6_GPIO14"
-		(shape passive)
-		(at 35.56 102.87 180)
-		(effects
-			(font
-				(size 1.016 1.016)
-			)
-			(justify right)
-		)
-		(uuid "e258b251-a4ba-537e-a3da-682bcc11c1e1")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 35.56 102.87 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.016 1.016)
-				)
-			)
-		)
-	)
 	(global_label "+3V3"
 		(shape passive)
 		(at 259.08 172.72 180)
@@ -6000,7 +5892,7 @@
 			)
 		)
 	)
-	(global_label "D6_GPIO14"
+	(global_label "D6_GPIO12"
 		(shape passive)
 		(at 351.79 100.33 0)
 		(effects
@@ -6066,7 +5958,7 @@
 			)
 		)
 	)
-	(global_label "D1_GPIO9"
+	(global_label "D1_GPIO7"
 		(shape passive)
 		(at 260.35 77.47 0)
 		(effects
@@ -6110,7 +6002,7 @@
 			)
 		)
 	)
-	(global_label "D0_GPIO8"
+	(global_label "D2_GPIO8"
 		(shape passive)
 		(at 35.56 82.55 180)
 		(effects
@@ -9538,6 +9430,114 @@
 (global_label "+3V3" (shape passive) (at 320.04 186.69 90) (effects (font (size 1.016 1.016)) (justify left)) (uuid "2a46a8ff-88d6-5ecc-9396-a8e86727fab2") (property "Intersheetrefs" "${INTERSHEET_REFS}" (at 320.04 186.69 90) (effects (font (size 1.016 1.016)) (hide yes))))
 (global_label "GND" (shape passive) (at 320.04 194.31 270) (effects (font (size 1.016 1.016)) (justify right)) (uuid "bf15d7fd-34d3-561a-a6e0-88746939c22a") (property "Intersheetrefs" "${INTERSHEET_REFS}" (at 320.04 194.31 270) (effects (font (size 1.016 1.016)) (hide yes))))
 (text "U4: anti-alias filters U4A/B/C on the channel sheets; U4D tied off, U4E is the supply unit." (at 250 172.72 0) (effects (font (size 1.016 1.016)) (justify left bottom)) (uuid "9e26f416-a401-5f61-9e74-f441d571b178"))
+	(no_connect
+		(at 43.18 72.39)
+		(uuid "14538efe-f331-4b68-b4ce-9714db71c959")
+	)
+	(no_connect
+		(at 43.18 102.87)
+		(uuid "83d09f95-b679-4b4a-b69d-3f6673ece975")
+	)
+	(no_connect
+		(at 43.18 105.41)
+		(uuid "5cbb61d8-475a-4e01-ad6c-9b766ce3efdd")
+	)
+	(wire
+		(pts
+			(xy 43.18 64.77) (xy 35.56 64.77)
+		)
+		(stroke
+			(width 0.1524)
+			(type default)
+		)
+		(uuid "d7ffae58-ca5f-4d09-9124-04f1b66876d6")
+	)
+	(global_label "RANGE_CH1"
+		(shape passive)
+		(at 35.56 64.77 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "e365d196-cfb5-4652-a737-b37b96ae3dc4")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 35.56 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 43.18 67.31) (xy 35.56 67.31)
+		)
+		(stroke
+			(width 0.1524)
+			(type default)
+		)
+		(uuid "d59b7e35-4de9-4b58-9bab-2afa8ed332ae")
+	)
+	(global_label "RANGE_CH2"
+		(shape passive)
+		(at 35.56 67.31 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "dad86b41-6a01-49af-bcad-9f2b084c8c3b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 35.56 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 43.18 80.01) (xy 35.56 80.01)
+		)
+		(stroke
+			(width 0.1524)
+			(type default)
+		)
+		(uuid "d249ae1f-25cb-4ef3-b564-dadc0a1f0a4f")
+	)
+	(global_label "D1_GPIO7"
+		(shape passive)
+		(at 35.56 80.01 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "56b48719-42c9-436f-ab40-058177c75714")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 35.56 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+	)
 	(sheet_instances
 		(path "/"
 			(page "1")

@@ -100,7 +100,7 @@ U4A OUT -- R44 1k -- ADC -- C7 1n -- GND
 
 U1A OUT -- R7 10k -- U1A (-) -- R8 2.67k -- U2A COM
 U2A NO -- VMID        U2A NC -- not connected
-GPIO4 LOW: COM-NC (gain 1); HIGH: COM-NO (gain 4.745)
+GPIO2 LOW: COM-NC (gain 1); HIGH: COM-NO (gain 4.745)
 ```
 
 * **R1 + R2** are the 1 MΩ input, split in two so each 0805 sees half the
@@ -253,7 +253,7 @@ pinout rather than assuming: dual SPDT switches are not all pin compatible.
 
 ## Ranges are switched, not jumpered
 
-The range switch is driven from GPIO4, GPIO5 and GPIO6, so the application always
+The range switch is driven from GPIO2, GPIO3 and GPIO4, so the application always
 knows which range a channel is on, can offer per-range calibration, and can
 change ranges without anyone touching the board.
 
@@ -270,7 +270,7 @@ the part list said otherwise: every part it needs is a part of rev A.
 
 The whole difference is **`R8`: 15 kΩ instead of 2.67 kΩ**, wired permanently to
 VMID instead of being taken there by `U2A`. That makes the gain stage ×1.667
-rather than ×4.745. Both TS5A23159 packages come off, and GPIO4 and GPIO5 come
+rather than ×4.745. Both TS5A23159 packages come off, and GPIO2 and GPIO3 come
 free.
 
 | | Overall gain | Offset | Reads |
@@ -365,7 +365,7 @@ after that has been measured with them fitted.
 
 ## Logic inputs
 
-Eight inputs on GPIO8…GPIO15, each through 330 Ω. **3.3 V logic only.** The
+Eight inputs on GPIO6…GPIO13, each through 330 Ω. **3.3 V logic only.** The
 series resistor limits the current into the RP2350's own clamp diodes to about
 5 mA at 5 V, which the chip survives, but a 5 V system will still be loaded and
 the levels are outside specification. There is no buffer and no level shifter on
@@ -384,16 +384,19 @@ They are marked DNP in the schematic and do nothing while unpopulated.
 | Analogue ground | AGND | 33 |
 | Converter reference | ADC_VREF | 35 |
 | Front-end supply | 3V3(OUT) | 36 |
-| CH1 range switch | GPIO4 | 6 |
-| CH2 range switch | GPIO5 | 7 |
-| CH3 range switch | GPIO6 | 9 |
-| Logic D0…D7 | GPIO8…GPIO15 | 11,12,14,15,16,17,19,20 |
+| CH1 range switch | GPIO2 | 4 |
+| CH2 range switch | GPIO3 | 5 |
+| CH3 range switch | GPIO4 | 6 |
+| Logic D0…D7 | GPIO6…GPIO13 | 9,10,11,12,14,15,16,17 |
 | Adjustable calibration output | GPIO22 | 29 |
 | Signal generator | GPIO16…GPIO19 | 21,22,24,25 |
-| Unused | GPIO0…GPIO3, GPIO7 | 1,2,4,5,10 |
+| Unused | GPIO0, GPIO1, GPIO5, GPIO14, GPIO15 | 1,2,7,19,20 |
 
 The range controls are low so that the generator can have GPIO16–19 on every
 board — one answer to where the sine is, whichever instrument is plugged in.
+Firmware 1.13 moved them from GPIO4–6 to GPIO2–4 and the logic inputs from
+GPIO8–15 to GPIO6–13, where the PL2407AFE already had both, so the logic
+inputs are the same eight pins on every board too.
 Its four pins are not connected to anything on the carrier: they are PWM
 carriers, and want an RC apiece before they are voltages.
 

@@ -31,7 +31,7 @@ The saved schematic takes precedence over the earlier ASCII sketch.
    to CH3; D4 remains unused. Optional connector TVS footprints D5/D6/D7 are
    marked DNP with no exact part selected.
 5. U2A/U2B/U3A COM connects to the 2.67 kΩ resistor, NO to VMID, and NC is deliberately
-   unconnected. GPIO4/5/6 LOW gives ±25 V; HIGH gives ±5 V, matching firmware
+   unconnected. GPIO2/3/4 LOW gives ±25 V; HIGH gives ±5 V, matching firmware
    switch positions 0/1. The TI DGS package uses the KiCad footprint
    `TSSOP-10_3x3mm_P0.5mm` (VSSOP-10, not a generic footprint selected by name).
 6. C15 bypasses the **divider midpoint before U1D**, avoiding a direct 1 µF
@@ -66,7 +66,9 @@ The three range nets were on J7.20 / J7.19 / J7.17 and the square wave on
 J7.15 until firmware 1.11 and 1.12 moved them; those pads, with J7.16, are
 GPIO16–19 and belong to the signal generator now, and carry no-connect flags.
 
-Logic D0–D7 remain on GPIO8–15. GPIO0–3 and GPIO7 remain unconnected, as do the
+Firmware 1.13 moved logic D0–D7 to GPIO6–13 (J6.9–J6.17) and the range nets
+to GPIO2/3/4 (J6.4–J6.6), matching the PL2407AFE. GPIO0, 1, 5, 14 and 15
+(J6.1, 2, 7, 19, 20) are unconnected, as are the
 four generator pins on the carrier. J8 is unused:
 CH3's input is J10, and the diminished-chord generator stays on a separate
 Pico 2.

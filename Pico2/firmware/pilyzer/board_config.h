@@ -14,7 +14,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x010C   // 1.12: one pin map for every board - generator GPIO16-19, ranges GPIO4-6, test output GPIO22
+#define PILYZER_FIRMWARE_VERSION 0x010D   // 1.13: logic GPIO6-13 and ranges GPIO2-4 on every board, as the PL2407AFE already had them
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
@@ -33,11 +33,13 @@
 // application has to look up; the range controls moved down to 4 to free them.
 #define PIN_SIGNAL_BASE     16
 #define PILYZER_HAS_SIGNALS 1
-#define PIN_LOGIC_BASE      8     // D0…D7 on GPIO8…GPIO15, consecutive for PIO
+// Logic and the range controls sit where the PL2407AFE has them, so D0 is
+// GPIO6 whichever board it is: one answer to where the logic inputs are.
+#define PIN_LOGIC_BASE      6     // D0…D7 on GPIO6…GPIO13, consecutive for PIO
 #define RANGE_PINS_PER_CHANNEL 1
-#define PIN_RANGE_CH1       4     // switch position: 0 = ±25 V, 1 = ±5 V
-#define PIN_RANGE_CH2       5
-#define PIN_RANGE_CH3       6
+#define PIN_RANGE_CH1       2     // switch position: 0 = ±25 V, 1 = ±5 V
+#define PIN_RANGE_CH2       3
+#define PIN_RANGE_CH3       4
 #define PIN_LED             PICO_DEFAULT_LED_PIN
 #define PIN_ADC_CH1         26    // ADC0
 #define PIN_ADC_CH2         27    // ADC1
