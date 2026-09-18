@@ -77,7 +77,7 @@ struct ControlPanelView: View {
                 }
                 // The spectrum chooses the record from its span.
                 if model.settings.mode == .scope {
-                    Picker("Record", selection: $model.settings.recordLength) {
+                    Choice("Record", selection: $model.settings.recordLength) {
                         ForEach(Preferences.recordLengths, id: \.self) { count in
                             Text("\(count) pt").tag(count)
                         }
@@ -86,10 +86,10 @@ struct ControlPanelView: View {
                 Toggle("X/Y", isOn: $model.settings.showsXY)
                     .disabled(model.settings.mode != .scope)
                 if model.settings.showsXY && model.settings.mode == .scope {
-                    Picker("X axis", selection: $model.settings.xyHorizontal) {
+                    Choice("X axis", selection: $model.settings.xyHorizontal) {
                         ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
                     }
-                    Picker("Y axis", selection: $model.settings.xyVertical) {
+                    Choice("Y axis", selection: $model.settings.xyVertical) {
                         ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
                     }
                 }
@@ -99,7 +99,7 @@ struct ControlPanelView: View {
 
     private var loggerSection: some View {
         Section("Logger", tag: model.meterSpanDescription) {
-            Picker("Every", selection: $model.settings.logIntervalSeconds) {
+            Choice("Every", selection: $model.settings.logIntervalSeconds) {
                 ForEach(ScopeSettings.logIntervals, id: \.self) { Text(Format.time($0)).tag($0) }
             }
             Text(model.loggerAdvice)
@@ -115,7 +115,7 @@ struct ControlPanelView: View {
 
     private var horizontal: some View {
         Section("Horizontal") {
-            Picker("Time", selection: $model.settings.secondsPerDivision) {
+            Choice("Time", selection: $model.settings.secondsPerDivision) {
                 ForEach(model.timebases, id: \.self) { value in
                     Text(Format.time(value) + "/div").tag(value)
                 }
@@ -131,13 +131,13 @@ struct ControlPanelView: View {
 
     private var triggerSection: some View {
         Section("Trigger") {
-            Picker("Mode", selection: $model.settings.trigger.mode) {
+            Choice("Mode", selection: $model.settings.trigger.mode) {
                 ForEach(TriggerMode.allCases, id: \.self) { Text($0.label).tag($0) }
             }
-            Picker("Source", selection: $model.settings.trigger.source) {
+            Choice("Source", selection: $model.settings.trigger.source) {
                 ForEach(model.enabledAnalogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
             }
-            Picker("Edge", selection: $model.settings.trigger.slope) {
+            Choice("Edge", selection: $model.settings.trigger.slope) {
                 ForEach(TriggerSlope.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             LabeledSlider(title: "Level", value: $model.settings.trigger.levelVolts,
@@ -209,14 +209,14 @@ struct ControlPanelView: View {
         let nyquist = rate / 2
 
         return Section("Frequency") {
-            Picker("Span", selection: Binding(
+            Choice("Span", selection: Binding(
                 get: { model.settings.spectrum.spanHz },
                 set: { model.settings.setSpectrumSpan($0, lengths: Preferences.recordLengths,
                                                       capabilities: capabilities, channels: channels) })) {
                 Text("Full · \(Format.frequency(nyquist))").tag(Double?.none)
                 ForEach(spans, id: \.self) { Text(Format.frequency($0)).tag(Double?.some($0)) }
             }
-            Picker("Resolution", selection: Binding(
+            Choice("Resolution", selection: Binding(
                 get: { model.settings.secondsPerDivision },
                 set: { model.settings.setSpectrumResolution(secondsPerDivision: $0,
                                                             lengths: Preferences.recordLengths,
@@ -244,12 +244,12 @@ struct ControlPanelView: View {
 
     private var spectrumSection: some View {
         Section("Spectrum") {
-            Picker("Window", selection: $model.settings.spectrum.window) {
+            Choice("Window", selection: $model.settings.spectrum.window) {
                 ForEach(SpectrumWindow.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             Text(model.settings.spectrum.window.advice)
                 .font(.caption).foregroundStyle(.secondary)
-            Picker("Scale", selection: $model.settings.spectrum.scale) {
+            Choice("Scale", selection: $model.settings.spectrum.scale) {
                 ForEach(SpectrumScale.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             Stepper(value: $model.settings.spectrum.averaging, in: 1...64) {
@@ -265,23 +265,23 @@ struct ControlPanelView: View {
 
     private var logicSection: some View {
         Section("Logic") {
-            Picker("Rate", selection: $model.settings.logic.sampleRate) {
+            Choice("Rate", selection: $model.settings.logic.sampleRate) {
                 ForEach(model.logicRates, id: \.self) { rate in
                     Text(Format.sampleRate(rate)).tag(rate)
                 }
             }
-            Picker("Record", selection: $model.settings.logic.recordLength) {
+            Choice("Record", selection: $model.settings.logic.recordLength) {
                 ForEach(Preferences.logicRecordLengths, id: \.self) { count in
                     Text("\(count) pt").tag(count)
                 }
             }
-            Picker("Trigger", selection: $model.settings.logic.triggerMode) {
+            Choice("Trigger", selection: $model.settings.logic.triggerMode) {
                 ForEach(TriggerMode.allCases, id: \.self) { Text($0.label).tag($0) }
             }
-            Picker("On", selection: $model.settings.logic.triggerChannel) {
+            Choice("On", selection: $model.settings.logic.triggerChannel) {
                 ForEach(0..<model.capabilities.logicChannels, id: \.self) { Text("D\($0)").tag($0) }
             }
-            Picker("Edge", selection: $model.settings.logic.triggerSlope) {
+            Choice("Edge", selection: $model.settings.logic.triggerSlope) {
                 ForEach(TriggerSlope.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             LabeledSlider(title: "Position", value: $model.settings.logic.triggerPosition,
@@ -307,7 +307,7 @@ struct ControlPanelView: View {
 
     private var decoderSection: some View {
         Section("Decode") {
-            Picker("Protocol", selection: $model.decoderKind) {
+            Choice("Protocol", selection: $model.decoderKind) {
                 ForEach(DecoderKind.allCases) { Text($0.rawValue).tag($0) }
             }
 
@@ -315,28 +315,28 @@ struct ControlPanelView: View {
             case .none:
                 EmptyView()
             case .uart:
-                channelPicker("Line", value: $model.decoderConfiguration.uartLine)
-                Picker("Baud", selection: $model.decoderConfiguration.uartBaud) {
+                channelChoice("Line", value: $model.decoderConfiguration.uartLine)
+                Choice("Baud", selection: $model.decoderConfiguration.uartBaud) {
                     ForEach([9600.0, 19200, 38400, 57600, 115200, 230400, 460800, 921600], id: \.self) {
                         Text("\(Int($0))").tag($0)
                     }
                 }
-                Picker("Parity", selection: $model.decoderConfiguration.uartParity) {
+                Choice("Parity", selection: $model.decoderConfiguration.uartParity) {
                     ForEach(LogicParity.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 Text(samplesPerBitAdvice).font(.caption).foregroundStyle(.secondary)
             case .spi:
-                channelPicker("Clock", value: $model.decoderConfiguration.spiClock)
-                channelPicker("Data", value: $model.decoderConfiguration.spiData)
+                channelChoice("Clock", value: $model.decoderConfiguration.spiClock)
+                channelChoice("Data", value: $model.decoderConfiguration.spiData)
                 Toggle("Use chip select", isOn: $model.decoderConfiguration.spiUsesSelect)
                 if model.decoderConfiguration.spiUsesSelect {
-                    channelPicker("Select", value: $model.decoderConfiguration.spiSelect)
+                    channelChoice("Select", value: $model.decoderConfiguration.spiSelect)
                 }
                 Toggle("Clock idles high (CPOL)", isOn: $model.decoderConfiguration.spiClockIdleHigh)
                 Toggle("Sample on second edge (CPHA)", isOn: $model.decoderConfiguration.spiSampleOnSecondEdge)
             case .i2c:
-                channelPicker("SCL", value: $model.decoderConfiguration.i2cClock)
-                channelPicker("SDA", value: $model.decoderConfiguration.i2cData)
+                channelChoice("SCL", value: $model.decoderConfiguration.i2cClock)
+                channelChoice("SDA", value: $model.decoderConfiguration.i2cData)
             }
         }
     }
@@ -349,8 +349,8 @@ struct ControlPanelView: View {
         return String(format: "%.0f samples a bit.", perBit)
     }
 
-    private func channelPicker(_ title: String, value: Binding<Int>) -> some View {
-        Picker(title, selection: value) {
+    private func channelChoice(_ title: String, value: Binding<Int>) -> some View {
+        Choice(title, selection: value) {
             ForEach(0..<model.capabilities.logicChannels, id: \.self) { Text("D\($0)").tag($0) }
         }
     }
@@ -360,7 +360,7 @@ struct ControlPanelView: View {
     private var testOutputSection: some View {
         Section("Test output") {
             Toggle("Calibration square wave", isOn: $model.settings.calibrationOutputEnabled)
-            Picker("Frequency", selection: $model.settings.calibrationOutputFrequency) {
+            Choice("Frequency", selection: $model.settings.calibrationOutputFrequency) {
                 ForEach([100, 1000, 10000, 100_000], id: \.self) {
                     Text(Format.frequency(Double($0))).tag($0)
                 }
@@ -393,7 +393,7 @@ struct ControlPanelView: View {
             if model.capabilities.hasSignalGenerator {
                 Toggle("Signal generator", isOn: $model.settings.signalsEnabled)
                 if model.settings.signalsEnabled {
-                    Picker("Sine", selection: $model.settings.signalSineHz) {
+                    Choice("Sine", selection: $model.settings.signalSineHz) {
                         ForEach([100, 440, 1000, 5000, 10000], id: \.self) {
                             Text(Format.frequency(Double($0))).tag($0)
                         }
@@ -473,16 +473,16 @@ struct VerticalSection: View {
             // just not shown, so turning it back on brings them all back.
             if model.settings.channels[channel].isEnabled {
                 if model.ranges.count > 1 {
-                    Picker("Range", selection: binding.rangeIndex) {
+                    Choice("Range", selection: binding.rangeIndex) {
                         ForEach(0..<model.ranges.count, id: \.self) { Text(model.ranges[$0].name).tag($0) }
                     }
                 }
 
-                Picker("Scale", selection: voltsPerDivision) {
+                Choice("Scale", selection: voltsPerDivision) {
                     ForEach(verticalSteps, id: \.self) { Text(Format.voltage($0) + "/div").tag($0) }
                 }
 
-                Picker("Probe", selection: binding.probeAttenuation) {
+                Choice("Probe", selection: binding.probeAttenuation) {
                     Text("1:1").tag(1.0)
                     Text("1:10").tag(10.0)
                 }
@@ -738,5 +738,25 @@ struct Section<Content: View>: View {
         .pickerStyle(.menu)
         .controlSize(.small)
         .tint(Theme.accent)
+    }
+}
+
+/// A menu picker as wide as its choices, beside its label. Left to itself a
+/// small menu picker in this column stretched to the column's full width,
+/// every one of them, which read as a stack of bars rather than a panel.
+struct Choice<Value: Hashable, Content: View>: View {
+    let title: String
+    let selection: Binding<Value>
+    @ViewBuilder let content: () -> Content
+
+    init(_ title: String, selection: Binding<Value>, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.selection = selection
+        self.content = content
+    }
+
+    var body: some View {
+        Picker(title, selection: selection, content: content)
+            .fixedSize()
     }
 }
