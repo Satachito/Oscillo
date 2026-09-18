@@ -87,11 +87,16 @@ export class Plot {
   trace(c, values, box, y, color, map = v => v) {
     c.strokeStyle = color; c.lineWidth = 1.25; c.beginPath();
     if (values.length > box.w * 2) {
+      // One line through every column's high and low, as the Mac draws it.
+      // Each column used to be a separate stroke from low to high, so a quiet
+      // trace - low and high a pixel apart - drew almost nothing: on a phone,
+      // where every column holds several samples, the traces all but vanished.
       for (let pixel = 0; pixel < Math.floor(box.w); pixel++) {
         const from = Math.floor(pixel / box.w * values.length), to = Math.min(values.length, Math.ceil((pixel + 1) / box.w * values.length));
         let lo = Infinity, hi = -Infinity;
         for (let i = from; i < to; i++) { const v = map(values[i]); lo = Math.min(lo, v); hi = Math.max(hi, v); }
-        c.moveTo(box.x + pixel, y(lo)); c.lineTo(box.x + pixel, y(hi));
+        if (pixel) c.lineTo(box.x + pixel, y(hi)); else c.moveTo(box.x + pixel, y(hi));
+        if (lo !== hi) c.lineTo(box.x + pixel, y(lo));
       }
     } else for (let i = 0; i < values.length; i++) {
       const x = box.x + i / Math.max(values.length - 1, 1) * box.w, v = map(values[i]);
