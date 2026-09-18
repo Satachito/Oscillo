@@ -36,3 +36,10 @@
 /* Dark: only the paper around the instrument changes. The screen, the trace
    colours and the trigger marker are the same under either appearance. */
 @media(prefers-color-scheme:dark){:root{--page:#171c1a;--panel:#1e2522;--sunken:#242c28;--hover:#29322d;--trough:#232b27;--line:#2f3833;--border:#39433d;--ink:#e2e8df;--ink-strong:#eef3ea;--muted:#8d9789;--faint:#7e887b;--green:#a9d18c;--green-hover:#bcdfa2;--on-green:#12180f;--soft:#35513a;--soft-hover:#40603f;--on-soft:#dff0cf;--control:#8fbc6f;--focus:#a3cd87;--tint:#1d251f;--tint-line:#303a32;--tint-ink:#a9d18c;--notice:#2a2716;--notice-ink:#d8c98a;--notice-line:#403b22;--error:#2e211a;--error-ink:#e8a184;--error-line:#46312a;--bad:#3a2620;--bad-ink:#e69b7f}.display{box-shadow:none}.modes button.selected{box-shadow:none}}
+/* Run, Single and Clear: at the head of the control column, held there while
+   it scrolls; on a phone they move above the display (main.mjs) and whichever
+   home they are not in collapses. */
+.transport-home{position:sticky;top:0;z-index:2;background:var(--panel);padding:18px 0;border-bottom:1px solid var(--line)}
+.transport-home:empty,.transport-phone:empty{display:none}
+.transport-phone{margin-bottom:14px}
+.workspace-head .eyebrow{margin:0}

@@ -333,7 +333,6 @@ function synchronize() {
   for (const op of $('logic-record').options) op.disabled = Number(op.value) > caps().logicMaxRecord;
   $('test-pin').textContent = instrument?.demo ? 'Demo is generated in this browser. Test output controls apply to a USB instrument.' : `GPIO${CALIBRATION_PIN} · 0–3.3 V square wave. Wire the output to an input to measure it.`;
   $('signal-pins').textContent = `GPIO${SIGNAL_BASE_PIN} sine, GPIO${SIGNAL_BASE_PIN + 1} white, GPIO${SIGNAL_BASE_PIN + 2} pink, GPIO${SIGNAL_BASE_PIN + 3} brown — PWM at 586 kHz, so each pin wants an RC (1 kΩ and 10 nF) to come out as a voltage.`;
-  $('mode-title').textContent = { scope: 'Oscilloscope', spectrum: 'Spectrum analyser', logic: 'Logic analyser', meter: 'Voltage meter' }[settings.mode];
   document.body.classList.toggle('meter-mode', meter);
   document.querySelectorAll('[data-mode]').forEach(el => { const selected = el.dataset.mode === settings.mode; el.classList.toggle('selected', selected); el.setAttribute('aria-pressed', selected); });
   channelControls(); renderFrame(); updateButtons(); saveSettings();
@@ -359,7 +358,11 @@ function renderFrame() {
   for (const trace of traces) {
     const el = document.createElement('span'); el.className = 'trace-label'; el.style.color = COLORS[trace.index];
     const scale = scaleFor(settings, caps(), frontEnd(), trace.index), ch = settings.channels[trace.index];
-    el.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || scale.span / 8, 'V')}/div${ch.ac ? ' · AC' : ''}${trace.clipped ? ' · CLIP' : ''}`;
+    // A moved trace says so: the position is a slider in the channel card,
+    // easily nudged by a thumb scrolling past on a phone, and otherwise the
+    // only sign is a trace drawn somewhere its readings say it is not.
+    const moved = Math.abs(ch.offset) >= 0.05 ? ` · ${ch.offset > 0 ? '+' : '−'}${Math.abs(ch.offset).toFixed(1)} div` : '';
+    el.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || scale.span / 8, 'V')}/div${moved}${ch.ac ? ' · AC' : ''}${trace.clipped ? ' · CLIP' : ''}`;
     $('legend').append(el);
   }
   if (settings.mode === 'logic') $('legend').textContent = 'D0–D7 · 3.3 V logic';
@@ -552,5 +555,11 @@ servedByInstrument().then(yes => {
   $('browser-note').hidden = true;
   updateButtons(); renderFrame();
 });
+// Run, Single and Clear stay in reach. On a phone the controls are a long way
+// down the page, so they sit above the display; wider, they head the control
+// column and stay there while it scrolls.
+const phone = matchMedia('(max-width: 740.98px)');
+const placeTransport = () => (phone.matches ? $('transport-phone') : $('transport-home')).append($('transport'));
+phone.addEventListener('change', placeTransport); placeTransport();
 $('browser-note').hidden = !!navigator.usb;
 applyControls(); synchronize();
