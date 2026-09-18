@@ -82,7 +82,7 @@ function updateButtons() {
   $('connect').disabled = connecting || !(overNetwork || navigator.usb); $('demo').disabled = connecting;
   $('run-dot').classList.toggle('live', acquisition.running);
   $('connection-dot').classList.toggle('connected', !!instrument);
-  $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : 'USB' : 'OFFLINE';
+  $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : overNetwork ? 'WI-FI' : 'USB' : 'OFFLINE';
   $('device-name').textContent = instrument ? `${instrument.identity.name} · firmware ${instrument.identity.firmware}` : 'No instrument connected';
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
   $('empty-demo').disabled = connecting || acquisition.running;
