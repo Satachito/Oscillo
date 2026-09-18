@@ -17,7 +17,14 @@
 #include "logic_capture.pio.h"
 #include "pico/time.h"
 
+// On a Pico 2 W the radio is started first and takes the first free state
+// machine it finds, which is pio0's; the capture claims its state machines by
+// number, so it moves out of the radio's way.
+#if PILYZER_WIFI
+#define LOGIC_PIO       pio1
+#else
 #define LOGIC_PIO       pio0
+#endif
 #define SM_CAPTURE      0
 #define SM_TRIGGER      1
 #define TRIGGER_FLAG    4

@@ -19,7 +19,6 @@
 #include "pilyzer_protocol.h"
 #include "signals.h"
 #if PILYZER_WIFI
-#include "http_server.h"
 #include "wifi.h"
 #endif
 #include "tusb.h"
@@ -508,6 +507,14 @@ static void pump_receive(void)
 
 int main(void)
 {
+#if PILYZER_WIFI
+    // The radio is a second way in, never the only one. It is brought up
+    // first, before anything else claims a PIO, a DMA channel or a pin, and
+    // before USB appears, since loading its firmware takes a moment the host
+    // would otherwise spend waiting. Joining the network then goes on in
+    // wifi_poll, a step at a time, and USB never waits for it.
+    wifi_start(PILYZER_WIFI_SSID, PILYZER_WIFI_PASSWORD, PILYZER_HOSTNAME);
+#endif
 #ifdef PICO_DEFAULT_LED_PIN
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
@@ -524,16 +531,8 @@ int main(void)
     analog_init();
     logic_init();
     signals_init();
-    tusb_init();
 
-#if PILYZER_WIFI
-    // The radio is a second way in, never the only one: if the network is not
-    // there the instrument still answers over USB, which is why nothing here
-    // is checked for failure beyond not starting the server.
-    if (wifi_start(PILYZER_WIFI_SSID, PILYZER_WIFI_PASSWORD, PILYZER_HOSTNAME)) {
-        http_server_start();
-    }
-#endif
+    tusb_init();
 
     while (true) {
 #if PILYZER_WIFI

@@ -35,9 +35,11 @@ typedef struct {
     bool     holds_reply;           // this connection owns the shared reply buffers
 } connection_t;
 
-// Two is enough for a browser that opens a second connection while the first
-// is fetching, and every one of them costs its buffer.
-static connection_t connections[2];
+// A browser loading the page opens up to six connections at once, one per
+// module it has found, and a refused one is a module that never arrives - the
+// page then shows but nothing on it runs. Each costs about 1.6 kB.
+#define CONNECTIONS 6
+static connection_t connections[CONNECTIONS];
 // The reply lives in buffers the command layer owns, so only one connection
 // may be carrying one at a time.
 static bool reply_in_flight;
@@ -151,6 +153,17 @@ static err_t on_sent(void *arg, struct tcp_pcb *pcb, u16_t length)
     return ERR_OK;
 }
 
+// Every second or so while a connection is open. A write that found lwIP's
+// segment pool empty waits for an acknowledgement to go round again, and a
+// connection with nothing in flight has none coming; this is its second go.
+static err_t on_poll(void *arg, struct tcp_pcb *pcb)
+{
+    (void)pcb;
+    connection_t *c = arg;
+    if (c && c->in_use && c->sent < c->total) pump(c);
+    return ERR_OK;
+}
+
 static err_t on_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t error)
 {
     connection_t *c = arg;
@@ -200,9 +213,10 @@ static err_t on_accept(void *arg, struct tcp_pcb *pcb, err_t error)
         tcp_recv(pcb, on_recv);
         tcp_sent(pcb, on_sent);
         tcp_err(pcb, on_error);
+        tcp_poll(pcb, on_poll, 2);
         return ERR_OK;
     }
-    // Both buffers are busy. Refusing is better than queueing a connection
+    // Every buffer is busy. Refusing is better than queueing a connection
     // there is nowhere to put.
     tcp_abort(pcb);
     return ERR_ABRT;

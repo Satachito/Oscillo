@@ -67,6 +67,11 @@ if(PILYZER_WIFI)
     add_dependencies(pilyzer pilyzer_web)
 
     target_sources(pilyzer PRIVATE http_request.c http_server.c wifi.c)
+    # Ninja does not see a generated header as a dependency until it has
+    # compiled against it once, and even then it went on serving the old
+    # panel after the application was rebuilt; say it outright.
+    set_source_files_properties(http_server.c PROPERTIES
+        OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/web_files.h)
     target_include_directories(pilyzer PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
     target_compile_definitions(pilyzer PRIVATE
         PILYZER_WIFI=1

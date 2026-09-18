@@ -131,6 +131,12 @@ network to join: the instrument joins yours, answers to a name over mDNS, and
 Safari resolves `.local` natively. The name is `-DPILYZER_HOSTNAME=` if one
 instrument is not enough.
 
+The radio is **2.4 GHz only**, so name that network, not a 5 GHz one — on a
+Buffalo router the `-G-` name rather than the `-A-` one. WPA2 and WPA3 both
+work. The board's LED lights once it has an address and is serving the page;
+until then it stays dark and the instrument keeps trying, every 40 seconds,
+while USB carries on as usual.
+
 The credentials are cache variables, not files, so nothing of yours is in the
 repository. Without `-DPILYZER_WIFI=ON` the build is exactly what it was —
 `pico2`, no radio, 41 kB of flash against the Wi-Fi build's 397 kB.
