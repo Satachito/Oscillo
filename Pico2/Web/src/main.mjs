@@ -173,6 +173,11 @@ function channelControls() {
     const gainButton = el.querySelector('[data-gain]');
     gainButton.onclick = () => {
       const trace = frame?.traces?.find(t => t.index === i); if (!trace) { showError(`Capture CH${i + 1} first.`); return; }
+      // The voltage in the field is the one meant, whether or not the field
+      // has let go of it yet: on the Mac a click leaves the field focused,
+      // and 2.56 typed over 1 corrected the gain to 1 V, by −61 %.
+      const field = el.querySelector('[data-applied]'), typed = Number(field.value);
+      if (field.value.trim() !== '' && Number.isFinite(typed)) ch.applied = typed;
       const applied = Number(ch.applied);
       if (!Number.isFinite(applied) || Math.abs(applied) < 1e-6) { showError('Say what voltage is on the input first.'); return; }
       if (!steady(trace)) { showError(`CH${i + 1} is not sitting still — the gain is measured from one reading, so it needs a steady DC voltage on the input, not a waveform.`); return; }
