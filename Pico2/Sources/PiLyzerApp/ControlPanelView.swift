@@ -419,6 +419,11 @@ struct ControlPanelView: View {
 struct VerticalSection: View {
     @ObservedObject var model: ScopeModel
     let channel: Int
+    // What is typed but not yet committed. They live here rather than in the
+    // fields so that a button beside a field can see them: clicking a button
+    // leaves the field focused, so nothing has committed the draft yet.
+    @State private var biasDraft: String?
+    @State private var appliedDraft: String?
 
     private var biasVolts: Binding<Double> {
         Binding(get: { model.settings.channels[channel].biasVolts },
@@ -448,6 +453,11 @@ struct VerticalSection: View {
     /// from the samples it shifts.
     private var removesMeanApplies: Bool {
         model.settings.mode == .scope
+    }
+
+    /// The applied voltage as it stands in the field, typed or committed.
+    private var appliedVolts: Double {
+        VoltsField.value(of: appliedDraft) ?? model.settings.channels[channel].appliedVolts
     }
 
     private var gainCorrection: Double {
@@ -507,7 +517,7 @@ struct VerticalSection: View {
                 HStack(spacing: 6) {
                     Text("Bias").font(.caption)
                     Spacer(minLength: 6)
-                    VoltsField(volts: biasVolts, discardToken: model.fieldWrites)
+                    VoltsField(volts: biasVolts, draft: $biasDraft, discardToken: model.fieldWrites)
                     Text("V").font(.caption).foregroundStyle(.secondary)
                 }
                 Text("Where the front end holds this input with nothing on it. Drawn as a "
@@ -534,7 +544,7 @@ struct VerticalSection: View {
                 HStack(spacing: 6) {
                     Text("Applied").font(.caption)
                     Spacer(minLength: 6)
-                    VoltsField(volts: binding.appliedVolts, discardToken: model.fieldWrites)
+                    VoltsField(volts: binding.appliedVolts, draft: $appliedDraft, discardToken: model.fieldWrites)
                     Text("V").font(.caption).foregroundStyle(.secondary)
                 }
                 Text("A known voltage on the input. Set gain measures the swing from the bias "
@@ -543,12 +553,19 @@ struct VerticalSection: View {
                     .font(.caption).foregroundStyle(.secondary)
                 HStack(spacing: 6) {
                     Button("Set gain") {
-                        model.calibrateGain(channel: channel,
-                                            appliedVolts: model.settings.channels[channel].appliedVolts)
+                        // The voltage typed is the one meant, Return or not.
+                        // Without this a field still being edited handed over
+                        // the value before it: 2.56 typed over 1 corrected the
+                        // gain to 1 V, by −61 %.
+                        let applied = appliedVolts
+                        if appliedDraft != nil {
+                            appliedDraft = nil
+                            model.settings.channels[channel].appliedVolts = applied
+                        }
+                        model.calibrateGain(channel: channel, appliedVolts: applied)
                     }
                     .help("Reads this input now and takes the difference from the applied voltage.")
-                    .disabled(!model.isConnected
-                              || abs(model.settings.channels[channel].appliedVolts) < 1e-6)
+                    .disabled(!model.isConnected || abs(appliedVolts) < 1e-6)
                     Spacer()
                     Button("Reset") { model.resetCalibration(channel: channel) }
                         .help("Clears this channel's bias and gain correction.")
@@ -651,9 +668,9 @@ private struct TriggerLowPassControl: View {
 /// `discardToken` changes with every such write and throws the draft away.
 private struct VoltsField: View {
     @Binding var volts: Double
+    @Binding var draft: String?
     var discardToken: Int
 
-    @State private var draft: String?
     @FocusState private var isEditing: Bool
 
     private static let style = FloatingPointFormatStyle<Double>()
@@ -676,9 +693,15 @@ private struct VoltsField: View {
     /// Text that will not parse is a change of mind, not a zero: the number
     /// that is still in the settings comes back.
     private func commit() {
-        guard let text = draft else { return }
+        guard draft != nil else { return }
+        let value = Self.value(of: draft)
         draft = nil
-        if let value = try? Self.style.parseStrategy.parse(text) { volts = value }
+        if let value { volts = value }
+    }
+
+    /// What a draft reads as, or nil if it does not read as a number.
+    static func value(of draft: String?) -> Double? {
+        draft.flatMap { try? style.parseStrategy.parse($0) }
     }
 }
 
