@@ -6,10 +6,12 @@ The spine of this one is a design decision, not a build: a bare Pico reads
 0 to 3.3 V and nothing else, so what do you put on the screen? Everything else
 in the episode is there to make that question land.
 
-**Thumbnail** — the front panel with a trace on it, "PiLyzer" small, and the
-words that carry it: **OSCILLOSCOPE / PICO 2**. The macOS window's title bar
-visible at the edge, so it reads as "a Mac app, no box" before anyone presses
-play.
+**Thumbnail** — a composite (`Shots/B9-composite.png`): the Mac app running a
+1 kHz sine, title bar at the top, with the B5 photo of the board laid over the
+lower right like a print. The words: "Pico 2 · native macOS · Web" small, then
+**OSCILLOSCOPE**, then **PiLyzer** large in the trace's gold. A 55-inch display
+photographed with the board beside it left the board too small to see, which is
+why it is a composite of two real pictures rather than one.
 
 The episode leads with the **native macOS app**: every screen recording is the
 Mac app. The browser version appears once, on the phone, as the way to take the

@@ -51,7 +51,7 @@ instead of letting it run off an edge.
 | B6 | The logic header — eight resistors and a pin header | 6:15 | Cheap-and-cheerful is the point. Logic is D0–D7 on physical pins 9–12 and 14–17 from firmware 1.13. |
 | B7 | The phone next to the board, both running | 2:05 | Wide enough to show there is no computer. Not needed if S13 is the bench-camera take; the portrait still cannot be used. |
 | B8 | The op amp on a breadboard, shallow focus, teasing | 6:45 | The next-episode shot. Deliberately not explained. |
-| B9 | Thumbnail frame: the Mac app with a trace, board and cable beside it | — | Shoot this last, when the set is tidy. **16:9**, with the Mac window's title bar in frame. |
+| B9 | Thumbnail: the Mac app with a trace, board and cable beside it | — | Done as a composite, `B9-composite.png`: an S1 frame with the B5 photo laid over it. Photographed together, the board was lost beside a 55-inch display. |
 
 ## Which board is on the bench when
 
