@@ -5,8 +5,14 @@ The timings in the caption files start as estimates from the script's beats.
 This replaces them with the truth: each cue is synthesised on its own, measured,
 and laid end to end, so the subtitles and the narration cannot drift apart.
 
-    python3 narrate.py                     # default voice, default pace
-    python3 narrate.py --voice Ava --rate 165
+    python3 narrate.py                     # the System Voice, default pace
+    python3 narrate.py --voice Samantha --rate 165
+
+The episode's narration is **Siri Voice 5**, chosen on 2026-09-19 over
+Samantha and Zoe (Premium). `say` cannot name a Siri voice, so it is reached
+as the System Voice: set System Settings -> Accessibility -> Spoken Content ->
+System Voice to Siri Voice 5 before running this, or the narration comes out
+in whatever voice is set there instead.
 
 Leaves one audio file per cue in `narration/`, which is what an editor wants —
 they go against the picture one at a time — plus `narration/full.m4a` for a
@@ -23,7 +29,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 EN, JA = HERE / '01-captions.en.vtt', HERE / '01-captions.ja.vtt'
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--voice', default='Samantha')
+parser.add_argument('--voice', default='system',
+                    help='a name from `say -v ?`, or "system" for the System Voice '
+                         '(the only way to reach a Siri voice, which `say` cannot name)')
 parser.add_argument('--rate', type=int, default=170, help='words a minute')
 parser.add_argument('--gap', type=float, default=0.35, help='seconds between cues')
 parser.add_argument('--section-gap', type=float, default=2.5,
@@ -65,12 +73,13 @@ shutil.rmtree(out, ignore_errors=True)
 out.mkdir()
 
 sections = section_starts(EN)
+VOICE = [] if args.voice == 'system' else ['-v', args.voice]
 
 # `say` does not hand back exactly the silence it was asked for, so the gaps
 # are synthesised first and measured, and the captions are built from what the
 # files actually are. Assuming here is what makes a rough cut drift.
 for name, seconds in (('gap.aiff', args.gap), ('section.aiff', args.section_gap)):
-    subprocess.run(['say', '-v', args.voice, '-o', str(out / name),
+    subprocess.run(['say', *VOICE, '-o', str(out / name),
                     '[[slnc %d]]' % round(seconds * 1000)], check=True)
 gap, section_gap = duration(out / 'gap.aiff'), duration(out / 'section.aiff')
 
@@ -80,7 +89,7 @@ for number, text in english:
     # The caption is broken for reading; the voice wants it as one sentence.
     spoken = ' '.join(text.split('\n')).replace('—', ',')
     piece = out / f'{number:03}.aiff'
-    subprocess.run(['say', '-v', args.voice, '-r', str(args.rate), '-o', str(piece), spoken], check=True)
+    subprocess.run(['say', *VOICE, '-r', str(args.rate), '-o', str(piece), spoken], check=True)
     length = duration(piece)
     times[number] = (at, at + length)
     at += length + gap
