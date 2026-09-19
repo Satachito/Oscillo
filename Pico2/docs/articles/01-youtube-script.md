@@ -1,14 +1,19 @@
 # Episode 1 — "It shows you what the chip actually sees"
 
-A Pico 2, a USB cable, a browser tab. Target **7–8 minutes**.
+A Pico 2, a USB cable, a Mac. Target **7–8 minutes**.
 
 The spine of this one is a design decision, not a build: a bare Pico reads
 0 to 3.3 V and nothing else, so what do you put on the screen? Everything else
 in the episode is there to make that question land.
 
 **Thumbnail** — the front panel with a trace on it, "PiLyzer" small, and the
-words that carry it: **OSCILLOSCOPE / PICO 2**. A phone or a browser chrome
-visible at the edge, so it reads as "no box" before anyone presses play.
+words that carry it: **OSCILLOSCOPE / PICO 2**. The macOS window's title bar
+visible at the edge, so it reads as "a Mac app, no box" before anyone presses
+play.
+
+The episode leads with the **native macOS app**: every screen recording is the
+Mac app. The browser version appears once, on the phone, as the way to take the
+same instrument away from the Mac.
 
 ---
 
@@ -21,11 +26,11 @@ No probe.
 
 No signal generator.
 
-Nothing installed — no driver, no app, no account.
+No driver. No account.
 
-> **On screen:** pull back. It is a Pico 2, one USB cable, and a browser tab.
+> **On screen:** pull back. It is a Pico 2, one USB cable, and a Mac.
 
-That is a Raspberry Pi Pico 2, a USB cable, and a tab. The waveform is coming
+That is a Raspberry Pi Pico 2, a USB cable, and a Mac. The waveform is coming
 from the chip itself.
 
 I have been building this for a while, and there is one decision in it that
@@ -41,8 +46,9 @@ That is what this video is about.
 PiLyzer. Three analogue channels, twelve bits. An oscilloscope, a spectrum
 analyser, an eight-channel logic analyser, and a slow logger.
 
-Two front ends, one instrument: a native macOS app, and a web page that talks
-to the board over WebUSB. Same protocol, same numbers.
+It is a native macOS app, written in SwiftUI, and it talks to the board over
+plain USB — macOS needs no driver for it. There is a web version too, over
+WebUSB, with the same protocol and the same numbers.
 
 > **On screen:** the GitHub page, briefly. Do not linger.
 
@@ -52,11 +58,11 @@ All of it is open, and the link is below.
 
 ## The demo — 0:55
 
-> **On screen:** do it for real. Plug in, open the page, press Connect, choose
-> the device in the browser's chooser, press Run.
+> **On screen:** do it for real, in the Mac app. Plug in, open the app, pick
+> the board from the menu in the toolbar, Connect, Run.
 
-Plug the board in. Open the page. Connect — the browser asks which device, and
-that is the only permission there is. Run.
+Plug the board in. Open the app. Pick the board from the menu — no driver, no
+permission dialog. Run.
 
 > **On screen:** flat line. Let it sit for a beat. It should look boring.
 > The RC is already wired and the generator is simply off. (An input with
@@ -67,8 +73,8 @@ A flat line — nothing is driving that pin yet. So let us attach something —
 without attaching anything.
 
 > **On screen:** switch on Signal generator. The sine appears. Sine set to
-> 1 kHz, not the page's 440 Hz default: the recording that was kept used it,
-> and through the 1 kΩ + 10 nF it still reads 3.15 V peak to peak.
+> 1 kHz, not the 440 Hz default: the recording that was kept used it, and
+> through the 1 kΩ + 10 nF it reads 3.16 V peak to peak.
 
 The firmware has a signal generator in it. A sine, and white, pink and brown
 noise, on four pins of the board. Wire one of them back to an input and the
@@ -80,10 +86,11 @@ instrument measures itself.
 One kilohertz. There it is in the spectrum. And that is the
 whole set-up cost: a board and a cable.
 
-> **On screen:** the same page on an Android phone, on a USB-C cable.
+> **On screen:** the phone next to the board, on a USB-C cable, running the
+> web version (S13).
 
-Chrome on Android is a WebUSB host too, so this also runs on a phone. Same
-page. No app.
+Away from the Mac, the same instrument runs in Chrome on an Android phone, over
+WebUSB. Nothing to install.
 
 ---
 
@@ -128,10 +135,12 @@ adjustment.
 
 > **On screen:** the gain correction note under a channel — "readings are
 > scaled by it". Measured on the bench with two Eneloops at 2.56 V through
-> 1 kΩ into CH1: the bare Pico 2 read 1.6 % high, so the note says −1.60 %.
+> 1 kΩ into CH1: the bare Pico 2 read 0.13 % high, so the note says −0.13 %.
+> (An earlier pass on 2026-09-17 said −1.60 %; the cells had moved since.
+> Say what the kept recording shows.)
 
-When there is a correction — when a known voltage on the input read one and a
-half per cent high — it says so, as a percentage, on the panel.
+When there is a correction — even when a known voltage on the input read only
+a tenth of a per cent high — it says so, as a percentage, on the panel.
 Corrections you can see are corrections you can argue with.
 
 That is the decision. Everything else follows from it.
@@ -158,8 +167,8 @@ few hundred kilohertz, and everything folds back on itself.
 > **On screen:** add a resistor and a capacitor. The sine appears, clean.
 
 One resistor and one capacitor — a kilohm and ten nanofarads — and it is a
-sine. Three point one five volts peak to peak, which is what it is designed
-to be.
+sine. Three point one six volts peak to peak, right where it is designed to
+be.
 
 That is a real lesson and not a detour: **a digital pin is never a voltage
 until something has averaged it.**
@@ -207,8 +216,8 @@ both.
 
 > **On screen:** the front panel again, running.
 
-Link to the code below. If you have a Pico 2 sitting in a drawer, this is an
-afternoon.
+The Mac app and the code are linked below. If you have a Pico 2 sitting in a
+drawer, this is an afternoon.
 
 ---
 

@@ -2,8 +2,9 @@
 
 Japanese: [01-shot-list.ja.md](01-shot-list.ja.md).
 
-Two piles. **Screen** is a recording of the app or the page; **Bench** is a
-camera pointed at hardware. Nothing else is needed — no b-roll, no stock.
+Two piles. **Screen** is a recording of the **Mac app** — the episode leads
+with it, and the browser version appears only on the phone (S13); **Bench** is
+a camera pointed at hardware. Nothing else is needed — no b-roll, no stock.
 
 Times are the script's section marks, not a promise.
 
@@ -17,16 +18,16 @@ Record each one long; trim in the edit.
 | S1 | A trace, already running, filling the frame | 0:00 cold open | This is the first frame of the video. Crop to the plot area only — no menu bar, no dock. |
 | S2 | Clicking through scope → spectrum → logic → logger | 0:25 | One slow pass, a beat on each. |
 | S3 | The GitHub page | 0:40 | Two seconds. Scroll nothing. |
-| S4 | The real connect: plug in, open page, Connect, the browser's device chooser, Run | 0:55 | **One take, no cuts.** The chooser is the point — it is the only permission there is. |
+| S4 | The real connect in the Mac app: plug in, open the app, pick the board from the toolbar menu, Connect, Run | 0:55 | **One take, no cuts.** The point is that nothing else happens — no driver, no permission dialog. |
 | S5 | The flat line, held | 1:20 | Must look boring. Five seconds is not too long. |
 | S6 | Signal generator switched on, the sine appearing | 1:35 | Catch the moment it appears, not just the after. |
 | S7 | Switch to Spectrum, the 1 kHz peak settling | 1:55 | Let it settle on camera. |
 | S8 | The panel with the dotted bias line toggling on and off | 3:30 | The single most important shot in the episode. |
-| S9 | The gain-correction note under a channel | 4:00 | Zoom in during the edit, not in the app. |
+| S9 | The gain-correction note under a channel | 4:00 | Zoom in during the edit, not in the app. The kept take says −0.13 %, and the script says so. |
 | S10 | The raw carrier with no RC — the mess | 4:45 | Same window position as S11 so they cut together. |
-| S11 | The same input through 1 kΩ + 10 nF — the clean sine | 5:00 | Show the pp readout: 3.15 V. |
+| S11 | The same input through 1 kΩ + 10 nF — the clean sine | 5:00 | Show the pp readout: 3.16 V in the kept take. Use a **film** 10 nF: an old ceramic 103 left ±0.5 V spikes on the sine. |
 | S12 | The rate readout as channels are enabled and disabled | 5:45 | 495k → 247k → 165k. Hit all three. |
-| S13 | The page on the Android phone over USB-C, running | 2:05 | Screen-record the phone if you can; otherwise this is a bench shot (B7). |
+| S13 | The web version on the Android phone over USB-C, running | 2:05 | The kept take is a landscape camera shot of the phone beside the board, which covers B7 too. |
 
 ## Bench shots
 
@@ -47,10 +48,10 @@ instead of letting it run off an edge.
 | B3 | The four generator pins, top-down and sharp | 4:15 | A pinout overlay goes on this in the edit, so leave headroom around the board. |
 | B4 | One jumper from a generator pin to an input | 4:30 | Follow the wire with the eye from end to end. |
 | B5 | The resistor and capacitor going in | 4:50 | Fingers allowed. Show the parts before they are in. |
-| B6 | The logic header — eight resistors and a pin header | 6:15 | Cheap-and-cheerful is the point. |
-| B7 | The phone next to the board, both running | 2:05 | Wide enough to show there is no computer. |
+| B6 | The logic header — eight resistors and a pin header | 6:15 | Cheap-and-cheerful is the point. Logic is D0–D7 on physical pins 9–12 and 14–17 from firmware 1.13. |
+| B7 | The phone next to the board, both running | 2:05 | Wide enough to show there is no computer. Not needed if S13 is the bench-camera take; the portrait still cannot be used. |
 | B8 | The op amp on a breadboard, shallow focus, teasing | 6:45 | The next-episode shot. Deliberately not explained. |
-| B9 | Thumbnail frame: front panel with a trace, board and cable beside it | — | Shoot this last, when the set is tidy. |
+| B9 | Thumbnail frame: the Mac app with a trace, board and cable beside it | — | Shoot this last, when the set is tidy. **16:9**, with the Mac window's title bar in frame. |
 
 ## Which board is on the bench when
 
@@ -108,9 +109,8 @@ push in during the edit without softening. It records no system audio — nothin
 needed here, but worth knowing if a later episode wants the app's sound.
 
 **For S13 (the phone):** the phone's USB-C port is holding the Pico, so mirroring
-over a cable is out. Use Android's own screen recorder in the quick settings
-panel, and shoot B7 at the same time from a tripod so you have both the screen
-and the proof there is no computer.
+over a cable is out. The kept take films the phone and the board together from
+a tripod, which shows both the screen and that there is no computer.
 
 ## On the test photo
 

@@ -14,388 +14,387 @@ No probe.
 No signal generator.
 
 3
-00:00:02.858 --> 00:00:06.380
-Nothing installed — no driver,
-no app, no account.
+00:00:02.858 --> 00:00:04.525
+No driver. No account.
 
 4
-00:00:06.821 --> 00:00:11.521
+00:00:04.966 --> 00:00:09.166
 That's a Raspberry Pi Pico 2,
-one USB cable, and a browser tab.
+one USB cable, and a Mac.
 
 5
-00:00:11.962 --> 00:00:14.285
+00:00:09.608 --> 00:00:11.930
 The waveform is coming
 from the chip itself.
 
 6
-00:00:14.726 --> 00:00:17.720
+00:00:12.371 --> 00:00:15.365
 There's one decision in this
 that makes the screen look different
 
 7
-00:00:18.161 --> 00:00:20.299
+00:00:15.806 --> 00:00:17.944
 from every other oscilloscope
 you've used.
 
 8
-00:00:20.740 --> 00:00:22.364
+00:00:18.385 --> 00:00:20.009
 That's what this video is about.
 
 NOTE section
 
 9
-00:00:25.406 --> 00:00:28.677
+00:00:23.051 --> 00:00:26.322
 PiLyzer. Three analogue channels,
 twelve bits.
 
 10
-00:00:29.118 --> 00:00:34.281
+00:00:26.763 --> 00:00:31.926
 An oscilloscope, a spectrum analyser,
 an eight-channel logic analyser, a logger.
 
 11
-00:00:34.722 --> 00:00:39.471
-Two front ends, one instrument:
-a native macOS app, and a web page
+00:00:32.368 --> 00:00:37.508
+It's a native macOS app, in SwiftUI,
+talking to the board over plain USB —
 
 12
-00:00:39.912 --> 00:00:44.461
-that talks to the board over WebUSB.
-Same protocol, same numbers.
+00:00:37.949 --> 00:00:42.820
+no driver needed. There's a web version too:
+same protocol, same numbers.
 
 13
-00:00:44.903 --> 00:00:47.239
+00:00:43.261 --> 00:00:45.598
 All of it is open,
 and the link is below.
 
 NOTE section
 
 14
-00:00:50.281 --> 00:00:55.109
-Plug the board in. Open the page.
-Connect — the browser asks which device,
+00:00:48.639 --> 00:00:52.167
+Plug the board in. Open the app.
+Pick the board from the menu —
 
 15
-00:00:55.550 --> 00:00:57.973
-and that's the only permission there is.
+00:00:52.608 --> 00:00:55.306
+no driver, no permission dialog.
 Run.
 
 16
-00:00:58.414 --> 00:01:01.139
+00:00:55.747 --> 00:00:58.472
 A flat line — nothing is driving
 that pin yet.
 
 17
-00:01:01.580 --> 00:01:04.648
+00:00:58.913 --> 00:01:01.981
 So let's attach something —
 without attaching anything.
 
 18
-00:01:05.089 --> 00:01:07.261
+00:01:02.423 --> 00:01:04.594
 The firmware has a signal generator in it.
 
 19
-00:01:07.702 --> 00:01:11.878
+00:01:05.035 --> 00:01:09.212
 A sine, and white, pink and brown noise,
 on four pins of the board.
 
 20
-00:01:12.319 --> 00:01:15.793
+00:01:09.653 --> 00:01:13.126
 Wire one of them back to an input
 and the instrument measures itself.
 
 21
-00:01:16.234 --> 00:01:18.709
+00:01:13.567 --> 00:01:16.042
 One kilohertz.
 There it is in the spectrum.
 
 22
-00:01:19.150 --> 00:01:22.024
+00:01:16.484 --> 00:01:19.358
 And that's the whole set-up cost:
 a board and a cable.
 
 23
-00:01:22.466 --> 00:01:27.038
-Chrome on Android is a WebUSB host too,
-so this also runs on a phone.
+00:01:19.799 --> 00:01:23.743
+Away from the Mac, the same instrument
+runs in Chrome on an Android phone,
 
 24
-00:01:27.479 --> 00:01:29.073
-Same page. No app.
+00:01:24.184 --> 00:01:26.697
+over WebUSB. Nothing to install.
 
 NOTE section
 
 25
-00:01:32.114 --> 00:01:34.850
+00:01:29.739 --> 00:01:32.475
 Here's the problem
 I could not design my way around.
 
 26
-00:01:35.292 --> 00:01:38.493
+00:01:32.916 --> 00:01:36.117
 A Pico's converter reads
 zero to three point three volts.
 
 27
-00:01:38.934 --> 00:01:41.568
+00:01:36.558 --> 00:01:39.192
 That's the whole range.
 There's no negative side.
 
 28
-00:01:42.009 --> 00:01:45.723
+00:01:39.633 --> 00:01:43.347
 There's no range switch, because there's
 nothing in front of it to switch.
 
 29
-00:01:46.164 --> 00:01:48.982
+00:01:43.788 --> 00:01:46.606
 A normal oscilloscope shows you
 volts at the probe tip.
 
 30
-00:01:49.423 --> 00:01:53.065
+00:01:47.047 --> 00:01:50.690
 It knows what's in front of it —
 an attenuator, a gain stage —
 
 31
-00:01:53.506 --> 00:01:56.957
+00:01:51.131 --> 00:01:54.582
 so it can work backwards and tell you
 what you actually connected.
 
 32
-00:01:57.398 --> 00:01:59.137
+00:01:55.023 --> 00:01:56.761
 A bare Pico knows none of that.
 
 33
-00:01:59.578 --> 00:02:04.039
+00:01:57.202 --> 00:02:01.663
 So when the number on screen says
 one point six five volts, what does it mean?
 
 34
-00:02:04.480 --> 00:02:06.787
+00:02:02.104 --> 00:02:04.411
 I made it mean the one thing
 it can always mean:
 
 35
-00:02:07.228 --> 00:02:08.770
+00:02:04.852 --> 00:02:06.395
 this is what the converter saw.
 
 36
-00:02:09.211 --> 00:02:13.514
+00:02:06.836 --> 00:02:11.138
 Not what I think you connected. Not a
 corrected number. The volts at the pin.
 
 37
-00:02:13.955 --> 00:02:17.934
+00:02:11.579 --> 00:02:15.559
 If your circuit sits at mid rail —
 and most single-supply circuits do —
 
 38
-00:02:18.375 --> 00:02:20.280
+00:02:16.000 --> 00:02:17.904
 the trace sits in the middle of the screen,
 
 39
-00:02:20.721 --> 00:02:25.199
+00:02:18.345 --> 00:02:22.823
 and the instrument draws that bias as a
 dotted line instead of quietly subtracting it.
 
 40
-00:02:25.640 --> 00:02:29.870
+00:02:23.264 --> 00:02:27.495
 You can tell it where the bias is.
 It will draw it. It will not take it out.
 
 41
-00:02:30.311 --> 00:02:34.217
+00:02:27.936 --> 00:02:31.841
 Because a number that has been silently
 adjusted is a number you cannot check.
 
 42
-00:02:34.658 --> 00:02:38.856
+00:02:32.283 --> 00:02:36.481
 And on a home-made front end, the thing most
 likely to be wrong is the adjustment.
 
 43
-00:02:39.297 --> 00:02:43.351
-When there's a correction — a known voltage
-read one and a half per cent high —
+00:02:36.922 --> 00:02:41.219
+When there's a correction — even when a known
+voltage read a tenth of a per cent high —
 
 44
-00:02:43.792 --> 00:02:46.715
+00:02:41.660 --> 00:02:44.583
 it says so, as a percentage, on the panel.
 
 45
-00:02:47.156 --> 00:02:49.931
+00:02:45.024 --> 00:02:47.799
 Corrections you can see
 are corrections you can argue with.
 
 46
-00:02:50.372 --> 00:02:53.157
+00:02:48.240 --> 00:02:51.025
 That's the decision.
 Everything else follows from it.
 
 NOTE section
 
 47
-00:02:56.198 --> 00:02:59.326
+00:02:54.067 --> 00:02:57.194
 Back to that generator, because
 there's something worth knowing.
 
 48
-00:02:59.767 --> 00:03:04.038
+00:02:57.635 --> 00:03:01.906
 The RP2350 has no
 digital-to-analogue converter.
 
 49
-00:03:04.479 --> 00:03:06.224
+00:03:02.347 --> 00:03:04.092
 So the sine is not a voltage.
 
 50
-00:03:06.665 --> 00:03:10.191
+00:03:04.533 --> 00:03:08.059
 It's a pulse-width carrier at five hundred
 and eighty-six kilohertz,
 
 51
-00:03:10.632 --> 00:03:13.031
+00:03:08.500 --> 00:03:10.899
 whose duty cycle follows a sine table.
 
 52
-00:03:13.472 --> 00:03:16.052
+00:03:11.340 --> 00:03:13.920
 Wire that straight to an input
 and this is what you get.
 
 53
-00:03:16.493 --> 00:03:21.005
+00:03:14.361 --> 00:03:18.873
 Garbage — you're sampling a square wave
 at half a megahertz, with a converter at
 
 54
-00:03:21.446 --> 00:03:25.193
+00:03:19.314 --> 00:03:23.061
 a few hundred kilohertz,
 and everything folds back on itself.
 
 55
-00:03:25.634 --> 00:03:30.431
+00:03:23.502 --> 00:03:28.299
 One resistor and one capacitor —
 a kilohm and ten nanofarads — and it's a sine.
 
 56
-00:03:30.872 --> 00:03:35.030
-Three point one five volts peak to peak,
-which is what it's designed to be.
+00:03:28.740 --> 00:03:32.817
+Three point one six volts peak to peak,
+right where it's designed to be.
 
 57
-00:03:35.471 --> 00:03:39.416
+00:03:33.258 --> 00:03:37.203
 That's a real lesson and not a detour:
 a digital pin is never a voltage
 
 58
-00:03:39.858 --> 00:03:41.480
+00:03:37.645 --> 00:03:39.267
 until something has averaged it.
 
 NOTE section
 
 59
-00:03:44.521 --> 00:03:45.861
+00:03:42.308 --> 00:03:43.648
 Numbers, honestly.
 
 60
-00:03:46.302 --> 00:03:50.530
+00:03:44.089 --> 00:03:48.317
 One channel: about four hundred and
 ninety-five thousand samples a second.
 
 61
-00:03:50.972 --> 00:03:55.596
+00:03:48.759 --> 00:03:53.382
 Two: two hundred and forty-seven.
 Three: one hundred and sixty-five —
 
 62
-00:03:56.037 --> 00:03:58.613
+00:03:53.824 --> 00:03:56.400
 they share one converter,
 so they share the rate.
 
 63
-00:03:59.054 --> 00:04:03.767
+00:03:56.841 --> 00:04:01.554
 Twelve bits across three point three volts,
 which is eight hundred microvolts a count.
 
 64
-00:04:04.209 --> 00:04:08.621
+00:04:01.996 --> 00:04:06.408
 The logic analyser is eight channels,
 up to a hundred and fifty megasamples,
 
 65
-00:04:09.062 --> 00:04:11.102
+00:04:06.849 --> 00:04:08.889
 and it costs eight resistors and a header —
 
 66
-00:04:11.543 --> 00:04:14.564
+00:04:09.330 --> 00:04:12.351
 which makes it, per yen,
 the best thing on the board.
 
 67
-00:04:15.005 --> 00:04:18.084
+00:04:12.792 --> 00:04:15.871
 What it will not do: it will not read
 a negative voltage,
 
 68
-00:04:18.525 --> 00:04:21.169
+00:04:16.312 --> 00:04:18.956
 it will not read anything
 above three point three volts,
 
 69
-00:04:21.610 --> 00:04:22.907
+00:04:19.397 --> 00:04:20.694
 and it will survive neither.
 
 70
-00:04:23.348 --> 00:04:27.104
+00:04:21.135 --> 00:04:24.891
 On a bare Pico, that's the deal.
 There's nothing in front of the pin.
 
 NOTE section
 
 71
-00:04:30.146 --> 00:04:31.890
+00:04:27.933 --> 00:04:29.677
 Which brings us to the next one.
 
 72
-00:04:32.331 --> 00:04:35.249
+00:04:30.118 --> 00:04:33.036
 Most things you want to measure
 swing about zero volts —
 
 73
-00:04:35.690 --> 00:04:38.944
+00:04:33.477 --> 00:04:36.731
 audio, a function generator,
 anything alternating.
 
 74
-00:04:39.385 --> 00:04:41.391
+00:04:37.172 --> 00:04:39.178
 A bare Pico cannot see them at all.
 
 75
-00:04:41.832 --> 00:04:46.421
+00:04:39.619 --> 00:04:44.208
 So next time: one op amp, a coupling capacitor
 and two resistors,
 
 76
-00:04:46.862 --> 00:04:50.724
+00:04:44.649 --> 00:04:48.511
 and a signal that swings about zero
 becomes a signal a Pico can read.
 
 77
-00:04:51.165 --> 00:04:54.825
+00:04:48.952 --> 00:04:52.612
 We'll also talk about the op amp I tried first
 that could not do it,
 
 78
-00:04:55.266 --> 00:04:58.095
+00:04:53.053 --> 00:04:55.882
 and the resistor I got wrong
 that cost me an afternoon —
 
 79
-00:04:58.537 --> 00:05:00.971
+00:04:56.324 --> 00:04:58.758
 and how the instrument itself
 is what caught both.
 
 80
-00:05:01.412 --> 00:05:06.084
-Link to the code below. If there's a Pico 2
-in a drawer, this is an afternoon.
+00:04:59.199 --> 00:05:04.587
+The Mac app and the code are linked below.
+If there's a Pico 2 in a drawer, this is an afternoon.
