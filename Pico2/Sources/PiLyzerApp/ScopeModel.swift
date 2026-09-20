@@ -69,6 +69,7 @@ final class ScopeModel: ObservableObject {
         savedSettings.ensureAnalogChannels(Self.previewCapabilities.analogChannels)
         settings = savedSettings
         selectedSource = Preferences.loadSource() ?? .simulator
+        normalizeAnalogSelection()
 
         engine.onStateChange = { [weak self] state in self?.apply(state) }
         engine.onScopeFrame = { [weak self] frame in self?.apply(frame) }
@@ -385,6 +386,13 @@ final class ScopeModel: ObservableObject {
     }
 
     func normalizeAnalogSelection() {
+        // Something has to be captured: with no channel set the protocol falls
+        // back to CH1, so the panel says so rather than showing three boxes
+        // unticked while CH1 is being swept.
+        if !availableAnalogChannels.contains(where: { settings.channels[$0].isEnabled }),
+           let first = availableAnalogChannels.first {
+            settings.channels[first].isEnabled = true
+        }
         if !enabledAnalogChannels.contains(settings.trigger.source) {
             settings.trigger.source = enabledAnalogChannels.first ?? 0
         }

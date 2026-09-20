@@ -477,15 +477,24 @@ struct VerticalSection: View {
     var body: some View {
         Section("Channel \(channel + 1)", titleSize: 15,
                 disclosure: Binding(get: { isOpen ?? model.settings.channels[channel].isEnabled },
-                                    set: { isOpen = $0 })) {
-            Toggle("Enabled", isOn: Binding(
-                get: { model.settings.channels[channel].isEnabled },
-                set: { enabled in
-                    model.settings.channels[channel].isEnabled = enabled
-                    model.normalizeAnalogSelection()
-                }))
-                .disabled(model.settings.channels[channel].isEnabled && model.enabledAnalogChannels.count == 1)
-
+                                    set: { isOpen = $0 }),
+                check: Binding(get: { model.settings.channels[channel].isEnabled },
+                               set: { enabled in
+                                   model.settings.channels[channel].isEnabled = enabled
+                                   // Something has to be captured, so the last
+                                   // one on comes back on, as it does on the
+                                   // page rather than being greyed out there.
+                                   // The flags, not enabledAnalogChannels:
+                                   // the mask falls back to CH1 when nothing
+                                   // is set, which would hide the state the
+                                   // checkbox is showing.
+                                   if !model.availableAnalogChannels.contains(where: {
+                                       model.settings.channels[$0].isEnabled
+                                   }) {
+                                       model.settings.channels[channel].isEnabled = true
+                                   }
+                                   model.normalizeAnalogSelection()
+                               })) {
             Group {
                 if model.ranges.count > 1 {
                     Choice("Range", selection: binding.rangeIndex) {
@@ -751,21 +760,32 @@ struct Section<Content: View>: View {
     /// When a section can be folded, the chevron that folds it. The content is
     /// still built either way; a closed section simply does not show it.
     let disclosure: Binding<Bool>?
+    /// A switch in the heading, before the title, with no label of its own —
+    /// the title is its label. In the heading rather than the content so that
+    /// it can still be reached when the section is folded.
+    let check: Binding<Bool>?
     @ViewBuilder let content: () -> Content
 
     init(_ title: String, tag: String? = nil, titleSize: CGFloat = 11,
-         disclosure: Binding<Bool>? = nil,
+         disclosure: Binding<Bool>? = nil, check: Binding<Bool>? = nil,
          @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.tag = tag
         self.titleSize = titleSize
         self.disclosure = disclosure
+        self.check = check
         self.content = content
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
+                if let check {
+                    Toggle("", isOn: check)
+                        .toggleStyle(.checkbox)
+                        .labelsHidden()
+                        .accessibilityLabel("Enable \(title)")
+                }
                 Text(title)
                     .font(.system(size: titleSize, weight: .semibold))
                     .foregroundStyle(Theme.ink)
