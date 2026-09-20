@@ -180,16 +180,17 @@ Both of these happened to me while making this, and the screen said so both
 times. They are worth two minutes because the symptom is identical, and it is
 not the symptom you would guess.
 
-> **On screen:** audio into CH1 — the direct channel. The trace sits on the
-> zero line with its bottom flattened. Mean reads about 0.3 V, and the legend
-> says CLIP.
+> **On screen:** `Shots/Clipped.png`, the screenshot from the evening it
+> happened: the trace on the zero line with its bottom flattened, Mean
+> 324 mV, and CLIP in the legend. Push in on the plot, then on the readings.
 
 The first one: the audio went into the direct channel. That half has no
 capacitor and no divider — it is a follower and nothing else — so a signal
 centred on zero arrives centred on zero, and everything below the line is gone.
 
-> **On screen:** the same trace, then the 100 Ω moved from the plug to the
-> op amp's input, showing the same flattened bottom.
+> **On screen:** stay on the same screenshot — the picture is the same for
+> both faults, which is the point. Cut to the breadboard for where the 100 Ω
+> was.
 
 The second one is better, because the circuit was right. The hundred ohms that
 tells the jack it is driving headphones had gone in on the wrong side of the
@@ -197,14 +198,16 @@ coupling capacitor — across the op amp's input instead of across the plug. A
 hundred ohms against the divider's fifty kilohms wins, and it pulls mid rail
 down to nothing. Same picture. Bottom half gone.
 
-> **On screen:** unplug. Mean goes back to 1.65 V. Plug in. It collapses again.
+> **On screen:** the bench, live: unplug and the bias reads 1.65 V again,
+> plug in and it collapses.
 
 And that is how you tell them apart without a meter: **unplug the source and
 watch the bias**. If it comes back to one point six five and collapses when you
 plug in, the source is dragging the bias, not the circuit failing to make it.
 
-> **On screen:** the 100 Ω back across the plug. The trace centred on the
-> dotted line, 1.45 V peak to peak, no CLIP.
+> **On screen:** `Shots/ClippedRepaired.png` — the trace centred on the
+> dotted line, Mean 1.67 V, 1.45 V peak to peak, no CLIP. Cut the two
+> screenshots against each other; they are the same window, so they register.
 
 Put it back at the plug and the picture is what it should be: centred on the
 line, a volt and a half of swing, and room for more.
@@ -313,9 +316,11 @@ last one, this is the evening after.
 - **Both failures in "Two ways to lose the bottom half" really happened**, on
   2026-09-20, and the screenshots are kept as `Shots/Clipped.png` (Mean 324 mV,
   780 mV pp, CLIP) and `Shots/ClippedRepaired.png` (Mean 1.67 V, 1.45 V pp,
-  centred on the dotted line). Re-stage them for the camera rather
-  than using the screenshots, and keep the Position slider at 0 div for the
-  takes — the legend calls it out otherwise.
+  centred on the dotted line). **The screenshots are what goes in the edit** —
+  they are the evening it happened, not a re-enactment. Both are 1808×1265, so
+  crop to 16:9 around the plot and the readings; the second one carries
+  Position −3.3 div, which the legend prints, so either crop it out or leave it
+  and say nothing. Only the unplug-and-watch-the-bias beat is shot live.
 - **Shot list worth having ready:** the tone on the mid-rail line; the
   parts on white; the divider read direct and through the follower; the LM358's
   flat top; the MCP6022's whole sine; the bias line landing on CH2; the two
