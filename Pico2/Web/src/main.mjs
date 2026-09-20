@@ -141,7 +141,6 @@ function channelControls() {
       // are — the menu shows a number either way.
       else if (key === 'scale') control.value = ch.scale || fitScale(scaleFor(settings, caps(), frontEnd(), i));
       else control.value = ch[key];
-      if (key === 'enabled') control.disabled = ch.enabled && activeChannels(settings, caps()).length === 1;
       // Only the scope draws what Remove mean changes: the spectrum takes the
       // mean out itself, because a DC offset through the window is a skirt
       // over the low bins rather than a tall one at zero, and the meter's
