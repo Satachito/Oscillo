@@ -714,7 +714,17 @@ struct LabeledSlider: View {
     /// The same steps the browser application's sliders use. Without one a
     /// slider stops wherever the pointer left it, and a position that reads
     /// "−0.0 div" moves the whole voltage scale by a few millivolts.
+    ///
+    /// The step is applied to the value rather than handed to `Slider`, which
+    /// would draw a tick for every one of them — eighty under the position
+    /// slider — and turn a plain control into a ruler.
     var step: Double? = nil
+
+    private var snapped: Binding<Double> {
+        guard let step, step > 0 else { return $value }
+        return Binding(get: { (value / step).rounded() * step },
+                       set: { value = ($0 / step).rounded() * step })
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -723,11 +733,7 @@ struct LabeledSlider: View {
                 Spacer()
                 Text(format(value)).font(.caption.monospaced()).foregroundStyle(.secondary)
             }
-            if let step {
-                Slider(value: $value, in: range, step: step)
-            } else {
-                Slider(value: $value, in: range)
-            }
+            Slider(value: snapped, in: range)
         }
     }
 }
