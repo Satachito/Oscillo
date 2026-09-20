@@ -1,7 +1,7 @@
 # Episode 2 — "One op amp, and a Pico can hear audio"
 
 A Pico 2, one MCP6022, a handful of parts on a breadboard, and the Mac app.
-Target **7–8 minutes**.
+Target **9–10 minutes**.
 
 Episode 1 ended on a promise: most things you want to measure swing about zero
 volts, a bare Pico cannot see them at all, and next time one op amp, a coupling
@@ -174,7 +174,47 @@ not. At a hundred kilohms, the two channels fall off together.
 
 ---
 
-## The resistor I got wrong — 5:25
+## Two ways to lose the bottom half — 5:10
+
+Both of these happened to me while making this, and the screen said so both
+times. They are worth two minutes because the symptom is identical, and it is
+not the symptom you would guess.
+
+> **On screen:** audio into CH1 — the direct channel. The trace sits on the
+> zero line with its bottom flattened. Mean reads about 0.3 V, and the legend
+> says CLIP.
+
+The first one: the audio went into the direct channel. That half has no
+capacitor and no divider — it is a follower and nothing else — so a signal
+centred on zero arrives centred on zero, and everything below the line is gone.
+
+> **On screen:** the same trace, then the 100 Ω moved from the plug to the
+> op amp's input, showing the same flattened bottom.
+
+The second one is better, because the circuit was right. The hundred ohms that
+tells the jack it is driving headphones had gone in on the wrong side of the
+coupling capacitor — across the op amp's input instead of across the plug. A
+hundred ohms against the divider's fifty kilohms wins, and it pulls mid rail
+down to nothing. Same picture. Bottom half gone.
+
+> **On screen:** unplug. Mean goes back to 1.65 V. Plug in. It collapses again.
+
+And that is how you tell them apart without a meter: **unplug the source and
+watch the bias**. If it comes back to one point six five and collapses when you
+plug in, the source is dragging the bias, not the circuit failing to make it.
+
+> **On screen:** the 100 Ω back across the plug. The trace centred on the
+> dotted line, 1.45 V peak to peak, no CLIP.
+
+Put it back at the plug and the picture is what it should be: centred on the
+line, a volt and a half of swing, and room for more.
+
+The screen never told me what was wrong. It told me what it saw — which was
+enough, twice.
+
+---
+
+## The resistor I got wrong — 7:10
 
 > **On screen:** close-up of the two resistors side by side,
 > brown-black-red and brown-black-yellow.
@@ -205,7 +245,7 @@ arithmetic, believe the number, then go and find out why.
 
 ---
 
-## What it will not do — 6:25
+## What it will not do — 8:10
 
 > **On screen:** a card: no protection; no attenuation; keep the input inside
 > the supply.
@@ -228,7 +268,7 @@ browser simulator — the link is below.
 
 ---
 
-## What is next — 6:55
+## What is next — 8:40
 
 > **On screen:** the rev A schematic or board render; then the picoLABO
 > PL2407AFE, unsoldered.
@@ -270,7 +310,12 @@ last one, this is the evening after.
   the parts bag left ±0.5 V spikes on the sine in episode 1's shoot.
 - **Firmware 1.13** on every board. Nothing in this episode touches the logic
   pins, but the pinout card must say GPIO26/27 for CH1/CH2.
-- **Shot list worth having ready:** the phone's sine on the mid-rail line; the
+- **Both failures in "Two ways to lose the bottom half" really happened**, on
+  2026-09-20, and the screenshots exist: CH1 with Mean 324 mV and CLIP, and the
+  fixed version at Mean 1.67 V, 1.45 V pp. Re-stage them for the camera rather
+  than using the screenshots, and keep the Position slider at 0 div for the
+  takes — the legend calls it out otherwise.
+- **Shot list worth having ready:** the tone on the mid-rail line; the
   parts on white; the divider read direct and through the follower; the LM358's
   flat top; the MCP6022's whole sine; the bias line landing on CH2; the two
   resistors' colour bands; the readings against the arithmetic; the simulator.
