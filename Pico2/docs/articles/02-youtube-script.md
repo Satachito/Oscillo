@@ -26,9 +26,9 @@ cut the line, not the honesty.
 
 ## Cold open — 0:00
 
-> **On screen:** the Mac app, CH2, a sine from the phone's headphone output,
-> sitting on the dotted mid-rail line. Hold three seconds before the first
-> word.
+> **On screen:** the Mac app, CH2, a 1 kHz tone from the Mac mini's headphone
+> jack, sitting on the dotted mid-rail line. Hold three seconds before the
+> first word.
 
 This is audio. It swings above and below zero volts.
 
@@ -136,11 +136,20 @@ substitute, the one thing to check is those two words: rail to rail.
 
 ## The AC channel — 4:05
 
-> **On screen:** the phone playing a 1 kHz tone into CH2. The sine centred on
+> **On screen:** the Mac playing a 1 kHz tone into CH2. The sine centred on
 > the dotted line. Then music; the trace dancing around the line.
 
-Now the phone. Its headphone output swings about zero, and through the second
-half it arrives centred on mid rail.
+Now the Mac's own headphone jack. Its output swings about zero, and through the
+second half it arrives centred on mid rail.
+
+> **On screen:** the 100 Ω resistor across the plug, in close-up.
+
+One detail, because it is the kind of thing that bites. This jack decides how
+hard to drive by how much it is loaded. Left to itself, looking at fifty
+kilohms, it calls that a line input and sends three volts RMS — more than the
+converter's whole range. A hundred ohms across the plug tells it there are
+headphones on the end, and it settles for one volt RMS. Which is two point
+eight volts peak to peak, and lands inside the range with room to spare.
 
 > **On screen:** the Bias field for CH2 set to Mid rail; the dotted line lands
 > on the trace's centre.
@@ -155,8 +164,8 @@ the line is. Nothing has been subtracted behind your back.
 Two hundred-kilohm resistors look like fifty kilohms to the signal. With one and
 a half microfarads, anything above about **two hertz** gets through.
 
-Fifty kilohms is also the price. A function generator or a phone does not
-notice it; a sensor or a high-value divider would. So high-impedance things go
+Fifty kilohms is also the price. A function generator or a headphone output
+does not notice it; a sensor or a high-value divider would. So high-impedance things go
 on the first channel, the plain follower, where the load is picoamps.
 
 That value was not my first choice, either. It started at a megohm a side, and
@@ -246,9 +255,17 @@ last one, this is the evening after.
 - **From the simulator, not the bench:** both channels 1.999 V pp for a 1 V sine,
   and both 1.720 V pp at 20 kHz. Do not say these as measurements unless the
   bench repeats them.
-- **The phone is the signal source.** A 3.5 mm breakout (or a USB-C audio
-  adapter) into the AC channel. Keep the volume modest: the input has no
-  protection, and a line output is about ±1 V at most.
+- **The signal source is the Mac mini's front 3.5 mm jack**, which sets its
+  level from the load it detects: under 150 Ω it is a headphone output at
+  1.0 V RMS, over 1 kΩ a line output at 2.0–3.0 V RMS. The AC channel alone
+  looks like 50 kΩ, so it would be driven as a line output — 3.0 V RMS is
+  8.5 V peak to peak, past both rails. **Put 100 Ω across the plug** (tip to
+  sleeve, ¼ W is plenty at 10 mW): the jack then behaves as a headphone output,
+  1.0 V RMS ≈ 2.83 V peak to peak, which on mid rail is 0.24–3.06 V — inside
+  the range, and nearly filling the screen. Start at 20–30 % volume and watch
+  the trace; if the top flattens, turn it down. **[MEASURE: the actual peak to
+  peak at the volume used, and what it becomes without the 100 Ω — worth
+  showing only if it stays inside the rails.]**
 - **Capacitors:** use film for the generator's 10 nF — the old ceramic 103 from
   the parts bag left ±0.5 V spikes on the sine in episode 1's shoot.
 - **Firmware 1.13** on every board. Nothing in this episode touches the logic
