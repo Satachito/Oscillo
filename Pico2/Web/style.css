@@ -43,3 +43,5 @@
 .transport-home:empty,.transport-phone:empty{display:none}
 .transport-phone{margin-bottom:14px}
 .workspace-head .eyebrow{margin:0}
+.channel-heading .disclose{background:none;border:0;color:var(--faint);font-size:11px;line-height:1;padding:4px 2px;margin-left:8px}
+.channel-heading .disclose:hover{color:var(--ink-strong)}
