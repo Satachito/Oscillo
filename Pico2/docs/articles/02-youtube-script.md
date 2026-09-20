@@ -311,8 +311,9 @@ last one, this is the evening after.
 - **Firmware 1.13** on every board. Nothing in this episode touches the logic
   pins, but the pinout card must say GPIO26/27 for CH1/CH2.
 - **Both failures in "Two ways to lose the bottom half" really happened**, on
-  2026-09-20, and the screenshots exist: CH1 with Mean 324 mV and CLIP, and the
-  fixed version at Mean 1.67 V, 1.45 V pp. Re-stage them for the camera rather
+  2026-09-20, and the screenshots are kept as `Shots/Clipped.png` (Mean 324 mV,
+  780 mV pp, CLIP) and `Shots/ClippedRepaired.png` (Mean 1.67 V, 1.45 V pp,
+  centred on the dotted line). Re-stage them for the camera rather
   than using the screenshots, and keep the Position slider at 0 div for the
   takes — the legend calls it out otherwise.
 - **Shot list worth having ready:** the tone on the mid-rail line; the
