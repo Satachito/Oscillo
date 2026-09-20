@@ -40,22 +40,22 @@ struct ControlPanelView: View {
                 // Averaging, record and X/Y are all the section holds, and only
                 // the scope and the spectrum have them; the logic analyser and
                 // the meter would get a heading over nothing.
+                // The channels come first, under Run, Single and Clear: what
+                // is being measured is settled before how it is swept.
+                if model.settings.mode != .logic { verticalSections }
                 if model.settings.mode == .scope || model.settings.mode == .spectrum { acquisition }
                 switch model.settings.mode {
                 case .scope:
                     horizontal
                     triggerSection
-                    verticalSections
                 case .spectrum:
                     frequencySection
                     spectrumSection
-                    verticalSections
                 case .logic:
                     logicSection
                     decoderSection
                 case .meter:
                     loggerSection
-                    verticalSections
                 }
                 if model.capabilities.hasCalibrationOutput { testOutputSection }
                 instrumentSection
@@ -424,6 +424,10 @@ struct VerticalSection: View {
     // leaves the field focused, so nothing has committed the draft yet.
     @State private var biasDraft: String?
     @State private var appliedDraft: String?
+    // Whether the card is folded. Its own state, not the Enabled checkbox's:
+    // a disabled channel's calibration is worth reading, and worth setting
+    // before the channel is switched on.
+    @State private var isOpen: Bool?
 
     private var biasVolts: Binding<Double> {
         Binding(get: { model.settings.channels[channel].biasVolts },
@@ -471,7 +475,9 @@ struct VerticalSection: View {
     }
 
     var body: some View {
-        Section("Channel \(channel + 1)", titleSize: 15) {
+        Section("Channel \(channel + 1)", titleSize: 15,
+                disclosure: Binding(get: { isOpen ?? model.settings.channels[channel].isEnabled },
+                                    set: { isOpen = $0 })) {
             Toggle("Enabled", isOn: Binding(
                 get: { model.settings.channels[channel].isEnabled },
                 set: { enabled in
@@ -480,9 +486,7 @@ struct VerticalSection: View {
                 }))
                 .disabled(model.settings.channels[channel].isEnabled && model.enabledAnalogChannels.count == 1)
 
-            // A channel that is off has nothing to set: its settings are kept,
-            // just not shown, so turning it back on brings them all back.
-            if model.settings.channels[channel].isEnabled {
+            Group {
                 if model.ranges.count > 1 {
                     Choice("Range", selection: binding.rangeIndex) {
                         ForEach(0..<model.ranges.count, id: \.self) { Text(model.ranges[$0].name).tag($0) }
@@ -744,13 +748,18 @@ struct Section<Content: View>: View {
     let title: String
     let tag: String?
     let titleSize: CGFloat
+    /// When a section can be folded, the chevron that folds it. The content is
+    /// still built either way; a closed section simply does not show it.
+    let disclosure: Binding<Bool>?
     @ViewBuilder let content: () -> Content
 
     init(_ title: String, tag: String? = nil, titleSize: CGFloat = 11,
+         disclosure: Binding<Bool>? = nil,
          @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.tag = tag
         self.titleSize = titleSize
+        self.disclosure = disclosure
         self.content = content
     }
 
@@ -767,8 +776,20 @@ struct Section<Content: View>: View {
                         .tracking(1)
                         .foregroundStyle(Theme.muted)
                 }
+                if let disclosure {
+                    Button {
+                        disclosure.wrappedValue.toggle()
+                    } label: {
+                        Image(systemName: disclosure.wrappedValue ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Theme.muted)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(title) settings")
+                }
             }
-            content()
+            if disclosure?.wrappedValue ?? true { content() }
         }
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
