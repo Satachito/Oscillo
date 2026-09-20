@@ -122,7 +122,7 @@ struct ControlPanelView: View {
                 }
             }
             LabeledSlider(title: "Position", value: $model.settings.trigger.position,
-                          range: 0...0.95, format: { Format.percent($0 * 100, digits: 0) })
+                          range: 0...0.95, format: { Format.percent($0 * 100, digits: 0) }, step: 0.01)
             Text("\(model.enabledAnalogChannels.count) ch · max \(Format.sampleRate(model.maximumAnalogRate))/ch")
                 .font(.caption).foregroundStyle(.secondary)
             Text(model.planDescription)
@@ -147,7 +147,7 @@ struct ControlPanelView: View {
                 Text(note).font(.caption).foregroundStyle(.secondary)
             }
             LabeledSlider(title: "Noise", value: $model.settings.trigger.hysteresis,
-                          range: 0...0.05, format: { Format.percent($0 * 100, digits: 1) })
+                          range: 0...0.05, format: { Format.percent($0 * 100, digits: 1) }, step: 0.001)
             TriggerLowPassControl(cutoffHz: $model.settings.trigger.lowPassHz)
                 .help("Filters the trigger input only. The waveform stays unfiltered; the trigger marker follows the filtered crossing.")
             if model.settings.trigger.lowPassHz > 0 {
@@ -286,7 +286,7 @@ struct ControlPanelView: View {
                 ForEach(TriggerSlope.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             LabeledSlider(title: "Position", value: $model.settings.logic.triggerPosition,
-                          range: 0...0.95, format: { Format.percent($0 * 100, digits: 0) })
+                          range: 0...0.95, format: { Format.percent($0 * 100, digits: 0) }, step: 0.01)
 
             // Checkboxes four to a row, as in the browser application.
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 4),
@@ -407,9 +407,9 @@ struct ControlPanelView: View {
             Toggle("Cursors", isOn: $model.cursorsEnabled)
             if model.cursorsEnabled {
                 LabeledSlider(title: "A", value: $model.cursorA, range: 0...1,
-                              format: { Format.percent($0 * 100, digits: 0) })
+                              format: { Format.percent($0 * 100, digits: 0) }, step: 0.001)
                 LabeledSlider(title: "B", value: $model.cursorB, range: 0...1,
-                              format: { Format.percent($0 * 100, digits: 0) })
+                              format: { Format.percent($0 * 100, digits: 0) }, step: 0.001)
             }
         }
     }
@@ -499,7 +499,7 @@ struct VerticalSection: View {
                 }
 
                 LabeledSlider(title: "Position", value: binding.positionDivisions,
-                              range: -4...4, format: { String(format: "%.1f div", $0) })
+                              range: -4...4, format: { String(format: "%.1f div", $0) }, step: 0.1)
 
                 // Only the scope draws what this changes. The spectrum takes the
                 // mean out itself, because a DC offset through the window is a
@@ -711,6 +711,10 @@ struct LabeledSlider: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
     let format: (Double) -> String
+    /// The same steps the browser application's sliders use. Without one a
+    /// slider stops wherever the pointer left it, and a position that reads
+    /// "−0.0 div" moves the whole voltage scale by a few millivolts.
+    var step: Double? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -719,7 +723,11 @@ struct LabeledSlider: View {
                 Spacer()
                 Text(format(value)).font(.caption.monospaced()).foregroundStyle(.secondary)
             }
-            Slider(value: $value, in: range)
+            if let step {
+                Slider(value: $value, in: range, step: step)
+            } else {
+                Slider(value: $value, in: range)
+            }
         }
     }
 }
