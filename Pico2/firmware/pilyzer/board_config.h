@@ -14,7 +14,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x010D   // 1.13: logic GPIO6-13 and ranges GPIO2-4 on every board, as the PL2407AFE already had them
+#define PILYZER_FIRMWARE_VERSION 0x010E   // 1.14: flush the receive pipe when a bad header puts the stream out of step
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3

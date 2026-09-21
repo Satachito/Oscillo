@@ -482,6 +482,15 @@ static void pump_receive(void)
             if (rx_header.magic != PILYZER_MAGIC_REQUEST) {
                 // Out of step with the host: throw away everything queued and
                 // start looking for a header again.
+                //
+                // The flush is the part that matters. This is a byte stream, so
+                // a request whose length field disagrees with the bytes that
+                // followed it leaves the difference in the pipe, and every
+                // header read after that starts in the wrong place. Clearing
+                // the counters alone would keep reading from the same wrong
+                // place for ever, and the instrument would answer nothing until
+                // it was unplugged.
+                tud_vendor_read_flush();
                 reset_receiver();
                 continue;
             }
