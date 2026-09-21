@@ -387,13 +387,20 @@ function renderFrame() {
     // easily nudged by a thumb scrolling past on a phone, and otherwise the
     // only sign is a trace drawn somewhere its readings say it is not.
     const moved = Math.abs(ch.offset) >= 0.05 ? ` · ${ch.offset > 0 ? '+' : '−'}${Math.abs(ch.offset).toFixed(1)} div` : '';
-    el.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || scale.span / 8, 'V')}/div${moved}${ch.ac ? ' · AC' : ''}${trace.clipped ? ' · CLIP' : ''}`;
+    el.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || scale.span / 8, 'V')}/div${moved}${ch.ac ? ' · AC' : ''}`;
+    // CLIP comes and goes with the signal, so its room is always there and
+    // only its ink changes: a label that grew would shove the channels after
+    // it sideways every time a peak touched a rail.
+    const clip = document.createElement('span');
+    clip.className = 'clip-slot'; clip.textContent = ' · CLIP';
+    clip.classList.toggle('on', trace.clipped === true);
+    el.append(clip);
     $('legend').append(el);
   }
   if (settings.mode === 'logic') $('legend').textContent = 'D0–D7 · 3.3 V logic';
   if (settings.mode === 'meter') $('legend').textContent = frame?.kind === 'meter' ? `logging every ${fmt(frame.interval, 's')} · min/mean/max` : '—';
   if (settings.mode === 'spectrum') {
-    for (const el of $('legend').children) el.textContent = el.textContent.split(' ')[0];
+    for (const el of $('legend').children) el.replaceChildren(el.textContent.split(' ')[0]);
     const resolution = plot.spectra?.[0]?.resolution;
     for (const text of [settings.spectrumWindow, `${settings.spectrumAveraging}× avg`, resolution ? `${fmt(resolution, 'Hz')} per bin` : null]) {
       if (!text) continue;

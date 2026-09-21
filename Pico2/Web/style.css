@@ -45,3 +45,7 @@
 .workspace-head .eyebrow{margin:0}
 .channel-heading .disclose{background:none;border:0;color:var(--faint);font-size:11px;line-height:1;padding:4px 2px;margin-left:8px}
 .channel-heading .disclose:hover{color:var(--ink-strong)}
+/* CLIP keeps its room whether or not it is showing, so the channels after it
+   do not move when a peak touches a rail. */
+.clip-slot{visibility:hidden}
+.clip-slot.on{visibility:visible;color:#e69b7f;font-weight:600}
