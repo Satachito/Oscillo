@@ -2,6 +2,7 @@ import CPiLyzerUSB
 import Foundation
 
 public enum InstrumentError: Error, LocalizedError, Equatable {
+    case noChannelsEnabled
     case triggerLowPassUnavailable
     case notConnected
     case openFailed(Int32)
@@ -16,6 +17,8 @@ public enum InstrumentError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
+        case .noChannelsEnabled:
+            return "Enable at least one channel."
         case .triggerLowPassUnavailable:
             return "Trigger LPF requires firmware 1.2 or later. Update the firmware or set Trigger LPF to Off."
         case .notConnected:

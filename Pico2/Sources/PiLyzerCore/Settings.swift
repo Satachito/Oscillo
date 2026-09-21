@@ -392,11 +392,13 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         }
     }
 
+    /// The channels this device can capture, as the wire wants them. Zero is
+    /// a real answer — every channel can be switched off — and the capture
+    /// refuses rather than quietly reading CH1, which is what the firmware
+    /// does with a mask of zero too.
     public func enabledMask(capabilities: DeviceCapabilities) -> UInt8 {
         let count = min(max(capabilities.analogChannels, 0), 8)
-        let supported = UInt8((1 << count) - 1)
-        let mask = enabledMask & supported
-        return mask == 0 ? 1 : mask
+        return enabledMask & UInt8((1 << count) - 1)
     }
 
     public var enabledChannelCount: Int {

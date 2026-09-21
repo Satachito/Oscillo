@@ -373,6 +373,9 @@ public final class InstrumentEngine {
         if settings.trigger.lowPassHz != 0 && !connected.capabilities.hasTriggerLowPass {
             throw InstrumentError.triggerLowPassUnavailable
         }
+        guard settings.enabledMask(capabilities: connected.capabilities) != 0 else {
+            throw InstrumentError.noChannelsEnabled
+        }
         let scales = voltageScales(connected)
         let configuration = settings.analogConfiguration(capabilities: connected.capabilities,
                                                          scales: scales)
