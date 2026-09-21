@@ -14,7 +14,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x010E   // 1.14: flush the receive pipe when a bad header puts the stream out of step
+#define PILYZER_FIRMWARE_VERSION 0x010F   // 1.15: the PL2407AFE carries measured gain and offset instead of nominal ones
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
