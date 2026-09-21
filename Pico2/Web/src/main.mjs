@@ -75,9 +75,15 @@ function caps() { return instrument?.caps || demoCaps; }
 // the panel previews the front end this application was built alongside.
 function frontEnd() { return instrument?.ranges ?? ranges(1); }
 function showError(message = '') { $('error').textContent = message; $('error').hidden = !message; }
+/// Whether this mode reads the converter at all. The logic analyser does not,
+/// so its sweeps do not need an analogue channel switched on.
+function needsAnalog() {
+  return settings.mode !== 'logic';
+}
 function updateButtons() {
-  $('run').disabled = !instrument || connecting; $('run').textContent = acquisition.running ? '■ Stop' : '▶ Run';
-  $('single').disabled = !instrument || acquisition.running || connecting;
+  const nothingOn = needsAnalog() && !activeChannels(settings, caps()).length;
+  $('run').disabled = !instrument || connecting || nothingOn; $('run').textContent = acquisition.running ? '■ Stop' : '▶ Run';
+  $('single').disabled = !instrument || acquisition.running || connecting || nothingOn;
   $('connect').hidden = !!instrument; $('demo').hidden = !!instrument; $('disconnect').hidden = !instrument;
   $('connect').disabled = connecting || !(overNetwork || navigator.usb); $('demo').disabled = connecting;
   $('run-dot').classList.toggle('live', acquisition.running);
@@ -85,7 +91,7 @@ function updateButtons() {
   $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : overNetwork ? 'WI-FI' : 'USB' : 'OFFLINE';
   $('device-name').textContent = instrument ? `${instrument.identity.name} · firmware ${instrument.identity.firmware}` : 'No instrument connected';
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
-  $('empty-demo').disabled = connecting || acquisition.running;
+  $('empty-demo').disabled = connecting || acquisition.running || nothingOn;
   $('empty-demo').textContent = instrument ? 'Single capture' : 'Start a demo →';
   $('empty-state').querySelector('h2').textContent = instrument ? 'Ready for your signal.' : 'A closer look at your signal.';
   $('empty-state').querySelector('p').textContent = instrument ? 'Press Run for continuous capture, or Single for one record.' : (overNetwork ? 'This page came from the instrument. Press Connect, or explore three channels with the built-in demo.' : 'Connect your PiLyzer Pico 2, or explore three channels with the built-in demo.');
@@ -160,7 +166,9 @@ function channelControls() {
       });
       control.addEventListener('change', () => {
         ch[key] = control.type === 'checkbox' ? control.checked : Number(control.value);
-        if (!activeChannels(settings, caps()).length) ch.enabled = true;
+        // Every channel can be switched off. There is then nothing to capture,
+        // so a sweep in progress stops and Run waits until one comes back.
+        if (needsAnalog() && !activeChannels(settings, caps()).length) acquisition.running = false;
         synchronize(); changed();
       });
     }
