@@ -23,10 +23,6 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     /// the rest of the zooming is done here.
     public var voltsPerDivision: Double
     public var calibration: [ChannelCalibration]
-    /// What is really on the input, for the second calibration point. Kept
-    /// with the channel because the voltage someone calibrates against is
-    /// usually the same one next time.
-    public var appliedVolts: Double
     /// Where the front end sits with nothing on the input — mid rail on a
     /// passive one. The screen draws a line there rather than subtracting it,
     /// so what is displayed is always what arrived at the converter.
@@ -40,7 +36,7 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     public init(isEnabled: Bool = true, rangeIndex: Int = 0, probeAttenuation: Double = 1,
                 positionDivisions: Double = 0, removesMean: Bool = false,
                 voltsPerDivision: Double = 0, calibration: [ChannelCalibration] = [],
-                appliedVolts: Double = 1, biasVolts: Double = 0,
+                biasVolts: Double = 0,
                 measuredBiasVolts: Double? = nil) {
         self.isEnabled = isEnabled
         self.rangeIndex = rangeIndex
@@ -49,7 +45,6 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
         self.removesMean = removesMean
         self.voltsPerDivision = voltsPerDivision
         self.calibration = calibration
-        self.appliedVolts = appliedVolts
         self.biasVolts = biasVolts
         self.measuredBiasVolts = measuredBiasVolts
     }
@@ -60,7 +55,7 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
     /// its own default.
     private enum CodingKeys: String, CodingKey {
         case isEnabled, rangeIndex, probeAttenuation, positionDivisions
-        case removesMean, voltsPerDivision, calibration, appliedVolts, biasVolts
+        case removesMean, voltsPerDivision, calibration, biasVolts
         case measuredBiasVolts
     }
 
@@ -78,7 +73,6 @@ public struct AnalogChannelSettings: Codable, Equatable, Sendable {
             ?? fallback.voltsPerDivision
         calibration = try values.decodeIfPresent([ChannelCalibration].self, forKey: .calibration)
             ?? fallback.calibration
-        appliedVolts = try values.decodeIfPresent(Double.self, forKey: .appliedVolts) ?? fallback.appliedVolts
         if let bias = try values.decodeIfPresent(Double.self, forKey: .biasVolts) {
             biasVolts = bias
         } else {

@@ -424,6 +424,7 @@ struct VerticalSection: View {
     // leaves the field focused, so nothing has committed the draft yet.
     @State private var biasDraft: String?
     @State private var appliedDraft: String?
+    @State private var asksVolts = false
     // Whether the card is folded. Its own state, not the Enabled checkbox's:
     // a disabled channel's calibration is worth reading, and worth setting
     // before the channel is switched on. It starts where the channel is and
@@ -466,11 +467,6 @@ struct VerticalSection: View {
     /// from the samples it shifts.
     private var removesMeanApplies: Bool {
         model.settings.mode == .scope
-    }
-
-    /// The applied voltage as it stands in the field, typed or committed.
-    private var appliedVolts: Double {
-        VoltsField.value(of: appliedDraft) ?? model.settings.channels[channel].appliedVolts
     }
 
     private var gainCorrection: Double {
@@ -551,34 +547,32 @@ struct VerticalSection: View {
                               + "scale: where a passive front end holds it.")
                 }
 
-                HStack(spacing: 6) {
-                    Text("Applied").font(.caption)
-                    Spacer(minLength: 6)
-                    VoltsField(volts: binding.appliedVolts, draft: $appliedDraft, discardToken: model.fieldWrites)
-                    Text("V").font(.caption).foregroundStyle(.secondary)
-                }
-                Text("A known voltage on the input. Set gain measures the swing from the bias "
-                     + "and corrects the gain by what it is short of this — so measure the bias "
-                     + "first. The divider's 1% parts put it out by up to 2%.")
+                Text("Calibrate asks for a known voltage on the input and corrects the gain by "
+                     + "what the reading is short of it — so measure the bias first. The "
+                     + "divider's 1% parts put it out by up to 2%.")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack(spacing: 6) {
-                    Button("Set gain") {
-                        // The voltage typed is the one meant, Return or not.
-                        // Without this a field still being edited handed over
-                        // the value before it: 2.56 typed over 1 corrected the
-                        // gain to 1 V, by −61 %.
-                        let applied = appliedVolts
-                        if appliedDraft != nil {
-                            appliedDraft = nil
-                            model.settings.channels[channel].appliedVolts = applied
-                        }
-                        model.calibrateGain(channel: channel, appliedVolts: applied)
-                    }
-                    .help("Reads this input now and takes the difference from the applied voltage.")
-                    .disabled(!model.isConnected || abs(appliedVolts) < 1e-6)
+                    Button("Calibrate") { appliedDraft = ""; asksVolts = true }
+                        .help("Put a known steady voltage on this input and capture it first.")
+                        .disabled(!model.isConnected)
                     Spacer()
                     Button("Reset") { model.resetCalibration(channel: channel) }
                         .help("Clears this channel's bias and gain correction.")
+                }
+                // The voltage belongs to the measurement being made, not to the
+                // channel, so it is asked for here and not kept anywhere.
+                .alert("Calibrate CH\(channel + 1)", isPresented: $asksVolts) {
+                    TextField("Volts", text: Binding(get: { appliedDraft ?? "" },
+                                                     set: { appliedDraft = $0 }))
+                    Button("Cancel", role: .cancel) { appliedDraft = nil }
+                    Button("Calibrate") {
+                        let applied = VoltsField.value(of: appliedDraft) ?? 0
+                        appliedDraft = nil
+                        model.calibrateGain(channel: channel, appliedVolts: applied)
+                    }
+                } message: {
+                    Text("The voltage on the input, in volts. Capture it first: the gain is "
+                         + "corrected by what the reading is short of this.")
                 }
 
                 // A correction nobody can see is one nobody can question, and a
