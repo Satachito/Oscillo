@@ -426,8 +426,17 @@ struct VerticalSection: View {
     @State private var appliedDraft: String?
     // Whether the card is folded. Its own state, not the Enabled checkbox's:
     // a disabled channel's calibration is worth reading, and worth setting
-    // before the channel is switched on.
-    @State private var isOpen: Bool?
+    // before the channel is switched on. It starts where the channel is and
+    // then stays put — ticking the box does not unfold the card.
+    @State private var isOpen: Bool
+
+    init(model: ScopeModel, channel: Int) {
+        self.model = model
+        self.channel = channel
+        let enabled = channel < model.settings.channels.count
+            && model.settings.channels[channel].isEnabled
+        _isOpen = State(initialValue: enabled)
+    }
 
     private var biasVolts: Binding<Double> {
         Binding(get: { model.settings.channels[channel].biasVolts },
@@ -476,8 +485,7 @@ struct VerticalSection: View {
 
     var body: some View {
         Section("Channel \(channel + 1)", titleSize: 15,
-                disclosure: Binding(get: { isOpen ?? model.settings.channels[channel].isEnabled },
-                                    set: { isOpen = $0 }),
+                disclosure: $isOpen,
                 check: Binding(get: { model.settings.channels[channel].isEnabled },
                                set: { enabled in
                                    model.settings.channels[channel].isEnabled = enabled
