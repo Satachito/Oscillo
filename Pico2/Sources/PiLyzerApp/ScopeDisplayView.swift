@@ -57,9 +57,15 @@ struct ScopeDisplayView: View {
                     if model.settings.channels[channel].removesMean {
                         Text("· AC").foregroundStyle(Theme.readout)
                     }
-                    if trace?.clipped == true {
-                        Text("· CLIP").foregroundStyle(Theme.clip).bold()
-                    }
+                    // CLIP comes and goes with the signal, so its room is
+                    // always there and only its ink changes: a label that grew
+                    // shoved the channels after it sideways every time a peak
+                    // touched a rail.
+                    Text("· CLIP")
+                        .foregroundStyle(Theme.clip)
+                        .bold()
+                        .opacity(trace?.clipped == true ? 1 : 0)
+                        .accessibilityHidden(trace?.clipped != true)
                 }
             }
         }
