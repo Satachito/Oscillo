@@ -34,6 +34,14 @@
       <section id="decode-panel" class="decode-panel" hidden><div class="decode-heading"><h2 id="decode-title">Decode</h2></div><div id="decoded"></div></section>
       <div class="workspace-foot"><span><span class="privacy-dot"></span> Signals stay on your computer.</span><div><a href="https://github.com/Satachito/Oscillo/releases" target="_blank" rel="noopener">macOS app ↗</a><a href="https://github.com/Satachito/Oscillo/tree/main/Pico2" target="_blank" rel="noopener">Docs & firmware ↗</a><a href="https://github.com/sponsors/Satachito" target="_blank" rel="noopener">Sponsor ♡</a></div></div>
     </section>
+    <dialog id="calibrate-dialog" class="ask">
+      <form method="dialog">
+        <h2 id="calibrate-title">Calibrate CH1</h2>
+        <p class="hint">Put a known DC voltage on the input and capture it first. The gain is corrected by what the reading is short of the voltage below.</p>
+        <label class="field">Voltage <span class="unit">V</span><input id="calibrate-volts" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Voltage on the input"/></label>
+        <div class="ask-actions"><button value="cancel" class="button quiet">Cancel</button><button id="calibrate-go" value="go" class="button primary">Calibrate</button></div>
+      </form>
+    </dialog>
     <aside class="controls" aria-label="Instrument controls">
       <div id="transport-home" class="transport-home"><div id="transport" class="transport"><button id="run" class="button primary" disabled>▶ Run</button><button id="single" class="button" disabled>Single</button><button id="clear" class="button quiet">Clear</button></div></div>
       <section class="control-section" id="channel-controls"><div class="section-title"><h2>Channels</h2><span class="tag">ANALOG</span></div><div id="channels"></div></section>

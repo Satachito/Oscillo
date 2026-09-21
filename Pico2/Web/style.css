@@ -49,3 +49,11 @@
    do not move when a peak touches a rail. */
 .clip-slot{visibility:hidden}
 .clip-slot.on{visibility:visible;color:#e69b7f;font-weight:600}
+/* The Calibrate dialog: the voltage belongs to the measurement, so it is
+   asked for when it is needed rather than kept in a field. */
+.ask{border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--ink);padding:22px;min-width:320px}
+.ask::backdrop{background:#0b100e88}
+.ask h2{font-size:13px;margin-bottom:10px}
+.ask .field{margin:16px 0 18px}
+.ask .field input{width:110px;text-align:right}
+.ask-actions{display:flex;justify-content:flex-end;gap:8px}

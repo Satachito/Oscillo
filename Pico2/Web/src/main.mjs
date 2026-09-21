@@ -74,6 +74,20 @@ function caps() { return instrument?.caps || demoCaps; }
 // The instrument's own range list. Offline there is no instrument to ask, so
 // the panel previews the front end this application was built alongside.
 function frontEnd() { return instrument?.ranges ?? ranges(1); }
+/// The voltage on a channel's input, asked for when Calibrate needs it.
+/// Resolves to null if the dialog is dismissed.
+function askVolts(channel) {
+  const dialog = $('calibrate-dialog'), input = $('calibrate-volts');
+  $('calibrate-title').textContent = `Calibrate CH${channel + 1}`;
+  input.value = '';
+  dialog.showModal();
+  input.focus();
+  return new Promise(resolve => {
+    dialog.addEventListener('close', () => {
+      resolve(dialog.returnValue === 'go' ? Number(input.value) : null);
+    }, { once: true });
+  });
+}
 function showError(message = '') { $('error').textContent = message; $('error').hidden = !message; }
 /// Whether this mode reads the converter at all. The logic analyser does not,
 /// so its sweeps do not need an analogue channel switched on.
@@ -129,7 +143,7 @@ function channelControls() {
     const ch = settings.channels[i], el = document.createElement('div'); el.className = 'channel-card'; el.style.setProperty('--channel-color', COLORS[i]);
     if (channelOpen[i] === undefined) channelOpen[i] = ch.enabled;
     const open = channelOpen[i];
-    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span><button class="disclose" data-disclose aria-label="CH${i + 1} settings" aria-expanded="${open}">${open ? '▾' : '▸'}</button></div><div class="channel-body"${open ? '' : ' hidden'}><label class="field">Range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1:1</option><option value="10">1:10</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="check-row" data-ac-row><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><label class="field">Bias <span class="unit">V</span><input data-bias type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="CH${i + 1} bias volts"/></label><p class="hint">Where the front end holds this input with nothing on it. Drawn as a dotted line; readings stay as the converter saw them.</p><p class="hint" data-bias-note hidden></p><div class="channel-actions"><button class="zero-button" data-zero title="Ground this input and capture a trace first: what it reads is the bias.">Measure</button><button class="zero-button" data-afe>Mid rail</button></div><label class="field">Applied <span class="unit">V</span><input data-applied type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="CH${i + 1} applied volts"/></label><p class="hint">A known voltage on the input. Set gain measures the swing from the bias and corrects the gain by what it is short of this — so measure the bias first. The divider's 1% parts put it out by up to 2%.</p><p class="hint" data-gain-note hidden></p><div class="channel-actions"><button class="zero-button" data-gain title="Put a known steady voltage on this input and capture a trace first.">Set gain</button><button class="zero-button" data-reset title="Clears this channel's bias and gain correction.">Reset</button></div></div>`;
+    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span><button class="disclose" data-disclose aria-label="CH${i + 1} settings" aria-expanded="${open}">${open ? '▾' : '▸'}</button></div><div class="channel-body"${open ? '' : ' hidden'}><label class="field">Range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1:1</option><option value="10">1:10</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="check-row" data-ac-row><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><label class="field">Bias <span class="unit">V</span><input data-bias type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="CH${i + 1} bias volts"/></label><p class="hint">Where the front end holds this input with nothing on it. Drawn as a dotted line; readings stay as the converter saw them.</p><p class="hint" data-bias-note hidden></p><div class="channel-actions"><button class="zero-button" data-zero title="Ground this input and capture a trace first: what it reads is the bias.">Measure</button><button class="zero-button" data-afe>Mid rail</button></div><p class="hint">Calibrate asks for a known voltage on the input and corrects the gain by what the reading is short of it — so measure the bias first. The divider's 1% parts put it out by up to 2%.</p><p class="hint" data-gain-note hidden></p><div class="channel-actions"><button class="zero-button" data-gain title="Put a known steady voltage on this input and capture a trace first.">Calibrate</button><button class="zero-button" data-reset title="Clears this channel's bias and gain correction.">Reset</button></div></div>`;
     const caret = el.querySelector('[data-disclose]'), body = el.querySelector('.channel-body');
     caret.onclick = () => {
       const now = !channelOpen[i];
@@ -174,7 +188,6 @@ function channelControls() {
     }
     voltsField(el.querySelector('[data-bias]'), () => ch.bias ?? 0, value => { ch.bias = value; },
       () => { showMeasured(); renderFrame(); });
-    voltsField(el.querySelector('[data-applied]'), () => ch.applied, value => { ch.applied = value; }, () => {});
     const r = frontEnd()[ch.range] || frontEnd()[0];
     const midRail = midRailVolts(caps(), r);
     const afe = el.querySelector('[data-afe]');
@@ -191,14 +204,12 @@ function channelControls() {
       ch.measuredBias = trace.stats.mean; synchronize(); changed();
     };
     const gainButton = el.querySelector('[data-gain]');
-    gainButton.onclick = () => {
+    gainButton.onclick = async () => {
       const trace = frame?.traces?.find(t => t.index === i); if (!trace) { showError(`Capture CH${i + 1} first.`); return; }
-      // The voltage in the field is the one meant, whether or not the field
-      // has let go of it yet: on the Mac a click leaves the field focused,
-      // and 2.56 typed over 1 corrected the gain to 1 V, by −61 %.
-      const field = el.querySelector('[data-applied]'), typed = Number(field.value);
-      if (field.value.trim() !== '' && Number.isFinite(typed)) ch.applied = typed;
-      const applied = Number(ch.applied);
+      // The voltage is asked for when it is needed rather than kept in a
+      // field: it belongs to the measurement being made, not to the channel.
+      const applied = await askVolts(i);
+      if (applied === null) return;
       if (!Number.isFinite(applied) || Math.abs(applied) < 1e-6) { showError('Say what voltage is on the input first.'); return; }
       if (!steady(trace)) { showError(`CH${i + 1} is not sitting still — the gain is measured from one reading, so it needs a steady DC voltage on the input, not a waveform.`); return; }
       const swing = trace.stats.mean - referenceBias(ch);
