@@ -8,10 +8,14 @@
 // the converter. The meter flickered between 5.01 and 5.02 V, so the gains
 // carry about 0.2 % of uncertainty and that is all from the meter.
 //
-// Two figures are not measured. The +-6 V gain is CH2's alone, because CH1's
-// switch 4 never closes and that range reads the +-30 V circuit. The +-1.5 V
-// gain is still the nominal one: 5 V overruns the range, and nothing near 1 V
-// was to hand. Its offset is measured.
+// The +-1.5 V gain came from a 1.3 V cell instead, and the meter only reads it
+// to two decimals. The +-6 V range was used as the ruler in its place: its gain
+// is already known, so what it reads the cell as — 1.3078 V — is better than
+// 1.30 by about half. That leans on the circuit being linear, which it is: the
+// +-30 V gain comes out the same at 5.01 V and at 1.3 V to within 0.03 %.
+//
+// One figure is not measured. The +-6 V gain is CH2's alone, because CH1's
+// switch 4 never closes and that range reads the +-30 V circuit.
 #pragma once
 #define PIN_CALIBRATION_OUT 22
 #define PIN_LOGIC_BASE 6
@@ -28,5 +32,5 @@
 #define PILYZER_INPUT_RANGES { \
     { .switch_position = 0, .gain_micro = 44057, .offset_microvolts = 1584325, .name = "±30 V" }, \
     { .switch_position = 1, .gain_micro = 214483, .offset_microvolts = 1602975, .name = "±6 V" }, \
-    { .switch_position = 2, .gain_micro = 880411, .offset_microvolts = 1683325, .name = "±1.5 V" }, \
+    { .switch_position = 2, .gain_micro = 880496, .offset_microvolts = 1683325, .name = "±1.5 V" }, \
 }

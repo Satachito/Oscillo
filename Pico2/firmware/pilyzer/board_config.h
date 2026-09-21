@@ -14,7 +14,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x010F   // 1.15: the PL2407AFE carries measured gain and offset instead of nominal ones
+#define PILYZER_FIRMWARE_VERSION 0x0110   // 1.16: the PL2407AFE +-1.5 V gain is measured too, against a cell the +-6 V range read for us
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
