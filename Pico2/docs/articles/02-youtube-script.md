@@ -92,16 +92,23 @@ That is the whole parts list.
 
 ## Why a follower at all — 2:15
 
-> **On screen:** a 100 kΩ divider from 3.3 V to ground, tapped to CH1 directly;
-> then the same tap through the follower. The readings side by side.
+> **On screen:** a 100 kΩ divider from 3.3 V to ground, going to two channels
+> at once — one straight to a converter pin, one through the follower. Both
+> cards on screen together.
 
-Here is the sip, made visible. A divider of two hundred-kilohm resistors should
-sit at one point six five volts.
+Here is the sip, made visible. A divider of two hundred-kilohm resistors sits
+at one point six five volts.
 
-Straight into the converter, with a second channel running, it reads
-**[MEASURE: direct reading]** — and it wanders.
+Through the follower, the instrument reads **one point six four**, and it sits
+there.
 
-Through the follower: **[MEASURE: follower reading]**. Still.
+Straight into the converter, the same node reads **one point six two** — twenty
+millivolts low — and it is noisier with it: seventy-three millivolts peak to
+peak against twenty-seven.
+
+Twenty millivolts is one and a bit per cent, on a divider that is exactly
+right. The converter takes a sip of charge every time it samples, and fifty
+kilohms cannot put it back before the next one.
 
 The converter wants whatever feeds it to look like **less than ten kilohms**.
 A follower looks like almost nothing, and never runs out of charge.
@@ -289,12 +296,25 @@ last one, this is the evening after.
 
 ## Production notes
 
-- **Everything demonstrated must be real.** Three numbers above are
+- **Everything demonstrated must be real.** Two numbers above are
   **[MEASURE]** and one detail is **[CONFIRM]**. Measure them on camera before
   recording the narration, and change the words to match what the bench says.
 - **Measured already:** MCP6022 output 3.30 V pp from the raw carrier; through
   1 kΩ + 10 nF, 3.15 / 3.12 / 2.95 V pp at 440 Hz / 1 kHz / 5 kHz; LM358 output
   stops about 1.5 V below the rail, so ~1.8 V on 3.3 V.
+- **The follower section, measured 2026-09-21** on a 100 kΩ / 100 kΩ divider
+  read by two channels at once, gain corrections cleared:
+
+  | | Mean | AC RMS | Peak to peak |
+  | --- | ---: | ---: | ---: |
+  | through the follower | 1.64 V | 2.69 / 3.09 mV | 20.1 / 26.6 mV |
+  | straight to the pin | 1.62 V | 4.59 / 7.94 mV | 25.8 / 73.3 mV |
+
+  Two passes with the channels swapped between them, so the figures follow the
+  path and not the channel: 1.64 V stayed with the follower and 1.62 V with the
+  direct pin both times. Say "twenty millivolts low" and "noisier"; do not
+  quote the peak-to-peak spread as a fixed number, it moves from sweep to
+  sweep.
 - **From the simulator, not the bench:** both channels 1.999 V pp for a 1 V sine,
   and both 1.720 V pp at 20 kHz. Do not say these as measurements unless the
   bench repeats them.
