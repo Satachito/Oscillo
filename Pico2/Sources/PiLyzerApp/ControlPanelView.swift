@@ -26,10 +26,10 @@ struct ControlPanelView: View {
         HStack(spacing: 6) {
             Button(model.isRunning ? "Stop" : "Run") { model.toggleRun() }
                 .keyboardShortcut("r")
-                .disabled(!model.isConnected)
+                .disabled(!model.isConnected || model.hasNothingToCapture)
             Button("Single") { model.single() }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
-                .disabled(!model.isConnected || model.isRunning)
+                .disabled(!model.isConnected || model.isRunning || model.hasNothingToCapture)
             Button("Clear") { model.clear() }
         }
     }
@@ -481,18 +481,7 @@ struct VerticalSection: View {
                 check: Binding(get: { model.settings.channels[channel].isEnabled },
                                set: { enabled in
                                    model.settings.channels[channel].isEnabled = enabled
-                                   // Something has to be captured, so the last
-                                   // one on comes back on, as it does on the
-                                   // page rather than being greyed out there.
-                                   // The flags, not enabledAnalogChannels:
-                                   // the mask falls back to CH1 when nothing
-                                   // is set, which would hide the state the
-                                   // checkbox is showing.
-                                   if !model.availableAnalogChannels.contains(where: {
-                                       model.settings.channels[$0].isEnabled
-                                   }) {
-                                       model.settings.channels[channel].isEnabled = true
-                                   }
+                                   if model.hasNothingToCapture { model.stop() }
                                    model.normalizeAnalogSelection()
                                })) {
             Group {

@@ -145,6 +145,16 @@ final class ScopeModel: ObservableObject {
 
     func start() { errorText = nil; engine.start() }
     func stop() { engine.stop() }
+
+    /// Whether this mode reads the converter at all. The logic analyser does
+    /// not, so its sweeps do not need an analogue channel switched on.
+    var needsAnalogChannel: Bool { settings.mode != .logic }
+
+    /// Every channel can be switched off. There is then nothing to capture, so
+    /// a sweep in progress stops and Run waits until one comes back.
+    var hasNothingToCapture: Bool {
+        needsAnalogChannel && !availableAnalogChannels.contains { settings.channels[$0].isEnabled }
+    }
     func single() { errorText = nil; engine.single() }
 
     func toggleRun() { isRunning ? stop() : start() }
@@ -386,13 +396,6 @@ final class ScopeModel: ObservableObject {
     }
 
     func normalizeAnalogSelection() {
-        // Something has to be captured: with no channel set the protocol falls
-        // back to CH1, so the panel says so rather than showing three boxes
-        // unticked while CH1 is being swept.
-        if !availableAnalogChannels.contains(where: { settings.channels[$0].isEnabled }),
-           let first = availableAnalogChannels.first {
-            settings.channels[first].isEnabled = true
-        }
         if !enabledAnalogChannels.contains(settings.trigger.source) {
             settings.trigger.source = enabledAnalogChannels.first ?? 0
         }

@@ -85,10 +85,10 @@ struct PiLyzerApp: App {
                 Divider()
                 Button(model.isRunning ? "Stop" : "Run") { model.toggleRun() }
                     .keyboardShortcut("r")
-                    .disabled(!model.isConnected)
+                    .disabled(!model.isConnected || model.hasNothingToCapture)
                 Button("Single Sweep") { model.single() }
                     .keyboardShortcut("s", modifiers: [.command, .shift])
-                    .disabled(!model.isConnected || model.isRunning)
+                    .disabled(!model.isConnected || model.isRunning || model.hasNothingToCapture)
                 Button("Clear") { model.clear() }
                 Divider()
                 Button("Measure Bias") { model.measureBias(channels: model.enabledAnalogChannels) }

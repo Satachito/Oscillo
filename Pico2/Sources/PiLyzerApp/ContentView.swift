@@ -65,12 +65,12 @@ struct ContentView: View {
                 Label(model.isRunning ? "Stop" : "Run",
                       systemImage: model.isRunning ? "stop.fill" : "play.fill")
             }
-            .disabled(!model.isConnected)
+            .disabled(!model.isConnected || model.hasNothingToCapture)
 
             Button { model.single() } label: {
                 Label("Single", systemImage: "playpause")
             }
-            .disabled(!model.isConnected || model.isRunning)
+            .disabled(!model.isConnected || model.isRunning || model.hasNothingToCapture)
 
             Button { export() } label: {
                 Label("Export", systemImage: "square.and.arrow.up")
