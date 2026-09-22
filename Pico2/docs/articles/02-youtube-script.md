@@ -233,15 +233,35 @@ enough, twice.
 
 Brown, black, red is one kilohm. Brown, black, yellow is a hundred.
 
-**[CONFIRM: which position]** was meant to be a kilohm. I fitted a hundred
+**Confirmed 2026-09-22:** the position is the generator's own RC, out on the
+breadboard between the PWM pin and the mini-AFE's input — not any resistor
+on the AFE itself. It was meant to be a kilohm. I fitted a hundred
 kilohms. Everything still worked — the trace was there, it had the right
-shape — it was just smaller than it should be at the higher frequencies, and
-I spent an afternoon doubting the op amp.
+shape — and I spent an afternoon doubting the op amp.
 
 > **On screen:** the spectrum, or the peak-to-peak readout stepping from 440 Hz
 > to 1 kHz to 5 kHz, set against the numbers the arithmetic predicts.
-> **[MEASURE: the readings with the wrong part, if it can be put back in for
-> the shot; otherwise show the arithmetic against the corrected readings.]**
+
+**Measured 2026-09-22, the 100 kΩ actually refitted and read at all three
+frequencies:**
+
+| | 440 Hz | 1 kHz | 5 kHz |
+| --- | ---: | ---: | ---: |
+| Correct part (1 kΩ) | 3.15 V | 3.12 V | 2.95 V |
+| Wrong part (100 kΩ) | 1.08 V | 0.51 V | 0.12 V |
+| Arithmetic for 100 kΩ (*) | 1.07 V | 0.49 V | 0.098 V |
+
+(*) the correct-part readings imply about 3.1 V ahead of the filter; a
+100 kΩ + 10 nF corner sits at 159 Hz, not 15.9 kHz, so this predicts the
+measured column directly. 5 kHz is the one furthest out (+22%), inside
+what a 5% resistor and an unspecified-tolerance capacitor account for.
+
+One correction to the recollection above: with a 159 Hz corner, 440 Hz is
+already ten times past it, so the wrong part reads low **at every
+frequency tried**, not only "the higher" ones — nearly a third of the
+correct reading even at 440 Hz. Worth changing "it was just smaller than
+it should be at the higher frequencies" to something like "it was smaller
+everywhere, and worse higher up" before recording the narration.
 
 What caught it was not a meter. It was the instrument, reading the response
 at a few frequencies, and the numbers refusing to match the arithmetic.
@@ -298,11 +318,11 @@ last one, this is the evening after.
 
 ## Production notes
 
-- **Everything demonstrated must be real.** One number above is
-  **[MEASURE]** and one detail is **[CONFIRM]**, both in "The resistor I got
-  wrong." Measure them on camera before recording the narration, and change
-  the words to match what the bench says. (The headphone-jack peak to peak
-  was the other [MEASURE]; closed 2026-09-22.)
+- **Everything demonstrated must be real.** Both open items — the resistor's
+  position and the readings with the wrong part — were closed 2026-09-22 in
+  "The resistor I got wrong," along with the headphone-jack peak to peak
+  earlier in this file. No more [MEASURE] or [CONFIRM] markers remain; the
+  script is ready to record against.
 - **Measured already:** MCP6022 output 3.30 V pp from the raw carrier; through
   1 kΩ + 10 nF, 3.15 / 3.12 / 2.95 V pp at 440 Hz / 1 kHz / 5 kHz; LM358 output
   stops about 1.5 V below the rail, so ~1.8 V on 3.3 V.
