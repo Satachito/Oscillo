@@ -332,12 +332,18 @@ last one, this is the evening after.
   headphone territory, ceiling 1.25 V RMS ≈ 3.54 V peak to peak. At the volume
   this episode actually uses the real swing sits well under that ceiling and
   lands inside the range with room to spare. Start at 20–30 % volume and watch
-  the trace; if the top flattens, turn it down. **Do not substitute a resistor
-  over 150 Ω** — 500 Ω, for instance, crosses into the 150 Ω–1 kΩ bracket,
-  where the ceiling more than doubles; whether the actual level follows it at
-  a fixed volume position is untested. **[MEASURE: the actual peak to peak at
-  the volume used, and what it becomes without the 100 Ω — worth showing only
-  if it stays inside the rails.]**
+  the trace; if the top flattens, turn it down. **Measured 2026-09-22, full
+  volume, the same recording through 460 Ω instead of 100 Ω**: the crossing
+  into the 150 Ω–1 kΩ bracket did not raise the level. If anything it came out
+  smaller — 1.05 V peak to peak against 1.24 V peak to peak at 100 Ω, both well
+  inside the rails. So the ceiling more than doubling on paper does not mean
+  the jack drives harder at a fixed volume position; whatever curve it is
+  following is flatter than that, at least between these two loads. Nothing
+  here says 1 kΩ and up behaves the same way, so still no reason to go past
+  it, but 150–1000 Ω does not need the caution the ceiling table alone would
+  suggest. **[MEASURE: the actual peak to peak at the volume used, and what it
+  becomes without the 100 Ω — worth showing only if it stays inside the
+  rails.]**
 - **Capacitors:** use film for the generator's 10 nF — the old ceramic 103 from
   the parts bag left ±0.5 V spikes on the sine in episode 1's shoot.
 - **Firmware 1.13** on every board. Nothing in this episode touches the logic
