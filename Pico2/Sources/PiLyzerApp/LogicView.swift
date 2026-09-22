@@ -218,7 +218,10 @@ struct MeterView: View {
 
     var body: some View {
         Workspace(model: model) {
-            Text(model.meter.map { "logging every \(Format.time($0.interval)) · min/mean/max" } ?? "—")
+            // Not "logging every…" — the meter outlives a stop, and that verb
+            // next to the Stopped dot on the same line told two different
+            // stories about the same log.
+            Text(model.meter.map { "\(Format.time($0.interval)) a point · min/mean/max" } ?? "—")
                 .font(Theme.monoSmall)
                 .foregroundStyle(Theme.readout)
         } screen: {
