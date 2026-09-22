@@ -134,8 +134,9 @@ past the middle of the range.
 > **On screen:** swap in the MCP6022. The same sine, whole.
 
 The MCP6022 is **rail to rail**, input and output. Driven with the generator's
-raw carrier, its output swung **three point three zero volts peak to peak** —
-the entire supply.
+raw carrier, its output swung **three point one five volts peak to peak** —
+within seventy-five millivolts of both rails, on a three point three volt
+supply.
 
 The part number is the one choice in this circuit that is not free. If you
 substitute, the one thing to check is those two words: rail to rail.
@@ -324,7 +325,9 @@ last one, this is the evening after.
   "The resistor I got wrong," along with the headphone-jack peak to peak
   earlier in this file. No more [MEASURE] or [CONFIRM] markers remain; the
   script is ready to record against.
-- **Measured already:** MCP6022 output 3.30 V pp from the raw carrier; through
+- **Measured already:** MCP6022 output 3.15 V pp from the raw carrier (S4,
+  shot 2026-09-22 — an earlier bench pass had read 3.30 V pp on the same
+  claim; this is the number the kept take actually shows); through
   1 kΩ + 10 nF, 3.15 / 3.12 / 2.95 V pp at 440 Hz / 1 kHz / 5 kHz; LM358 output
   stops about 1.5 V below the rail, so ~1.8 V on 3.3 V.
 - **The follower section, first measured 2026-09-21** on a 100 kΩ / 100 kΩ
