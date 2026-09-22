@@ -26,9 +26,11 @@ Samantha and Alex, and worth the few hundred megabytes for narration.
 import argparse, pathlib, re, shutil, subprocess, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-EN, JA = HERE / '01-captions.en.vtt', HERE / '01-captions.ja.vtt'
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--episode', default='01',
+                    help='the caption files\' number prefix, e.g. "02" for '
+                         '02-captions.en.vtt / 02-captions.ja.vtt')
 parser.add_argument('--voice', default='system',
                     help='a name from `say -v ?`, or "system" for the System Voice '
                          '(the only way to reach a Siri voice, which `say` cannot name)')
@@ -36,8 +38,15 @@ parser.add_argument('--rate', type=int, default=170, help='words a minute')
 parser.add_argument('--gap', type=float, default=0.35, help='seconds between cues')
 parser.add_argument('--section-gap', type=float, default=2.5,
                     help='seconds before a cue marked "NOTE section", for the picture to speak')
-parser.add_argument('--out', default='narration')
+parser.add_argument('--out', default=None,
+                    help='defaults to "narration" for episode 01 (unchanged, other '
+                         'scripts point at that path by name) and "<episode>-narration" otherwise')
 args = parser.parse_args()
+
+EN = HERE / f'{args.episode}-captions.en.vtt'
+JA = HERE / f'{args.episode}-captions.ja.vtt'
+if args.out is None:
+    args.out = 'narration' if args.episode == '01' else f'{args.episode}-narration'
 
 CUE = re.compile(r'^(\d+)\n([\d:.]+) --> ([\d:.]+)\n(.*?)(?=\n\n|\Z)', re.M | re.S)
 

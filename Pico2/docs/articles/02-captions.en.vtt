@@ -1,0 +1,432 @@
+WEBVTT
+
+NOTE
+Timings are measured from the synthesised narration by narrate.py. After the
+edit, fix the times here and copy them across to 02-captions.ja.vtt — the cue
+numbering is the same in both files, so only the timestamps move.
+
+1
+00:00:00.000 --> 00:00:01.221
+This is audio.
+
+2
+00:00:01.472 --> 00:00:04.091
+It swings above and below zero volts.
+
+3
+00:00:04.341 --> 00:00:07.403
+Last time, a bare Pico could not see half of it.
+
+4
+00:00:07.653 --> 00:00:09.109
+This is what changed —
+
+5
+00:00:09.360 --> 00:00:12.747
+one op amp, and a few parts that cost less than the cable.
+
+NOTE section
+
+6
+00:00:15.200 --> 00:00:19.008
+A Pico's converter reads zero to three point three volts.
+
+7
+00:00:19.259 --> 00:00:22.544
+Audio, a function generator, anything alternating —
+
+8
+00:00:22.795 --> 00:00:26.757
+they spend half their time below zero, where the converter sees nothing.
+
+9
+00:00:27.008 --> 00:00:29.840
+And there's a second problem nobody warns you about.
+
+10
+00:00:30.091 --> 00:00:34.949
+The converter doesn't just read a voltage; it takes a sip of charge every time it samples.
+
+11
+00:00:35.200 --> 00:00:38.224
+Anything that can't supply that sip quickly reads low.
+
+12
+00:00:38.475 --> 00:00:40.443
+So a front end has two jobs.
+
+13
+00:00:40.693 --> 00:00:45.136
+Give the converter something stiff to drink from, and put the signal where it can see it.
+
+14
+00:00:45.387 --> 00:00:49.653
+One op amp has two halves. Each half does one job.
+
+NOTE section
+
+15
+00:00:52.107 --> 00:00:58.485
+An MCP6022. It's a dual, so there are two amplifiers in the one package.
+
+16
+00:00:58.736 --> 00:01:04.384
+The first is a follower: the input goes straight in, and the output copies it. Gain of one.
+
+17
+00:01:04.635 --> 00:01:09.045
+It changes nothing about the voltage — what it changes is who does the work.
+
+18
+00:01:09.296 --> 00:01:15.653
+Whatever you're measuring drives a few picoamps into the op amp, and the op amp drives the converter.
+
+19
+00:01:15.904 --> 00:01:21.520
+The second half does the same, but its input comes through a capacitor and two hundred-kilohm resistors.
+
+20
+00:01:21.771 --> 00:01:26.213
+The resistors hold that point at mid rail — one point six five volts —
+
+21
+00:01:26.464 --> 00:01:28.992
+and the capacitor lets only the swing through.
+
+22
+00:01:29.243 --> 00:01:35.035
+So a signal centred on zero comes out centred on one point six five, and the whole of it fits.
+
+23
+00:01:35.285 --> 00:01:39.291
+On each output there's a kilohm and four point seven nanofarads.
+
+24
+00:01:39.541 --> 00:01:43.696
+That's not an anti-alias filter; one pole isn't enough for that.
+
+25
+00:01:43.946 --> 00:01:52.160
+It's there so the converter's sampling capacitor never hangs directly on an op amp's output — the kind of load that makes some amplifiers ring.
+
+26
+00:01:52.410 --> 00:01:54.203
+That is the whole parts list.
+
+NOTE section
+
+27
+00:01:56.656 --> 00:01:58.437
+Here's the sip, made visible.
+
+28
+00:01:58.688 --> 00:02:03.466
+A divider of two hundred-kilohm resistors sits at one point six five volts.
+
+29
+00:02:03.717 --> 00:02:10.330
+Through the follower, the instrument reads one point six four, and it sits there — eighteen millivolts peak to peak.
+
+30
+00:02:10.581 --> 00:02:15.002
+Straight into the converter, the same node reads the same one point six four —
+
+31
+00:02:15.253 --> 00:02:20.282
+but it's not still. Eighty-three millivolts peak to peak, more than four times as much.
+
+32
+00:02:20.533 --> 00:02:22.938
+The mean survives; the stillness doesn't.
+
+33
+00:02:23.189 --> 00:02:29.194
+The converter takes a sip of charge every time it samples, and fifty kilohms can't put it back before the next one —
+
+34
+00:02:29.445 --> 00:02:33.893
+so the reading is right on average, and wrong on every individual sample.
+
+35
+00:02:34.144 --> 00:02:38.213
+The converter wants whatever feeds it to look like less than ten kilohms.
+
+36
+00:02:38.464 --> 00:02:42.480
+A follower looks like almost nothing, and never runs out of charge.
+
+NOTE section
+
+37
+00:02:44.933 --> 00:02:50.602
+The first op amp in that socket was an LM358, because every drawer has one.
+
+38
+00:02:50.853 --> 00:02:56.496
+And the instrument showed me the problem immediately. Look at the top of the trace. Flat.
+
+39
+00:02:56.746 --> 00:03:02.640
+An LM358's output can't get closer than about one and a half volts to its positive supply.
+
+40
+00:03:02.890 --> 00:03:07.237
+On three point three volts, that means it stops near one point eight.
+
+41
+00:03:07.488 --> 00:03:12.304
+Everything above that is gone — and one point eight is barely past the middle of the range.
+
+42
+00:03:12.554 --> 00:03:17.578
+The MCP6022 is rail to rail, input and output.
+
+43
+00:03:17.829 --> 00:03:23.749
+Driven with the generator's raw carrier, its output swung three point one five volts peak to peak —
+
+44
+00:03:24.000 --> 00:03:28.693
+within seventy-five millivolts of both rails, on a three point three volt supply.
+
+45
+00:03:28.944 --> 00:03:32.576
+The part number is the one choice in this circuit that isn't free.
+
+46
+00:03:32.826 --> 00:03:37.210
+If you substitute, the one thing to check is those two words: rail to rail.
+
+NOTE section
+
+47
+00:03:39.664 --> 00:03:41.872
+Now the Mac's own headphone jack.
+
+48
+00:03:42.122 --> 00:03:46.949
+Its output swings about zero, and through the second half it arrives centred on mid rail.
+
+49
+00:03:47.200 --> 00:03:49.909
+One detail, because it's the kind of thing that bites.
+
+50
+00:03:50.160 --> 00:03:53.637
+This jack decides how hard to drive by how much it's loaded.
+
+51
+00:03:53.888 --> 00:03:59.530
+Apple's own published ceilings: under a hundred fifty ohms, one and a quarter volts RMS;
+
+52
+00:03:59.781 --> 00:04:04.464
+from there to a kilohm, three volts RMS — already past the converter's whole range.
+
+53
+00:04:04.714 --> 00:04:11.445
+Left to itself, looking at fifty kilohms, this channel sits past both brackets, driven as a line input.
+
+54
+00:04:11.696 --> 00:04:16.677
+A hundred ohms across the plug drops it under a hundred fifty ohms, headphone territory,
+
+55
+00:04:16.928 --> 00:04:23.546
+and the music we actually play into it stays well under that ceiling — it lands inside the range with room to spare.
+
+56
+00:04:23.797 --> 00:04:26.890
+And this is where last episode's decision pays off.
+
+57
+00:04:27.141 --> 00:04:31.904
+The reading is still the volts the converter saw — one point six five plus the audio.
+
+58
+00:04:32.154 --> 00:04:38.197
+I tell the panel the bias is at mid rail, it draws the dotted line there, and zero is wherever the line is.
+
+59
+00:04:38.448 --> 00:04:41.018
+Nothing has been subtracted behind your back.
+
+60
+00:04:41.269 --> 00:04:45.173
+Two hundred-kilohm resistors look like fifty kilohms to the signal.
+
+61
+00:04:45.424 --> 00:04:50.000
+With one and a half microfarads, anything above about two hertz gets through.
+
+62
+00:04:50.250 --> 00:04:58.837
+Fifty kilohms is also the price. A function generator or a headphone output doesn't notice it; a sensor or a high-value divider would.
+
+63
+00:04:59.088 --> 00:05:05.141
+So high-impedance things go on the first channel, the plain follower, where the load is picoamps.
+
+64
+00:05:05.392 --> 00:05:09.685
+That value wasn't my first choice, either. It started at a megohm a side,
+
+65
+00:05:09.936 --> 00:05:15.050
+and the AC channel went soft from about ten kilohertz, while the direct one didn't.
+
+66
+00:05:15.301 --> 00:05:18.304
+At a hundred kilohms, the two channels fall off together.
+
+NOTE section
+
+67
+00:05:20.757 --> 00:05:25.013
+Both of these happened to me while making this, and the screen said so both times.
+
+68
+00:05:25.264 --> 00:05:30.128
+They're worth two minutes because the symptom is identical, and it's not the symptom you'd guess.
+
+69
+00:05:30.378 --> 00:05:33.301
+The first one: the audio went into the direct channel.
+
+70
+00:05:33.552 --> 00:05:38.213
+That half has no capacitor and no divider — it's a follower and nothing else —
+
+71
+00:05:38.464 --> 00:05:43.616
+so a signal centred on zero arrives centred on zero, and everything below the line is gone.
+
+72
+00:05:43.866 --> 00:05:46.906
+The second one is better, because the circuit was right.
+
+73
+00:05:47.157 --> 00:05:52.976
+The hundred ohms that tells the jack it's driving headphones had gone in on the wrong side of the coupling capacitor —
+
+74
+00:05:53.226 --> 00:05:56.517
+across the op amp's input instead of across the plug.
+
+75
+00:05:56.768 --> 00:06:02.704
+A hundred ohms against the divider's fifty kilohms wins, and it pulls mid rail down to nothing.
+
+76
+00:06:02.954 --> 00:06:05.306
+Same picture. Bottom half gone.
+
+77
+00:06:05.557 --> 00:06:10.154
+And that's how you tell them apart without a meter: unplug the source and watch the bias.
+
+78
+00:06:10.405 --> 00:06:17.775
+If it comes back to one point six five and collapses when you plug in, the source is dragging the bias, not the circuit failing to make it.
+
+79
+00:06:18.026 --> 00:06:21.285
+Put it back at the plug and the picture is what it should be:
+
+80
+00:06:21.535 --> 00:06:25.632
+centred on the line, a volt and a half of swing, and room for more.
+
+81
+00:06:25.882 --> 00:06:30.799
+The screen never told me what was wrong. It told me what it saw — which was enough, twice.
+
+NOTE section
+
+82
+00:06:33.253 --> 00:06:38.362
+Brown, black, red is one kilohm. Brown, black, yellow is a hundred.
+
+83
+00:06:38.613 --> 00:06:45.989
+The position is the generator's own RC, out on the breadboard between the PWM pin and the mini-AFE's input.
+
+84
+00:06:46.239 --> 00:06:49.626
+It was meant to be a kilohm. I fitted a hundred kilohms.
+
+85
+00:06:49.877 --> 00:06:55.423
+Everything still worked — the trace was there, it had the right shape — it was just smaller than it should be,
+
+86
+00:06:55.674 --> 00:06:58.309
+and I spent an afternoon doubting the op amp.
+
+87
+00:06:58.559 --> 00:07:06.762
+What caught it wasn't a meter. It was the instrument, reading the response at a few frequencies, and the numbers refusing to match the arithmetic.
+
+88
+00:07:07.013 --> 00:07:13.845
+It happened twice. A capacitor marked one-oh-four — a hundred nanofarads — had gone in where a one-oh-three belonged.
+
+89
+00:07:14.095 --> 00:07:17.482
+Same symptom: the five kilohertz reading came up short.
+
+90
+00:07:17.733 --> 00:07:24.111
+With the right parts, the generator's sine through its filter reads three point one five volts at four forty,
+
+91
+00:07:24.362 --> 00:07:29.130
+three point one two at one kilohertz, and two point eight eight at five.
+
+92
+00:07:29.381 --> 00:07:36.314
+The lesson is the same as last time: when the number disagrees with the arithmetic, believe the number, then go and find out why.
+
+NOTE section
+
+93
+00:07:38.767 --> 00:07:39.850
+It has no protection.
+
+94
+00:07:40.101 --> 00:07:44.095
+There's nothing in front of the op amp but a capacitor, or nothing at all,
+
+95
+00:07:44.346 --> 00:07:53.242
+so keep the input inside the supply — zero to three point three on the direct channel, and about plus or minus one and a half volts on the AC one.
+
+96
+00:07:53.493 --> 00:07:58.495
+It has no attenuation. Gain is one, so the range is still the converter's range.
+
+97
+00:07:58.746 --> 00:08:05.274
+And that's fine. It's a breadboard and an evening, and it turns a Pico that can't see audio into one that can.
+
+98
+00:08:05.525 --> 00:08:11.221
+If you'd rather try it before you wire it, the whole circuit runs in a browser simulator — the link is below.
+
+NOTE section
+
+99
+00:08:13.674 --> 00:08:19.253
+Next: a front end that's protected, switches ranges, and reads plus or minus twenty-five volts —
+
+100
+00:08:19.503 --> 00:08:23.253
+and a board someone else designed, with calibration to prove on camera.
+
+101
+00:08:23.503 --> 00:08:27.002
+The circuit, the parts list and the simulator link are below.
+
+102
+00:08:27.253 --> 00:08:29.738
+If you built the last one, this is the evening after.
