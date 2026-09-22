@@ -42,7 +42,7 @@ surface**, and **shoot landscape, always**.
 | B4 | The 100 Ω resistor across the plug — tip to sleeve — close-up. | 4:05 | This is the correct wiring; keep a clean shot of it for contrast with B5. |
 | B5 | The breadboard with the 100 Ω deliberately moved to the wrong side of the coupling capacitor — across the op amp's input instead of across the plug. | 5:10 | A recreation, not a re-enactment of an accident — say so if asked, don't claim it happened live on camera. Restore to B4's wiring immediately after the shot. |
 | B6 | The two resistors side by side, close-up: brown-black-red and brown-black-yellow. | 7:10 | Macro lens or a phone's close-focus mode; the bands must be legible at 1080p. |
-| B7 | The picoLABO PL2407AFE, unsoldered. | 8:40 | A different board entirely — keep it off the bench until this shot, same rule episode 1 used for B8. |
+| B7 | The picoLABO PL2407AFE, populated. | 8:40 | Soldered before this shot was planned; the board is real hardware ready to go rather than a kit, which still reads as a tease. A different board entirely — keep it off the bench until this shot, same rule episode 1 used for B8. |
 
 ## Already have — do not re-shoot
 
@@ -80,7 +80,7 @@ mistakes), then goes back.
 | B5 (5:10) | **100 Ω moved** — across the op amp's input, recreating the second failure. Restore to B4 immediately after the shot; do not carry this into any later shot. |
 | S8 / B6 (7:10) | **The generator's RC holds 100 kΩ** instead of 1 kΩ. Shoot the macro (B6) and the sweep (S8) in the same sitting without moving anything, then swap in the correct 1 kΩ. |
 | S8b (7:10) | **The generator's RC holds 1 kΩ** — either the restored bench or episode 1's existing footage. |
-| B7 (8:40) | A **different board** — the PL2407AFE. Keep it off the bench until this shot. |
+| B7 (8:40) | A **different board** — the PL2407AFE, already populated (soldered ahead of this shot). Keep it off the bench until this shot. |
 
 ## Order to shoot in
 

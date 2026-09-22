@@ -305,7 +305,7 @@ browser simulator — the link is below.
 ## What is next — 8:40
 
 > **On screen:** the rev A schematic or board render; then the picoLABO
-> PL2407AFE, unsoldered.
+> PL2407AFE, populated.
 
 Next: a front end that is protected, switches ranges, and reads plus or minus
 twenty-five volts — and a board someone else designed, with calibration to
