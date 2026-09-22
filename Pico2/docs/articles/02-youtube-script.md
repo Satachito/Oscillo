@@ -237,7 +237,8 @@ Brown, black, red is one kilohm. Brown, black, yellow is a hundred.
 breadboard between the PWM pin and the mini-AFE's input — not any resistor
 on the AFE itself. It was meant to be a kilohm. I fitted a hundred
 kilohms. Everything still worked — the trace was there, it had the right
-shape — and I spent an afternoon doubting the op amp.
+shape — it was just smaller than it should be, and I spent an afternoon
+doubting the op amp.
 
 > **On screen:** the spectrum, or the peak-to-peak readout stepping from 440 Hz
 > to 1 kHz to 5 kHz, set against the numbers the arithmetic predicts.
@@ -256,12 +257,11 @@ frequencies:**
 measured column directly. 5 kHz is the one furthest out (+22%), inside
 what a 5% resistor and an unspecified-tolerance capacitor account for.
 
-One correction to the recollection above: with a 159 Hz corner, 440 Hz is
-already ten times past it, so the wrong part reads low **at every
-frequency tried**, not only "the higher" ones — nearly a third of the
-correct reading even at 440 Hz. Worth changing "it was just smaller than
-it should be at the higher frequencies" to something like "it was smaller
-everywhere, and worse higher up" before recording the narration.
+Worth noting for the same reason the numbers are here at all: with a
+159 Hz corner, 440 Hz is already ten times past it, so the wrong part
+reads low at every frequency tried, not only the higher ones. The
+narration above now says only "smaller than it should be," which the
+measurement supports at all three points.
 
 What caught it was not a meter. It was the instrument, reading the response
 at a few frequencies, and the numbers refusing to match the arithmetic.
