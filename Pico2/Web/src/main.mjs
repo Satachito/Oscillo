@@ -409,7 +409,10 @@ function renderFrame() {
     $('legend').append(el);
   }
   if (settings.mode === 'logic') $('legend').textContent = 'D0–D7 · 3.3 V logic';
-  if (settings.mode === 'meter') $('legend').textContent = frame?.kind === 'meter' ? `logging every ${fmt(frame.interval, 's')} · min/mean/max` : '—';
+  // Not "logging every…" — the frame outlives a stop, and that verb next to
+  // the Stopped dot on the same line told two different stories about the
+  // same log.
+  if (settings.mode === 'meter') $('legend').textContent = frame?.kind === 'meter' ? `${fmt(frame.interval, 's')} a point · min/mean/max` : '—';
   if (settings.mode === 'spectrum') {
     for (const el of $('legend').children) el.replaceChildren(el.textContent.split(' ')[0]);
     const resolution = plot.spectra?.[0]?.resolution;
