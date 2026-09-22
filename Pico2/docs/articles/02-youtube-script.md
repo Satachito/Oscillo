@@ -333,8 +333,9 @@ last one, this is the evening after.
   to sleeve, ¼ W is plenty at 10 mW): the jack then reads under 150 Ω,
   headphone territory, ceiling 1.25 V RMS ≈ 3.54 V peak to peak. At the volume
   this episode actually uses the real swing sits well under that ceiling and
-  lands inside the range with room to spare. Start at 20–30 % volume and watch
-  the trace; if the top flattens, turn it down.
+  lands inside the range with room to spare. **The shoot's volume is fixed at
+  −18 dB on the display** (see below); watch the trace and turn it down if
+  the top flattens.
 
   **Measured 2026-09-22, same recording, full volume, three loads:**
 
@@ -358,16 +359,21 @@ last one, this is the evening after.
   curve a line output follows down from full volume is steeper than the
   volume position alone would suggest.
 
-  **Measured 2026-09-22, 100 Ω fitted, volume at −30 dB on the display —
-  the shoot's own condition, closing the MEASURE above: 37 mV peak to peak**
-  (t=149 s of a 202.5 s pass, ±19/−18 mV about centre, both well inside the
-  rails). In line with the open-plug data point: a moderate-looking volume
-  position gives a small fraction of the full-volume swing, not a linear
-  fifth or quarter of it. **This is thin on screen** — about 1 % of the
-  0–3.3 V range — so the shoot wants either more volume (re-checking the
-  ceiling as it climbs) or a narrower V/div than the wide shot elsewhere in
-  this episode uses, or both. Do not carry the "fills the screen" framing
-  from the plan into the edit without checking the actual capture.
+  **Measured 2026-09-22, 100 Ω fitted, volume at −30 dB on the display:
+  37 mV peak to peak** (t=149 s of a 202.5 s pass, ±19/−18 mV about centre).
+  Thin on screen — about 1 % of the 0–3.3 V range — so 12 dB more was tried.
+
+  **Measured 2026-09-22, 100 Ω fitted, volume at −18 dB — the shoot's
+  final condition, closing the MEASURE above: 194 mV peak to peak**
+  (t=174 s of a 203.5 s pass, +102/−92 mV about centre, both well inside the
+  rails: 1.54–1.57 V of room on either side). At 50 mV/div that is about
+  3.9 divisions of an 8-division screen — comfortably visible, not filling
+  it. 12 dB should scale voltage ×3.98 by the textbook; it came out ×5.27
+  (37 → 194 mV), the closest any volume-or-load comparison this session came
+  to matching its prediction, but still not exact — expect the same kind of
+  gap if this gets pushed further. Do not carry the "fills the screen"
+  framing from the plan into the edit; "about 40% of the screen" is what the
+  capture supports.
 - **Capacitors:** use film for the generator's 10 nF — the old ceramic 103 from
   the parts bag left ±0.5 V spikes on the sine in episode 1's shoot.
 - **Firmware 1.13** on every board. Nothing in this episode touches the logic
