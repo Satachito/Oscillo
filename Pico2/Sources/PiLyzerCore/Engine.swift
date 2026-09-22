@@ -349,6 +349,12 @@ public final class InstrumentEngine {
                 }
             case .meter:
                 try acquireMeter(instrument, token: token)
+                // The scope and logic branches above report a status on every
+                // frame; this one didn't, so a Stopped left over from another
+                // mode — or from before Run was pressed the first time — sat
+                // there for as long as the meter kept reading, saying the
+                // opposite of what was happening.
+                report(status: "Meter")
                 delay = 0.05
             }
         } catch {
