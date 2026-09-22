@@ -298,9 +298,11 @@ last one, this is the evening after.
 
 ## Production notes
 
-- **Everything demonstrated must be real.** Two numbers above are
-  **[MEASURE]** and one detail is **[CONFIRM]**. Measure them on camera before
-  recording the narration, and change the words to match what the bench says.
+- **Everything demonstrated must be real.** One number above is
+  **[MEASURE]** and one detail is **[CONFIRM]**, both in "The resistor I got
+  wrong." Measure them on camera before recording the narration, and change
+  the words to match what the bench says. (The headphone-jack peak to peak
+  was the other [MEASURE]; closed 2026-09-22.)
 - **Measured already:** MCP6022 output 3.30 V pp from the raw carrier; through
   1 kΩ + 10 nF, 3.15 / 3.12 / 2.95 V pp at 440 Hz / 1 kHz / 5 kHz; LM358 output
   stops about 1.5 V below the rail, so ~1.8 V on 3.3 V.
@@ -349,17 +351,23 @@ last one, this is the evening after.
   rather than above them. So the ceiling table does not predict this jack's
   actual level at a fixed volume position; whatever curve it follows is not
   monotonic in the load. Still no measurement above 1 kΩ with a real resistor
-  in that bracket, and this was full volume throughout — not the 20–30 %
-  the shoot itself will use. **[MEASURE: the peak to peak at the 20–30 %
-  volume this episode actually shoots at, with the 100 Ω fitted — the number
-  this bullet was originally asking for, still open.]**
+  in that bracket.
 
   One data point on the volume knob itself, open plug, about 20 %: 34 mV peak
   to peak against 1.31 V at full volume — a fortieth, not a fifth. Whatever
   curve a line output follows down from full volume is steeper than the
-  volume position alone would suggest. Not the 100 Ω condition the open
-  MEASURE above wants, so it doesn't close it, but worth knowing before
-  reading anything into "the trace got smaller" during a level check.
+  volume position alone would suggest.
+
+  **Measured 2026-09-22, 100 Ω fitted, volume at −30 dB on the display —
+  the shoot's own condition, closing the MEASURE above: 37 mV peak to peak**
+  (t=149 s of a 202.5 s pass, ±19/−18 mV about centre, both well inside the
+  rails). In line with the open-plug data point: a moderate-looking volume
+  position gives a small fraction of the full-volume swing, not a linear
+  fifth or quarter of it. **This is thin on screen** — about 1 % of the
+  0–3.3 V range — so the shoot wants either more volume (re-checking the
+  ceiling as it climbs) or a narrower V/div than the wide shot elsewhere in
+  this episode uses, or both. Do not carry the "fills the screen" framing
+  from the plan into the edit without checking the actual capture.
 - **Capacitors:** use film for the generator's 10 nF — the old ceramic 103 from
   the parts bag left ±0.5 V spikes on the sine in episode 1's shoot.
 - **Firmware 1.13** on every board. Nothing in this episode touches the logic
