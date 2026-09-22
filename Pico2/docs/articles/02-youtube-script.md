@@ -353,6 +353,13 @@ last one, this is the evening after.
   the shoot itself will use. **[MEASURE: the peak to peak at the 20–30 %
   volume this episode actually shoots at, with the 100 Ω fitted — the number
   this bullet was originally asking for, still open.]**
+
+  One data point on the volume knob itself, open plug, about 20 %: 34 mV peak
+  to peak against 1.31 V at full volume — a fortieth, not a fifth. Whatever
+  curve a line output follows down from full volume is steeper than the
+  volume position alone would suggest. Not the 100 Ω condition the open
+  MEASURE above wants, so it doesn't close it, but worth knowing before
+  reading anything into "the trace got smaller" during a level check.
 - **Capacitors:** use film for the generator's 10 nF — the old ceramic 103 from
   the parts bag left ±0.5 V spikes on the sine in episode 1's shoot.
 - **Firmware 1.13** on every board. Nothing in this episode touches the logic
