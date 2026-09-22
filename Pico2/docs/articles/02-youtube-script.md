@@ -250,7 +250,7 @@ frequencies:**
 
 | | 440 Hz | 1 kHz | 5 kHz |
 | --- | ---: | ---: | ---: |
-| Correct part (1 kΩ) | 3.15 V | 3.12 V | 2.95 V |
+| Correct part (1 kΩ) | 3.15 V | 3.12 V | 2.88 V |
 | Wrong part (100 kΩ) | 1.08 V | 0.51 V | 0.12 V |
 | Arithmetic for 100 kΩ (*) | 1.07 V | 0.49 V | 0.098 V |
 
@@ -272,7 +272,7 @@ It happened twice. A capacitor marked one-oh-four — a hundred nanofarads —
 had gone in where a one-oh-three belonged. Same symptom: the five kilohertz
 reading came up short. With the right parts, the generator's sine through its
 filter reads **three point one five volts at four forty, three point one two
-at one kilohertz, and two point nine five at five**.
+at one kilohertz, and two point eight eight at five**.
 
 The lesson is the same as last time: when the number disagrees with the
 arithmetic, believe the number, then go and find out why.
@@ -328,7 +328,8 @@ last one, this is the evening after.
 - **Measured already:** MCP6022 output 3.15 V pp from the raw carrier (S4,
   shot 2026-09-22 — an earlier bench pass had read 3.30 V pp on the same
   claim; this is the number the kept take actually shows); through
-  1 kΩ + 10 nF, 3.15 / 3.12 / 2.95 V pp at 440 Hz / 1 kHz / 5 kHz; LM358 output
+  1 kΩ + 10 nF, 3.15 / 3.12 / 2.88 V pp at 440 Hz / 1 kHz / 5 kHz (S8b, shot
+  2026-09-22); LM358 output
   stops about 1.5 V below the rail, so ~1.8 V on 3.3 V.
 - **The follower section, first measured 2026-09-21** on a 100 kΩ / 100 kΩ
   divider read by two channels at once, gain corrections cleared:
