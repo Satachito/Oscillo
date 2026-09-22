@@ -152,11 +152,13 @@ second half it arrives centred on mid rail.
 > **On screen:** the 100 Ω resistor across the plug, in close-up.
 
 One detail, because it is the kind of thing that bites. This jack decides how
-hard to drive by how much it is loaded. Left to itself, looking at fifty
-kilohms, it calls that a line input and sends three volts RMS — more than the
-converter's whole range. A hundred ohms across the plug tells it there are
-headphones on the end, and it settles for one volt RMS. Which is two point
-eight volts peak to peak, and lands inside the range with room to spare.
+hard to drive by how much it is loaded. Apple's own published ceilings: under
+a hundred fifty ohms, one and a quarter volts RMS; from there to a kilohm,
+three volts RMS — already past the converter's whole range. Left to itself,
+looking at fifty kilohms, this channel sits past both brackets, driven as a
+line input. A hundred ohms across the plug drops it under a hundred fifty
+ohms, headphone territory, and the music we actually play into it stays well
+under that ceiling — it lands inside the range with room to spare.
 
 > **On screen:** the Bias field for CH2 set to Mid rail; the dotted line lands
 > on the trace's centre.
@@ -319,16 +321,23 @@ last one, this is the evening after.
   and both 1.720 V pp at 20 kHz. Do not say these as measurements unless the
   bench repeats them.
 - **The signal source is the Mac mini's front 3.5 mm jack**, which sets its
-  level from the load it detects: under 150 Ω it is a headphone output at
-  1.0 V RMS, over 1 kΩ a line output at 2.0–3.0 V RMS. The AC channel alone
-  looks like 50 kΩ, so it would be driven as a line output — 3.0 V RMS is
-  8.5 V peak to peak, past both rails. **Put 100 Ω across the plug** (tip to
-  sleeve, ¼ W is plenty at 10 mW): the jack then behaves as a headphone output,
-  1.0 V RMS ≈ 2.83 V peak to peak, which on mid rail is 0.24–3.06 V — inside
-  the range, and nearly filling the screen. Start at 20–30 % volume and watch
-  the trace; if the top flattens, turn it down. **[MEASURE: the actual peak to
-  peak at the volume used, and what it becomes without the 100 Ω — worth
-  showing only if it stays inside the rails.]**
+  level from the load it detects. Apple's own figures
+  ([support.apple.com/ja-jp/108351](https://support.apple.com/ja-jp/108351)):
+  under 150 Ω, a ceiling of 1.25 V RMS; from 150 Ω to 1 kΩ, a ceiling of
+  3 V RMS (8.5 V peak to peak — already past both rails). The page does not
+  give a figure above 1 kΩ. The AC channel alone looks like 50 kΩ, past both
+  brackets, so it would be driven as a line output — at least as loud as the
+  3 V RMS bracket below it, likely louder. **Put 100 Ω across the plug** (tip
+  to sleeve, ¼ W is plenty at 10 mW): the jack then reads under 150 Ω,
+  headphone territory, ceiling 1.25 V RMS ≈ 3.54 V peak to peak. At the volume
+  this episode actually uses the real swing sits well under that ceiling and
+  lands inside the range with room to spare. Start at 20–30 % volume and watch
+  the trace; if the top flattens, turn it down. **Do not substitute a resistor
+  over 150 Ω** — 500 Ω, for instance, crosses into the 150 Ω–1 kΩ bracket,
+  where the ceiling more than doubles; whether the actual level follows it at
+  a fixed volume position is untested. **[MEASURE: the actual peak to peak at
+  the volume used, and what it becomes without the 100 Ω — worth showing only
+  if it stays inside the rails.]**
 - **Capacitors:** use film for the generator's 10 nF — the old ceramic 103 from
   the parts bag left ±0.5 V spikes on the sine in episode 1's shoot.
 - **Firmware 1.13** on every board. Nothing in this episode touches the logic
