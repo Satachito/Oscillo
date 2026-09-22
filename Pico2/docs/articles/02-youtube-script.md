@@ -100,15 +100,16 @@ Here is the sip, made visible. A divider of two hundred-kilohm resistors sits
 at one point six five volts.
 
 Through the follower, the instrument reads **one point six four**, and it sits
-there.
+there — eighteen millivolts peak to peak.
 
-Straight into the converter, the same node reads **one point six two** — twenty
-millivolts low — and it is noisier with it: seventy-three millivolts peak to
-peak against twenty-seven.
+Straight into the converter, the same node reads the same one point six four
+— but it is not still. **Eighty-three millivolts peak to peak**, more than
+four times as much.
 
-Twenty millivolts is one and a bit per cent, on a divider that is exactly
-right. The converter takes a sip of charge every time it samples, and fifty
-kilohms cannot put it back before the next one.
+The mean survives; the stillness does not. The converter takes a sip of
+charge every time it samples, and fifty kilohms cannot put it back before the
+next one — so the reading is right on average and wrong on every individual
+sample.
 
 The converter wants whatever feeds it to look like **less than ten kilohms**.
 A follower looks like almost nothing, and never runs out of charge.
@@ -326,19 +327,32 @@ last one, this is the evening after.
 - **Measured already:** MCP6022 output 3.30 V pp from the raw carrier; through
   1 kΩ + 10 nF, 3.15 / 3.12 / 2.95 V pp at 440 Hz / 1 kHz / 5 kHz; LM358 output
   stops about 1.5 V below the rail, so ~1.8 V on 3.3 V.
-- **The follower section, measured 2026-09-21** on a 100 kΩ / 100 kΩ divider
-  read by two channels at once, gain corrections cleared:
+- **The follower section, first measured 2026-09-21** on a 100 kΩ / 100 kΩ
+  divider read by two channels at once, gain corrections cleared:
 
   | | Mean | AC RMS | Peak to peak |
   | --- | ---: | ---: | ---: |
   | through the follower | 1.64 V | 2.69 / 3.09 mV | 20.1 / 26.6 mV |
   | straight to the pin | 1.62 V | 4.59 / 7.94 mV | 25.8 / 73.3 mV |
 
-  Two passes with the channels swapped between them, so the figures follow the
-  path and not the channel: 1.64 V stayed with the follower and 1.62 V with the
-  direct pin both times. Say "twenty millivolts low" and "noisier"; do not
-  quote the peak-to-peak spread as a fixed number, it moves from sweep to
-  sweep.
+  Two passes with the channels swapped between them, so the figures followed
+  the path and not the channel: 1.64 V stayed with the follower and 1.62 V
+  with the direct pin both times.
+
+  **S2, shot 2026-09-22, is what the narration now quotes:**
+
+  | | Mean | AC RMS | Peak to peak |
+  | --- | ---: | ---: | ---: |
+  | through the follower | 1.64 V | 1.35 mV | 18.5 mV |
+  | straight to the pin | 1.64 V | 4.62 mV | 83.0 mV |
+
+  The mean came out equal this time — no "twenty millivolts low" in this
+  take — so the narration was rewritten to claim only the noise difference,
+  which both passes agree on and this one shows more dramatically (4.4× the
+  peak-to-peak against roughly 1.3× before). Do not quote peak-to-peak as a
+  fixed number if it gets re-shot again; it moves from sweep to sweep. If a
+  future take reproduces the mean gap too, the "twenty millivolts low" line
+  can go back in — but only against that take's own numbers, not these.
 - **From the simulator, not the bench:** both channels 1.999 V pp for a 1 V sine,
   and both 1.720 V pp at 20 kHz. Do not say these as measurements unless the
   bench repeats them.

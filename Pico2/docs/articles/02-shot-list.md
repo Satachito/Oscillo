@@ -18,7 +18,7 @@ is unchanged.
 | # | Shot | Where | Notes |
 | --- | --- | --- | --- |
 | S1 | CH2 running, a 1 kHz tone from the Mac mini's headphone jack, sitting on the dotted mid-rail line. Hold three seconds before the first word. | 0:00 cold open | This is the first frame of the video. 100 Ω across the plug, −18 dB on the display — the shoot's fixed condition (see production notes). |
-| S2 | Both channels' readings live at once: the 100 kΩ/100 kΩ divider read through the follower and straight to a pin — Mean, AC RMS, Peak to peak, both columns on screen together. | 2:15 | This is the numbers already in the production notes (1.64 V follower / 1.62 V direct), so match the take to those or re-measure and update the script. |
+| S2 | Both channels' readings live at once: the 100 kΩ/100 kΩ divider read through the follower and straight to a pin — Mean, AC RMS, Peak to peak, both columns on screen together. | 2:15 | **Shot 2026-09-22, kept.** Mean came out equal both paths (1.64 V); narration now claims only the noise difference (18.5 mV follower vs 83.0 mV direct, 4.4×). Do not add a mean-difference claim back in against this take. |
 | S3 | The LM358 in the socket, driven by the generator's raw carrier: the top of the trace flat. | 3:05 | Same window position as S4 so they cut together. |
 | S4 | Swap in the MCP6022. The same sine, now whole — pp readout reads 3.30 V. | 3:05 | Do not move the camera or the window between S3 and S4. |
 | S5 | The Mac's headphone jack into CH2: a 1 kHz tone centred on the dotted line, then the shoot's actual music track, the trace dancing around it. | 4:05 | 100 Ω fitted, −18 dB. This is the take the −18 dB measurement (194 mV pp) came from — use that pass if it is clean, or re-record at the identical setting. |
