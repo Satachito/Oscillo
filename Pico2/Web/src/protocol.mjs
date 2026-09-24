@@ -1,5 +1,12 @@
 // PiLyzer protocol v1. Keep this in step with ../../docs/protocol.md.
 export const USB_IDS = { vendorId: 0x1209, productId: 0x0001 };
+// The ArLyzer on an Arduino Nano R4 is reached through the board's own CDC
+// serial port, under Arduino's identifiers: the application and the bootloader.
+export const SERIAL_IDS = [{ usbVendorId: 0x2341, usbProductId: 0x0074 }, { usbVendorId: 0x2341, usbProductId: 0x0374 }];
+// The board id an ArLyzer reports; its inputs are named A0–A7, not GPIOs.
+export const ARLYZER_BOARD = 4;
+// Eight is what the wire format holds: a channel mask is one byte.
+export const MAX_ANALOG_CHANNELS = 8;
 export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, inputRanges: 7, signals: 8, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
 export const MAX_PAYLOAD = 8192;
 export const view = bytes => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -27,14 +34,14 @@ export function identity(bytes) {
 export function capabilities(bytes) {
   const v = size(bytes, 48, 'capabilities');
   const c = { channels: bytes[0], bits: bytes[1], logicChannels: bytes[2], ranges: bytes[3], clock: v.getUint32(4, true), minCycles: v.getUint32(8, true), maxRecord: v.getUint32(12, true), maxPretrigger: v.getUint32(16, true), logicClock: v.getUint32(20, true), logicMaxRecord: v.getUint32(24, true), logicMaxPretrigger: v.getUint32(28, true), reference: v.getUint32(32, true) / 1e6, flags: v.getUint32(36, true) };
-  if (c.channels < 1 || c.channels > 3 || c.bits < 8 || c.bits > 16 || c.logicChannels > 8 || !c.clock || !c.minCycles || c.maxRecord < 50 || c.maxRecord > 65536 || c.logicMaxRecord > 131072 || !(c.reference > 0)) throw new Error('Unsupported instrument capabilities');
+  if (c.channels < 1 || c.channels > MAX_ANALOG_CHANNELS || c.bits < 8 || c.bits > 16 || c.logicChannels > 8 || !c.clock || !c.minCycles || c.maxRecord < 50 || c.maxRecord > 65536 || c.logicMaxRecord > 131072 || !(c.reference > 0)) throw new Error('Unsupported instrument capabilities');
   c.fullScale = ((2 ** c.bits) - 1) * 2 ** (16 - c.bits); return c;
 }
 export function plan(bytes) {
   const v = size(bytes, 24, 'acquisition plan');
   const p = { clock: v.getUint32(0, true), divisor: v.getUint32(4, true), decimation: v.getUint32(8, true), count: v.getUint32(12, true), pretrigger: v.getUint32(16, true), mask: bytes[20], channels: bytes[21] };
   p.period = p.divisor / 256 / p.clock * p.decimation * p.channels;
-  if (!(p.period > 0) || !Number.isFinite(p.period) || p.count < 1 || p.count > 131072 || p.channels < 1 || p.channels > 3) throw new Error('Invalid acquisition plan');
+  if (!(p.period > 0) || !Number.isFinite(p.period) || p.count < 1 || p.count > 131072 || p.channels < 1 || p.channels > MAX_ANALOG_CHANNELS) throw new Error('Invalid acquisition plan');
   return p;
 }
 export function status(bytes) {

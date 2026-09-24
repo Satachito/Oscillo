@@ -1,7 +1,7 @@
 import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
+import { ARLYZER_BOARD, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
 import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -71,6 +71,8 @@ const acquisition = new Acquisition(value => { frame = value; renderFrame(); }, 
   $('status').textContent = message; if (error) showError(message); updateButtons();
 });
 function caps() { return instrument?.caps || demoCaps; }
+// The pin an analogue channel is read on, for the channel card's note.
+function inputPin(i) { return instrument?.identity?.board === ARLYZER_BOARD ? `A${i}` : `GPIO ${26 + i}`; }
 // The instrument's own range list. Offline there is no instrument to ask, so
 // the panel previews the front end this application was built alongside.
 function frontEnd() { return instrument?.ranges ?? ranges(1); }
@@ -100,6 +102,7 @@ function updateButtons() {
   $('single').disabled = !instrument || acquisition.running || connecting || nothingOn;
   $('connect').hidden = !!instrument; $('demo').hidden = !!instrument; $('disconnect').hidden = !instrument;
   $('connect').disabled = connecting || !(overNetwork || navigator.usb); $('demo').disabled = connecting;
+  $('connect-serial').hidden = !!instrument || overNetwork || !navigator.serial; $('connect-serial').disabled = connecting;
   $('run-dot').classList.toggle('live', acquisition.running);
   $('connection-dot').classList.toggle('connected', !!instrument);
   $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : overNetwork ? 'WI-FI' : 'USB' : 'OFFLINE';
@@ -143,7 +146,7 @@ function channelControls() {
     const ch = settings.channels[i], el = document.createElement('div'); el.className = 'channel-card'; el.style.setProperty('--channel-color', COLORS[i]);
     if (channelOpen[i] === undefined) channelOpen[i] = ch.enabled;
     const open = channelOpen[i];
-    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">GPIO ${26 + i}</span><button class="disclose" data-disclose aria-label="CH${i + 1} settings" aria-expanded="${open}">${open ? '▾' : '▸'}</button></div><div class="channel-body"${open ? '' : ' hidden'}><label class="field">Range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1:1</option><option value="10">1:10</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="check-row" data-ac-row><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><label class="field">Bias <span class="unit">V</span><input data-bias type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="CH${i + 1} bias volts"/></label><p class="hint">Where the front end holds this input with nothing on it. Drawn as a dotted line; readings stay as the converter saw them.</p><p class="hint" data-bias-note hidden></p><div class="channel-actions"><button class="zero-button" data-zero title="Ground this input and capture a trace first: what it reads is the bias.">Measure</button><button class="zero-button" data-afe>Mid rail</button></div><p class="hint">Calibrate asks for a known voltage on the input and corrects the gain by what the reading is short of it — so measure the bias first. The divider's 1% parts put it out by up to 2%.</p><p class="hint" data-gain-note hidden></p><div class="channel-actions"><button class="zero-button" data-gain title="Put a known steady voltage on this input and capture a trace first.">Calibrate</button><button class="zero-button" data-reset title="Clears this channel's bias and gain correction.">Reset</button></div></div>`;
+    el.innerHTML = `<div class="channel-heading"><label><input type="checkbox" data-field="enabled" aria-label="Enable CH${i + 1}"/><span class="marker"></span>CH${i + 1}</label><span class="channel-note">${inputPin(i)}</span><button class="disclose" data-disclose aria-label="CH${i + 1} settings" aria-expanded="${open}">${open ? '▾' : '▸'}</button></div><div class="channel-body"${open ? '' : ' hidden'}><label class="field">Range<select data-field="range" aria-label="CH${i + 1} input range"></select></label><div class="field-pair"><label>Scale<select data-field="scale" aria-label="CH${i + 1} scale"></select></label><label>Probe<select data-field="probe" aria-label="CH${i + 1} probe"><option value="1">1:1</option><option value="10">1:10</option></select></label></div><label class="slider-label">Position<output>${ch.offset.toFixed(1)} div</output><input data-field="offset" aria-label="CH${i + 1} position" type="range" min="-4" max="4" step="0.1"/></label><label class="check-row" data-ac-row><input type="checkbox" data-field="ac" aria-label="CH${i + 1} remove mean"/>Remove mean</label><label class="field">Bias <span class="unit">V</span><input data-bias type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="CH${i + 1} bias volts"/></label><p class="hint">Where the front end holds this input with nothing on it. Drawn as a dotted line; readings stay as the converter saw them.</p><p class="hint" data-bias-note hidden></p><div class="channel-actions"><button class="zero-button" data-zero title="Ground this input and capture a trace first: what it reads is the bias.">Measure</button><button class="zero-button" data-afe>Mid rail</button></div><p class="hint">Calibrate asks for a known voltage on the input and corrects the gain by what the reading is short of it — so measure the bias first. The divider's 1% parts put it out by up to 2%.</p><p class="hint" data-gain-note hidden></p><div class="channel-actions"><button class="zero-button" data-gain title="Put a known steady voltage on this input and capture a trace first.">Calibrate</button><button class="zero-button" data-reset title="Clears this channel's bias and gain correction.">Reset</button></div></div>`;
     const caret = el.querySelector('[data-disclose]'), body = el.querySelector('.channel-body');
     caret.onclick = () => {
       const now = !channelOpen[i];
@@ -463,6 +466,9 @@ function renderFrame() {
   }
   }
   else if (frame?.kind === 'meter') {
+    // More than four readings do not fit one line at a readable size, so they
+    // go four to a row.
+    $('meter-values').classList.toggle('dense', (frame.channels ?? frame.values).length > 4);
     $('meter-values').replaceChildren(...(frame.channels ?? frame.values.map((_, i) => i)).map(i => { const value = frame.values[i]; const el = document.createElement('div'); el.className = 'meter-value'; el.style.color = COLORS[i]; const label = document.createElement('small'); label.textContent = `CH${i + 1}`; el.append(label, document.createTextNode(fmt(value, 'V', 4))); return el; }));
     const hint = document.createElement('div'); hint.className = 'measurement-placeholder'; hint.textContent = 'Meter readings are DC coupled. Ground the inputs before checking offsets.'; $('measurements').append(hint);
   } else if (frame?.kind === 'logic') {
@@ -503,11 +509,11 @@ async function changed() {
     await acquisition.configure(settings);
   } catch (e) { showError(e.message); }
 }
-async function connect(demo) {
+async function connect(demo, serial = false) {
   if (instrument || connecting) return;
   connecting = true; showError(); updateButtons();
   try {
-    instrument = demo ? new DemoInstrument() : overNetwork ? await connectOverNetwork() : await Instrument.connect(); acquisition.attach(instrument); frame = null;
+    instrument = demo ? new DemoInstrument() : overNetwork ? await connectOverNetwork() : serial ? await Instrument.connectSerial() : await Instrument.connect(); acquisition.attach(instrument); frame = null;
     if (demo) settings.channels.forEach(ch => { ch.range = 1; ch.scale = 1; });
     settings.channels.forEach(ch => { if (ch.range >= frontEnd().length) ch.range = 0; });
     // The zero and the gain describe the wiring, so connecting does not clear
@@ -521,7 +527,7 @@ async function connect(demo) {
   } catch (e) { if (e.name !== 'NotFoundError') showError(e.message); instrument = null; acquisition.attach(null); }
   finally { connecting = false; updateButtons(); }
 }
-$('connect').onclick = () => connect(false); $('demo').onclick = () => connect(true);
+$('connect').onclick = () => connect(false); $('demo').onclick = () => connect(true); $('connect-serial').onclick = () => connect(false, true);
 $('empty-demo').onclick = () => instrument ? acquisition.start(settings, true) : connect(true);
 $('disconnect').onclick = async () => {
   try { await acquisition.stop(); await instrument?.close(); } catch (e) { showError(e.message); }
@@ -585,6 +591,11 @@ for (let i = 0; i < 8; i++) {
   label.append(input, document.createTextNode(`D${i}`)); $('logic-lines').append(label);
   for (const select of document.querySelectorAll('[data-logic-line]')) select.add(option(i, `D${i}`));
 }
+if (navigator.serial) navigator.serial.addEventListener('disconnect', event => {
+  if (instrument && !instrument.demo && event.target === instrument.transport.port) {
+    acquisition.running = false; acquisition.token++; instrument = null; acquisition.attach(null); showError('The instrument was unplugged. Reconnect it to continue.'); updateButtons();
+  }
+});
 if (navigator.usb) navigator.usb.addEventListener('disconnect', event => {
   if (instrument && !instrument.demo && event.device === instrument.transport.device) {
     acquisition.running = false; acquisition.token++; instrument = null; acquisition.attach(null); showError('The instrument was unplugged. Reconnect USB to continue.'); updateButtons();

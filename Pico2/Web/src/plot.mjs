@@ -42,7 +42,13 @@ export class Plot {
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     c.clearRect(0, 0, width, height);
     let box = { x: 44, y: 18, w: width - 65, h: height - 48 };
-    if (this.frame?.kind === 'meter') { box.y = 88; box.h -= 70; }
+    if (this.frame?.kind === 'meter') {
+      // Room for the readings above the chart: more than four go four to a
+      // row (the .dense rule in style.css), and each further row needs 50 px.
+      const readings = (this.frame.channels ?? this.frame.values).length;
+      const extra = readings > 4 ? (Math.ceil(readings / 4) - 1) * 50 : 0;
+      box.y = 88 + extra; box.h -= 70 + extra;
+    }
     // X/Y plots one voltage against another, so a division has to be the same
     // number of pixels each way. On the 10 × 8 sweep grid a circle would come
     // out as a two-to-one ellipse, so the plot gets a square grid of its own.

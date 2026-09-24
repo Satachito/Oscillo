@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, displayedTop, fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
-import { BulkTransport } from '../src/instrument.mjs';
+import { BulkTransport, SerialTransport } from '../src/instrument.mjs';
 import { HttpTransport, available } from '../src/net.mjs';
 import { measure, spectrum, spectrumCsv, csv, decodeLogic, logicActivity, WINDOWS, averageSpectra, spectrumQuality, levelOf } from '../src/signal.mjs';
 const caps = demoCaps;
@@ -79,6 +79,43 @@ test('a rejected command leaves framing intact; bad framing closes the device', 
   assert.equal(device.opened, true); await transport.exchange(OP.identify);
   device.transferIn = async () => ({ status: 'ok', data: view(new Uint8Array(12)) });
   await assert.rejects(transport.exchange(OP.identify), /sequence/); assert.equal(device.opened, false);
+});
+// A USB serial port as Web Serial hands it over: a byte stream each way, with
+// no packet boundaries at all. Replies arrive in uneven pieces, and a session
+// that went before has left half a reply unread.
+class FakeSerialPort {
+  calls = []; closed = false;
+  constructor(stale = new Uint8Array()) {
+    this.readable = new ReadableStream({ start: controller => { this.out = controller; if (stale.length) controller.enqueue(stale); } });
+    this.writable = new WritableStream({ write: bytes => {
+      const op = bytes[1], seq = view(bytes).getUint16(4, true); this.calls.push(op);
+      let payload = new Uint8Array([17, 23]);
+      if (op === OP.identify) { payload = new Uint8Array(32); const v = view(payload); v.setUint32(0, 0x5a594c50, true); v.setUint16(4, 1, true); v.setUint32(8, 4, true); }
+      const answer = reply(op, seq, payload, op === 99 ? 3 : 0);
+      for (let i = 0; i < answer.length; i += 7) this.out.enqueue(answer.slice(i, i + 7));
+    } });
+  }
+  async close() { this.closed = true; }
+}
+test('serial stream: stale bytes before identify, fragmented replies, a refused command keeps the port', async () => {
+  const stale = reply(OP.sample, 9, new Uint8Array(16)).slice(0, 20);
+  const port = new FakeSerialPort(stale), transport = new SerialTransport(port);
+  assert.equal(identity(await transport.synchronize()).board, 4);
+  assert.deepEqual([...await transport.exchange(OP.sample)], [17, 23]);
+  await assert.rejects(transport.exchange(99), /Invalid setting/);
+  assert.equal(port.closed, false);
+  await transport.close(); assert.equal(port.closed, true);
+});
+test('eight analogue channels: capabilities accepted, the whole mask requested', () => {
+  const bytes = new Uint8Array(48), v = view(bytes);
+  bytes[0] = 8; bytes[1] = 14; bytes[3] = 1;
+  v.setUint32(4, 48000000, true); v.setUint32(8, 96, true); v.setUint32(12, 1024, true); v.setUint32(16, 1023, true); v.setUint32(32, 5000000, true);
+  const eight = capabilities(bytes);
+  assert.equal(eight.channels, 8); assert.equal(eight.fullScale, 65532);
+  bytes[0] = 9; assert.throws(() => capabilities(bytes), /Unsupported/);
+  const settings = makeSettings(); settings.channels.forEach(c => c.enabled = true);
+  const actual = analogRequest(settings, eight, [{ name: '0 – 5 V', gain: 1, offset: 0, switchPosition: 0 }]);
+  assert.equal(actual.mask, 0xff); assert.equal(actual.active.length, 8);
 });
 test('measurements and FFT agree with a known sine wave', () => {
   const rate = 32768, samples = Float64Array.from({ length: 4096 }, (_, i) => 2 * Math.sin(2 * Math.PI * 1000 * i / rate));

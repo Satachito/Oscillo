@@ -1,4 +1,4 @@
-import { USB_IDS, OP, MAX_PAYLOAD, request, responseHeader, identity, capabilities, inputRanges, ranges, view } from './protocol.mjs';
+import { USB_IDS, SERIAL_IDS, OP, MAX_PAYLOAD, request, responseHeader, identity, capabilities, inputRanges, ranges, view } from './protocol.mjs';
 export const errors = ['OK', 'Unknown command', 'Wrong payload size', 'Invalid setting', 'Instrument busy', 'Acquisition not configured', 'No record available', 'Instrument error'];
 // One transaction at a time. Bulk packets are a byte stream, not message boundaries.
 export class BulkTransport {
@@ -45,8 +45,7 @@ export class BulkTransport {
     const sequence = this.sequence = (this.sequence + 1) & 0xffff;
     const bytes = request(opcode, sequence, payload);
     try {
-      const result = await this.bounded(this.device.transferOut(this.output, bytes));
-      if (result.status !== 'ok' || result.bytesWritten !== bytes.length) throw new Error('USB write failed');
+      await this.bounded(this.write(bytes));
       if (synchronizing) await this.seekIdentity(sequence);
       else await this.fill(12);
       const header = responseHeader(this.buffer, opcode, sequence);
@@ -67,16 +66,47 @@ export class BulkTransport {
   async fill(length) {
     let empty = 0;
     while (this.buffer.length < length) {
-      const result = await this.bounded(this.device.transferIn(this.input, Math.min(8192, Math.max(64, Math.ceil((length - this.buffer.length) / 64) * 64))));
-      if (result.status !== 'ok' || !result.data) throw new Error('USB read failed');
-      const next = new Uint8Array(result.data.buffer, result.data.byteOffset, result.data.byteLength);
+      const next = await this.bounded(this.read(length - this.buffer.length));
       if (!next.length) { if (++empty > 8) throw new Error('Too many empty USB packets'); continue; }
       const buffer = new Uint8Array(this.buffer.length + next.length);
       buffer.set(this.buffer); buffer.set(next, this.buffer.length); this.buffer = buffer;
       if (buffer.length > MAX_PAYLOAD + 12 + 64) throw new Error('USB response exceeds the frame limit');
     }
   }
+  async write(bytes) {
+    const result = await this.device.transferOut(this.output, bytes);
+    if (result.status !== 'ok' || result.bytesWritten !== bytes.length) throw new Error('USB write failed');
+  }
+  async read(wanted) {
+    const result = await this.device.transferIn(this.input, Math.min(8192, Math.max(64, Math.ceil(wanted / 64) * 64)));
+    if (result.status !== 'ok' || !result.data) throw new Error('USB read failed');
+    return new Uint8Array(result.data.buffer, result.data.byteOffset, result.data.byteLength);
+  }
   async close() { this.closed = true; this.buffer = new Uint8Array(); if (this.device.opened) await this.device.close(); }
+}
+// The same frames over a USB serial port, for boards whose USB stack offers
+// CDC and nothing else — the ArLyzer on an Arduino Nano R4. A serial port is a
+// byte stream just as the bulk pipe is, so framing and resynchronisation are
+// the bulk transport's own; only the reads and writes differ.
+export class SerialTransport extends BulkTransport {
+  constructor(port) {
+    super(null, 0, 0);
+    this.port = port; this.reader = port.readable.getReader(); this.writer = port.writable.getWriter();
+  }
+  async write(bytes) { await this.writer.write(bytes); }
+  async read() {
+    const { value, done } = await this.reader.read();
+    if (done || !value) throw new Error('The serial port closed.');
+    return value;
+  }
+  async close() {
+    if (this.closed) return;
+    this.closed = true; this.buffer = new Uint8Array();
+    // Cancelling is what ends a read left pending by a timeout.
+    await this.reader.cancel().catch(() => {}); this.reader.releaseLock();
+    await this.writer.close().catch(() => {}); this.writer.releaseLock();
+    await this.port.close().catch(() => {});
+  }
 }
 export class Instrument {
   static async connect() {
@@ -93,6 +123,20 @@ export class Instrument {
       // The plain path is the one that says what is really wrong, so its
       // failure is the one reported.
       return await Instrument.open(device, false);
+    }
+  }
+  static async connectSerial() {
+    if (!navigator.serial) throw new Error('Web Serial requires Chrome or Edge on a computer. You can still use Demo.');
+    const port = await navigator.serial.requestPort({ filters: SERIAL_IDS });
+    // Any rate but 1200, which an Arduino takes as the signal to drop into its
+    // bootloader. CDC ignores the number otherwise.
+    await port.open({ baudRate: 115200, bufferSize: 8192 });
+    try {
+      await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+      return await Instrument.handshake(new SerialTransport(port));
+    } catch (error) {
+      await port.close().catch(() => {});
+      throw error;
     }
   }
   static async open(device, reset) {
