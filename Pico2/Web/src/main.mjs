@@ -401,7 +401,7 @@ function renderFrame() {
     // easily nudged by a thumb scrolling past on a phone, and otherwise the
     // only sign is a trace drawn somewhere its readings say it is not.
     const moved = Math.abs(ch.offset) >= 0.05 ? ` · ${ch.offset > 0 ? '+' : '−'}${Math.abs(ch.offset).toFixed(1)} div` : '';
-    el.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || scale.span / 8, 'V')}/div${moved}${ch.ac ? ' · AC' : ''}`;
+    el.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || fitScale(scale), 'V')}/div${moved}${ch.ac ? ' · AC' : ''}`;
     // CLIP comes and goes with the signal, so its room is always there and
     // only its ink changes: a label that grew would shove the channels after
     // it sideways every time a peak touched a rail.
@@ -429,9 +429,12 @@ function renderFrame() {
   if (settings.mode === 'meter') $('log-span').textContent = frame?.kind === 'meter' && frame.history.length ? `${frame.history.length} PT · ${fmt(frame.history.at(-1).time, 's').toUpperCase()}` : 'EMPTY';
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
   $('meter-values').hidden = frame?.kind !== 'meter';
-  $('measurements').replaceChildren();
+  $('measurements').replaceChildren(); $('measurements').classList.remove('many');
+  // At most four columns, as the logic cards already are: past four a card is
+  // too narrow to read, so the fifth starts a second row.
+  const columns = cards => Math.min(4, Math.max(3, cards));
   const cursorCard = frame?.kind === 'scope' && settings.mode === 'scope' && cursors.enabled;
-  $('measurements').style.setProperty('--cards', Math.max(3, (frame?.kind === 'scope' ? frame.traces.length : 0) + (cursorCard ? 1 : 0)));
+  $('measurements').style.setProperty('--cards', columns((frame?.kind === 'scope' ? frame.traces.length : 0) + (cursorCard ? 1 : 0)));
   const addCard = (titleText, colour, rows) => {
     const card = document.createElement('article'); card.className = 'measurement'; if (colour) card.style.setProperty('--channel-color', colour);
     const title = document.createElement('h2'); title.innerHTML = colour ? '<i></i> ' : ''; title.append(titleText.toUpperCase()); card.append(title);
@@ -449,7 +452,7 @@ function renderFrame() {
       ['THD', percent(entry.quality.thd)], ['THD+N', percent(entry.quality.thdPlusNoise)],
       ['SNR', decibels(entry.quality.snr)], ['SINAD', decibels(entry.quality.sinad)], ['ENOB', `${entry.quality.enob.toFixed(1)} bits`]]);
     if (measured.length === 1) addCard('Harmonics', '', measured[0].quality.harmonics.slice(0, 5).map((peak, i) => [`H${i + 2}`, fmt(peak.amplitude, 'V')]));
-    $('measurements').style.setProperty('--cards', Math.max(3, measured.length + (measured.length === 1 ? 1 : 0)));
+    $('measurements').style.setProperty('--cards', columns(measured.length + (measured.length === 1 ? 1 : 0)));
     if (!measured.length) { const el = document.createElement('div'); el.className = 'measurement-placeholder'; el.textContent = 'A tone has to be on screen before its distortion can be measured.'; $('measurements').append(el); }
   }
   else if (frame?.kind === 'scope') {
@@ -465,7 +468,13 @@ function renderFrame() {
     card.append(table); $('measurements').append(card);
   }
   }
-  else if (frame?.kind === 'meter') {
+  // A second row of channel cards would take its height from the display, so
+  // on a desktop the strip stays one card tall and scrolls, as on the Mac.
+  if (frame?.kind === 'scope' && $('measurements').children.length > 4) {
+    $('measurements').classList.add('many');
+    $('measurements').style.setProperty('--row', `${$('measurements').firstElementChild.offsetHeight}px`);
+  }
+  if (frame?.kind === 'meter') {
     // More than four readings do not fit one line at a readable size, so they
     // go four to a row.
     $('meter-values').classList.toggle('dense', (frame.channels ?? frame.values).length > 4);
@@ -478,7 +487,7 @@ function renderFrame() {
     for (const a of activity) addCard(`D${a.channel}`, COLORS[a.channel], a.idle
       ? [['State', a.idleHigh ? 'idle high' : 'idle low']]
       : [['Frequency', fmt(a.frequency, 'Hz')], ['Duty', `${Math.round(a.duty * 100)} %`]]);
-  } else {
+  } else if (frame?.kind !== 'scope') {
     const el = document.createElement('div'); el.className = 'measurement-placeholder'; el.textContent = 'Measurements appear with your first capture.'; $('measurements').append(el);
   }
   $('decode-panel').hidden = !(frame?.kind === 'logic' && settings.decoder !== 'None');
