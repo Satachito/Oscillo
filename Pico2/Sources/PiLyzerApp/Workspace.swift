@@ -172,12 +172,15 @@ struct ModeTabs: View {
 struct MeasurementStrip<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
+    // The strip is one card tall whatever is in it, so the display above does
+    // not change size between modes; more than four cards scroll inside it.
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            template.hidden().accessibilityHidden(true)
-            HStack(alignment: .top, spacing: 12) { content() }
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        template.hidden().accessibilityHidden(true)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .overlay(alignment: .topLeading) {
+                ScrollView(.vertical) { CardRows { content() } }
+                    .scrollIndicators(.automatic)
+            }
     }
 
     /// One channel's worth of readings: a heading and seven values, which is
@@ -185,6 +188,52 @@ struct MeasurementStrip<Content: View>: View {
     private var template: some View {
         MeasurementCard(title: "CH1", colour: Theme.channelColor(0)) {
             ForEach(0..<7, id: \.self) { _ in MeasurementRow("Vpp", "0 V") }
+        }
+    }
+}
+
+/// Cards side by side in equal columns, at most four to a row: past four a
+/// card is too narrow to read, so the fifth starts a row of its own — as the
+/// browser application's measurement grid does.
+struct CardRows: Layout {
+    var perRow = 4
+    var spacing: CGFloat = 12
+
+    private func columns(_ count: Int) -> Int { min(max(count, 1), perRow) }
+
+    private func cardWidth(_ width: CGFloat, columns: Int) -> CGFloat {
+        max((width - spacing * CGFloat(columns - 1)) / CGFloat(columns), 0)
+    }
+
+    private func rowHeights(_ subviews: Subviews, width: CGFloat) -> [CGFloat] {
+        let columns = columns(subviews.count)
+        let proposal = ProposedViewSize(width: cardWidth(width, columns: columns), height: nil)
+        return stride(from: 0, to: subviews.count, by: columns).map { start in
+            subviews[start..<min(start + columns, subviews.count)]
+                .map { $0.sizeThatFits(proposal).height }.max() ?? 0
+        }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 600
+        let heights = rowHeights(subviews, width: width)
+        return CGSize(width: width,
+                      height: heights.reduce(0, +) + spacing * CGFloat(max(heights.count - 1, 0)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let columns = columns(subviews.count)
+        let width = cardWidth(bounds.width, columns: columns)
+        var y = bounds.minY
+        for (row, height) in rowHeights(subviews, width: bounds.width).enumerated() {
+            for column in 0..<columns {
+                let index = row * columns + column
+                guard index < subviews.count else { break }
+                let x = bounds.minX + CGFloat(column) * (width + spacing)
+                subviews[index].place(at: CGPoint(x: x, y: y), anchor: .topLeading,
+                                      proposal: ProposedViewSize(width: width, height: height))
+            }
+            y += height + spacing
         }
     }
 }

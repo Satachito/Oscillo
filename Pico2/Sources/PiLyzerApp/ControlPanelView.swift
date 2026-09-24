@@ -148,7 +148,10 @@ struct ControlPanelView: View {
             }
             LabeledSlider(title: "Noise", value: $model.settings.trigger.hysteresis,
                           range: 0...0.05, format: { Format.percent($0 * 100, digits: 1) }, step: 0.001)
+            // Off and out of reach on an instrument that has no such filter, as
+            // in the browser.
             TriggerLowPassControl(cutoffHz: $model.settings.trigger.lowPassHz)
+                .disabled(model.isConnected && !model.capabilities.hasTriggerLowPass)
                 .help("Filters the trigger input only. The waveform stays unfiltered; the trigger marker follows the filtered crossing.")
             if model.settings.trigger.lowPassHz > 0 {
                 Text(model.capabilities.hasTriggerLowPass

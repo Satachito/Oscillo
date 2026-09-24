@@ -34,9 +34,23 @@ struct ScopeDisplayView: View {
     }
 
     /// Laid out along the strip rather than stacked on the trace, as the
-    /// browser application's legend is.
+    /// browser application's legend is. Eight channels do not fit that strip
+    /// with everything said, so it says less until they do: the scale and the
+    /// notes first, then the scale altogether. CLIP always stays.
     private var legend: some View {
-        HStack(spacing: 18) {
+        ViewThatFits(in: .horizontal) {
+            legendLine(.full)
+            legendLine(.scale)
+            legendLine(.names)
+        }
+        .font(Theme.monoSmall)
+        .lineLimit(1)
+    }
+
+    private enum LegendDetail { case full, scale, names }
+
+    private func legendLine(_ detail: LegendDetail) -> some View {
+        HStack(spacing: detail == .full ? 18 : 12) {
             ForEach(model.enabledAnalogChannels, id: \.self) { channel in
                 let trace = model.frame.trace(channel)
                 HStack(spacing: 7) {
@@ -45,23 +59,27 @@ struct ScopeDisplayView: View {
                         .frame(width: 6, height: 6)
                     Text("CH\(channel + 1)")
                         .foregroundStyle(Theme.channelColor(channel))
-                    Text(Format.voltage(voltsPerDivision(channel)) + "/div")
-                        .foregroundStyle(Theme.readout)
-                    // A moved trace says so, or the only sign is a trace drawn
-                    // somewhere its readings say it is not.
-                    let position = model.settings.channels[channel].positionDivisions
-                    if abs(position) >= 0.05 {
-                        Text("· " + (position > 0 ? "+" : "−") + String(format: "%.1f div", abs(position)))
+                    if detail != .names {
+                        Text(Format.voltage(voltsPerDivision(channel)) + (detail == .full ? "/div" : ""))
                             .foregroundStyle(Theme.readout)
                     }
-                    if model.settings.channels[channel].removesMean {
-                        Text("· AC").foregroundStyle(Theme.readout)
+                    if detail == .full {
+                        // A moved trace says so, or the only sign is a trace
+                        // drawn somewhere its readings say it is not.
+                        let position = model.settings.channels[channel].positionDivisions
+                        if abs(position) >= 0.05 {
+                            Text("· " + (position > 0 ? "+" : "−") + String(format: "%.1f div", abs(position)))
+                                .foregroundStyle(Theme.readout)
+                        }
+                        if model.settings.channels[channel].removesMean {
+                            Text("· AC").foregroundStyle(Theme.readout)
+                        }
                     }
                     // CLIP comes and goes with the signal, so its room is
                     // always there and only its ink changes: a label that grew
                     // shoved the channels after it sideways every time a peak
                     // touched a rail.
-                    Text("· CLIP")
+                    Text(detail == .full ? "· CLIP" : "CLIP")
                         .foregroundStyle(Theme.clip)
                         .bold()
                         .opacity(trace?.clipped == true ? 1 : 0)
@@ -69,8 +87,6 @@ struct ScopeDisplayView: View {
                 }
             }
         }
-        .font(Theme.monoSmall)
-        .lineLimit(1)
     }
 
     private func voltsPerDivision(_ channel: Int) -> Double {
