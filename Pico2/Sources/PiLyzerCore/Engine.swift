@@ -2,12 +2,15 @@ import Foundation
 
 public enum DeviceSource: Hashable, Codable, Sendable {
     case usb(locationID: UInt32)
+    /// An ArLyzer, by the path of its serial port.
+    case serial(path: String)
     case simulator
 
     public var label: String {
         switch self {
         case .simulator: return "Demo signal"
         case let .usb(location): return String(format: "PiLyzer @ 0x%08X", location)
+        case let .serial(path): return "ArLyzer @ \(path)"
         }
     }
 }
@@ -114,6 +117,7 @@ public final class InstrumentEngine {
             switch source {
             case .simulator: return SimulatedInstrument()
             case let .usb(location): return try USBInstrument(locationID: location)
+            case let .serial(path): return try USBInstrument(serialPath: path)
             }
         }
     }
@@ -127,6 +131,7 @@ public final class InstrumentEngine {
 
     public static func availableSources() -> [(source: DeviceSource, label: String)] {
         USBTransport.attachedDevices().map { (.usb(locationID: $0.locationID), $0.label) }
+            + SerialTransport.attachedPorts().map { (.serial(path: $0.path), $0.label) }
             + [(.simulator, "Demo signal")]
     }
 

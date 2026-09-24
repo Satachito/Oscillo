@@ -8,6 +8,7 @@ public enum InstrumentError: Error, LocalizedError, Equatable {
     case openFailed(Int32)
     case inUse
     case transferFailed(Int32)
+    case portFailed(Int32)
     case timedOut(Opcode)
     case shortReply(Opcode, Int)
     case rejected(Opcode, WireStatus)
@@ -29,6 +30,8 @@ public enum InstrumentError: Error, LocalizedError, Equatable {
             return "Another program has the instrument open. Close it and try again."
         case let .transferFailed(code):
             return String(format: "USB transfer failed (IOKit 0x%08X).", UInt32(bitPattern: code))
+        case let .portFailed(code):
+            return "The serial port failed: \(String(cString: strerror(code)))."
         case let .timedOut(opcode):
             return "The instrument did not answer \(opcode)."
         case let .shortReply(opcode, length):
@@ -80,12 +83,29 @@ public struct UnprogrammedBoard: Equatable, Sendable {
     }
 }
 
+/// Anything that carries protocol frames: the vendor interface's bulk pipes,
+/// or a USB serial port. One request, one answer, strictly in turn.
+public protocol FrameTransport: AnyObject {
+    func exchange(_ opcode: Opcode, payload: Data, timeout: TimeInterval) throws -> Data
+    func close()
+}
+
+public extension FrameTransport {
+    func exchange(_ opcode: Opcode, payload: Data = Data()) throws -> Data {
+        try exchange(opcode, payload: payload, timeout: 1.0)
+    }
+
+    func exchange(_ opcode: Opcode, timeout: TimeInterval) throws -> Data {
+        try exchange(opcode, payload: Data(), timeout: timeout)
+    }
+}
+
 /// One request, one answer, over the bulk pipes.
 ///
 /// Bulk reads have to be a whole number of packets, so everything the caller
 /// asks for is rounded up and the surplus is kept for the next read. That is
 /// the only subtlety here; the rest is a straight request/response exchange.
-public final class USBTransport {
+public final class USBTransport: FrameTransport {
     /// Nil once closed. The handle is freed by the C side, so closing twice
     /// would free it twice — and both an explicit close and deinit happen in
     /// the ordinary course of disconnecting.
@@ -201,23 +221,7 @@ public final class USBTransport {
         try write(frame, timeout: timeout)
 
         let header = try read(exactly: Wire.headerSize, timeout: timeout)
-        var reader = ByteReader(header)
-        guard reader.uint8() == Wire.responseMagic else {
-            reset()
-            throw InstrumentError.desynchronised
-        }
-        let answeredOpcode = reader.uint8()
-        let status = reader.uint8()
-        _ = reader.uint8()
-        let answeredSequence = reader.uint16()
-        _ = reader.uint16()
-        let length = Int(reader.uint32())
-
-        guard answeredOpcode == opcode.rawValue, answeredSequence == expected else {
-            reset()
-            throw InstrumentError.desynchronised
-        }
-        guard length <= Wire.maxPayload + 64 else {
+        guard let (status, length) = Wire.responseHeader(header, opcode: opcode, sequence: expected) else {
             reset()
             throw InstrumentError.desynchronised
         }

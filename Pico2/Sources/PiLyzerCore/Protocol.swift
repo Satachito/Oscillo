@@ -24,6 +24,12 @@ public enum Wire {
     /// RP2040 and RP2350 in BOOTSEL.
     public static let bootloaderProductIDs: Set<UInt16> = [0x0003, 0x000F]
 
+    /// An ArLyzer — the same protocol on an Arduino Nano R4 — is reached
+    /// through the board's own USB serial port, under Arduino's identifiers:
+    /// the application and the bootloader.
+    public static let arduinoVendorID: UInt16 = 0x2341
+    public static let arLyzerProductIDs: [UInt16] = [0x0074, 0x0374]
+
     /// The twelve-byte request header. Kept here rather than inside the
     /// transport so it can be checked against the shared wire fixture — the
     /// same file the browser application is checked against.
@@ -38,6 +44,24 @@ public enum Wire {
         writer.append(UInt16(0))             // reserved
         writer.append(UInt32(payloadLength))
         return writer.data
+    }
+
+    /// A response header, checked against the request it answers. Nil when the
+    /// bytes are not that answer, which means the pipe has lost step.
+    public static func responseHeader(_ data: Data, opcode: Opcode,
+                                      sequence: UInt16) -> (status: UInt8, length: Int)? {
+        guard data.count >= headerSize else { return nil }
+        var reader = ByteReader(data)
+        guard reader.uint8() == responseMagic else { return nil }
+        let answeredOpcode = reader.uint8()
+        let status = reader.uint8()
+        _ = reader.uint8()
+        let answeredSequence = reader.uint16()
+        _ = reader.uint16()
+        let length = Int(reader.uint32())
+        guard answeredOpcode == opcode.rawValue, answeredSequence == sequence,
+              length <= maxPayload + 64 else { return nil }
+        return (status, length)
     }
 }
 

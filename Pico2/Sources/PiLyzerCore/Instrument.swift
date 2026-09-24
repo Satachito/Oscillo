@@ -99,23 +99,46 @@ public extension Instrument {
     }
 }
 
-/// The USB instrument.
+/// The real instrument, over whichever pipe reaches it: the vendor interface
+/// of a Pico, or the USB serial port of an ArLyzer.
 public final class USBInstrument: Instrument {
     public let identity: DeviceIdentity
     public let capabilities: DeviceCapabilities
     public let info: USBDeviceInfo?
 
-    private let transport: USBTransport
+    private let transport: FrameTransport
     private let lock = NSLock()
 
-    public init(locationID: UInt32 = 0) throws {
-        info = USBTransport.attachedDevices().first { locationID == 0 || $0.locationID == locationID }
-        transport = try USBInstrument.openAndGreet(locationID: locationID,
-                                                   fallback: info?.locationID ?? locationID)
+    public convenience init(locationID: UInt32 = 0) throws {
+        let info = USBTransport.attachedDevices().first { locationID == 0 || $0.locationID == locationID }
+        let transport = try USBInstrument.openAndGreet(locationID: locationID,
+                                                       fallback: info?.locationID ?? locationID)
+        try self.init(transport: transport, info: info)
+    }
 
-        guard let identity = DeviceIdentity(try transport.exchange(.identify)) else {
+    /// An ArLyzer, through the serial port at `serialPath`. Whatever sketch
+    /// is on the board, `identify` is what decides whether it is an instrument.
+    public convenience init(serialPath: String) throws {
+        try self.init(transport: try SerialTransport(path: serialPath), info: nil)
+    }
+
+    private init(transport: FrameTransport, info: USBDeviceInfo?) throws {
+        self.transport = transport
+        self.info = info
+        let identity: DeviceIdentity
+        do {
+            guard let answer = DeviceIdentity(try transport.exchange(.identify)) else {
+                throw InstrumentError.notPiLyzer
+            }
+            identity = answer
+        } catch InstrumentError.desynchronised {
+            // A sketch that is not an instrument answers nothing, or answers
+            // with something that is not a frame.
             transport.close()
             throw InstrumentError.notPiLyzer
+        } catch {
+            transport.close()
+            throw error
         }
         guard identity.protocolVersion == Wire.version else {
             transport.close()

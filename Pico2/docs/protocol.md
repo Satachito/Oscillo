@@ -32,6 +32,17 @@ and deep logic captures practical.
 
 Exactly one response follows each request, in order. The host never pipelines.
 
+### Over a USB serial port
+
+An ArLyzer — this protocol on an Arduino Nano R4 (`ArLyzer/`) — cannot offer
+the vendor interface: the board's stock Arduino core builds its own USB
+descriptors and compiles TinyUSB's vendor class out. It carries the same frames,
+byte for byte, over its USB CDC serial port instead (Arduino's `2341:0074`, or
+`2341:0374` from the bootloader). A serial port has no packets, so there are no
+zero-length packets either; the header's length is the only boundary. Open it
+at any rate but 1200 baud, which an Arduino takes as the signal to drop into
+its bootloader, and assert DTR.
+
 ### Frame header
 
 Twelve bytes, little-endian, on both directions:
@@ -100,7 +111,7 @@ alignment.
 | 0 | `u32` | magic `0x5A594C50` (`"PLYZ"`) |
 | 4 | `u16` | protocol version — 1 |
 | 6 | `u16` | firmware version, `major << 8 \| minor` |
-| 8 | `u32` | board id — 0 bare Pico 2, 1 PiLyzer AFE rev A, 3 PL2407AFE (2 is retired) |
+| 8 | `u32` | board id — 0 bare Pico 2, 1 PiLyzer AFE rev A, 3 PL2407AFE, 4 ArLyzer on an Arduino Nano R4 (2 is retired) |
 | 12 | `char[20]` | product name, NUL padded |
 
 The application refuses to talk to a device whose magic or protocol version it
@@ -187,7 +198,7 @@ reading its own table.
 
 | Offset | Type | Field |
 | ---: | --- | --- |
-| 0 | `u8` | channel mask — bit 0 CH1, bit 1 CH2, bit 2 CH3 (firmware 1.5+) |
+| 0 | `u8` | channel mask — bit 0 CH1, bit 1 CH2, bit 2 CH3 (firmware 1.5+), up to bit 7 CH8 on an eight-channel device |
 | 1 | `u8` | trigger mode — 0 free run, 1 auto, 2 normal |
 | 2 | `u8` | trigger source — slot in the ascending enabled-channel list |
 | 3 | `u8` | trigger slope — 0 rising, 1 falling |
@@ -247,7 +258,7 @@ than the settling time is still supported: settling precedes the trigger search.
 | 12 | `u32` | granted record length |
 | 16 | `u32` | granted pre-trigger length |
 | 20 | `u8` | granted channel mask |
-| 21 | `u8` | conversions per sample — number of enabled analogue channels (1–3) |
+| 21 | `u8` | conversions per sample — number of enabled analogue channels (1–8) |
 | 22 | `u16` | reserved |
 
 The sample period the host draws its time axis with is

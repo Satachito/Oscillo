@@ -241,10 +241,15 @@ struct MeterView: View {
     }
 
     private var readings: some View {
-        HStack(spacing: 20) {
+        // More than four readings do not fit one line at a readable size, so
+        // they go four to a row, as they do in the browser.
+        let shown = model.enabledAnalogChannels
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 20, alignment: .leading),
+                            count: min(max(shown.count, 1), 4))
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
             // The channels switched on, as everywhere else; the log keeps the
             // rest, so switching one back on brings its history with it.
-            ForEach(model.enabledAnalogChannels, id: \.self) { channel in
+            ForEach(shown, id: \.self) { channel in
                 VStack(alignment: .leading, spacing: 6) {
                     Text("CH\(channel + 1)")
                         .font(.system(size: 10, design: .monospaced))

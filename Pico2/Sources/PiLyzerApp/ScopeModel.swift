@@ -110,7 +110,8 @@ final class ScopeModel: ObservableObject {
     }
 
     /// Applies the command line: `--demo` picks the built-in generator, `--usb`
-    /// picks the first attached instrument, `--mode <name>` opens on one of the
+    /// picks the first attached instrument, `--serial [path]` the first ArLyzer
+    /// or the serial port named, `--mode <name>` opens on one of the
     /// four screens, and `--autostart` connects and sweeps without touching the
     /// toolbar.
     func applyLaunchArguments(_ arguments: [String]) {
@@ -121,6 +122,14 @@ final class ScopeModel: ObservableObject {
                 selectedSource = device.source
             }
         }
+        if let index = arguments.firstIndex(of: "--serial") {
+            refreshSources()
+            if index + 1 < arguments.count, arguments[index + 1].hasPrefix("/dev/") {
+                selectedSource = .serial(path: arguments[index + 1])
+            } else if let port = sources.first(where: { if case .serial = $0.source { return true }; return false }) {
+                selectedSource = port.source
+            }
+        }
         if let index = arguments.firstIndex(of: "--mode"), index + 1 < arguments.count,
            let mode = WorkMode.allCases.first(where: {
                $0.rawValue.lowercased() == arguments[index + 1].lowercased()
@@ -128,7 +137,7 @@ final class ScopeModel: ObservableObject {
             settings.mode = mode
         }
         guard arguments.contains("--autostart") || arguments.contains("--demo")
-                || arguments.contains("--usb") else { return }
+                || arguments.contains("--usb") || arguments.contains("--serial") else { return }
         startsOnConnect = true
         connect()
     }
