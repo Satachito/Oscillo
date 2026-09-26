@@ -96,9 +96,11 @@ int pilyzer_serial_open(const char *path, int32_t *error)
     if (ioctl(fd, TIOCEXCL) != 0 || tcgetattr(fd, &options) != 0) goto fail;
     cfmakeraw(&options);
     options.c_cflag |= CLOCAL | CREAD;
-    // Any rate but 1200, which an Arduino takes as the signal to drop into its
-    // bootloader. CDC ignores the number otherwise.
-    cfsetspeed(&options, B115200);
+    // An UNO R4 WiFi's USB port is an ESP32-S3 that passes the bytes on over a
+    // UART at this rate, and its sketch listens at the same one. A native CDC
+    // port ignores the number — but never 1200, which an Arduino takes as the
+    // signal to drop into its bootloader.
+    cfsetspeed(&options, B230400);
     if (tcsetattr(fd, TCSANOW, &options) != 0) goto fail;
 
     // A CDC device may hold its output back until the host says a terminal is
