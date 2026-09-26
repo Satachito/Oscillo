@@ -6,9 +6,13 @@
 namespace acquisition {
 namespace {
 
-// 10 µs for each enabled input: a placeholder until the board is measured.
-// One input then samples at 100 kSa/s and eight at 12.5 kSa/s each.
+// 10 µs for each enabled input: one input samples at 100 kSa/s and eight at
+// 12.5 kSa/s each. Measured on a Nano R4 (2026-09-26), the interrupt itself is
+// what limits it — about 7 µs a tick with one input, 10 µs with four — and the
+// shortest clean ticks were 7 µs for one input, 8.5 µs for three and 18 µs for
+// four. Ten a channel clears every count with room to spare.
 constexpr double kMinSlotSeconds = 10e-6;
+constexpr uint8_t kTickPriority = 4;
 
 FspTimer timer;
 uint8_t timerType = GPT_TIMER;
@@ -18,20 +22,25 @@ uint8_t converterChannel[kChannels];  // A0–A7 as ANxx numbers
 uint8_t slotChannel[kChannels];       // the enabled ones, in slot order
 uint8_t slotCount = 0;
 bool primed = false;
+uint32_t lastTick = 0;     // DWT cycle count at the previous tick
+uint32_t lateCycles = 0;   // a gap longer than this means a tick was lost
 
 record::Recorder recorder;
 
 // Every tick: take the scan the last tick started, then start the next. The
 // converter works between ticks, so the interrupt never waits on it.
 void onTick(timer_callback_args_t *) {
+  const uint32_t now = DWT->CYCCNT;
   if (!recorder.running()) return;
   R_ADC0_Type *adc = R_ADC0;
-  if (adc->ADCSR_b.ADST) {
-    // The scan has not finished: the ticks are too close for it.
+  // Either the scan has not finished, or the interrupt could not keep up and
+  // two ticks ran into one: the time axis would be wrong either way.
+  if (adc->ADCSR_b.ADST || (primed && now - lastTick > lateCycles)) {
     recorder.overrun();
     timer.stop();
     return;
   }
+  lastTick = now;
   if (primed) {
     uint16_t codes[kChannels];
     for (uint8_t s = 0; s < slotCount; s++) codes[s] = adc->ADDR[slotChannel[s]];
@@ -57,10 +66,15 @@ bool begin(const uint8_t *pins) {
   if (channel < 0) return false;
   if (!timer.begin(TIMER_MODE_PERIODIC, timerType, channel, 48000, 24000, TIMER_SOURCE_DIV_1, onTick))
     return false;
-  if (!timer.setup_overflow_irq() || !timer.open()) return false;
+  // Above USB's 12: the core runs its USB interrupt at the same level the
+  // timer gets by default, and a tick held up behind a reply arrives late —
+  // tens of µs on a Nano R4, enough to find the next scan still running.
+  if (!timer.setup_overflow_irq(kTickPriority) || !timer.open()) return false;
   timer.stop();
   timer.set_period_buffer(false);
   timerHz = timer.get_freq_hz();
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;  // the cycle counter the lost-tick check reads
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
   return timerHz > 0;
 }
 
@@ -97,11 +111,26 @@ uint8_t arm() {
   R_ADC0->ADANSA[0] = static_cast<uint16_t>(bits);
   R_ADC0->ADANSA[1] = static_cast<uint16_t>(bits >> 16);
   primed = false;
+  lateCycles = static_cast<uint32_t>(static_cast<uint64_t>(recorder.tickCounts()) * SystemCoreClock / timerHz * 3 / 2);
   recorder.arm(millis());
   // GTPR holds the period less one; the AGT's own call takes the count.
   const uint32_t counts = recorder.tickCounts();
   timer.set_period(timerType == AGT_TIMER ? counts : counts - 1);
-  timer.reset();
+  // The first tick a whole period away: the counter from zero, and no cycle
+  // end left pending from the last record.
+  if (timerType == GPT_TIMER) {
+    R_GPT0_Type *gpt = reinterpret_cast<R_GPT0_Type *>(
+        R_GPT0_BASE + (R_GPT1_BASE - R_GPT0_BASE) * timer.get_channel());
+    gpt->GTCNT = 0;
+    gpt->GTST = 0;  // status flags clear by writing zero
+  } else {
+    timer.reset();
+  }
+  const IRQn_Type irq = timer.get_cfg()->cycle_end_irq;
+  if (irq >= 0) {
+    R_BSP_IrqStatusClear(irq);
+    NVIC_ClearPendingIRQ(irq);
+  }
   timer.start();
   return wire::ST_OK;
 }
