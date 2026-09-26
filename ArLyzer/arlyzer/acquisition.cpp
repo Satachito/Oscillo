@@ -84,18 +84,20 @@ bool begin(const uint8_t *pins) {
 
 uint32_t clockHz() { return timerHz; }
 
-// The rail was 5.22 V on the first Nano R4, 4.5 % above nominal, and 4.89 V on
-// the first Minima, and it moves with the port and the cable. The chip's
-// internal reference does not, so the rail is measured against it. Its value
-// is each board's own, taken against the rail on a meter on 2026-09-26 (5.225 V
-// on the Nano, 4.89 V on the Minima); another chip's differs by its own
-// tolerance, which Calibrate in the applications then takes out once — and
-// no longer has to be redone when the USB supply changes.
+// The rail was 5.22 V on the first Nano R4, 4.5 % above nominal, 4.89 V on the
+// first Minima and 4.81 V on the first WiFi, and it moves with the port and the
+// cable. The chip's internal reference does not, so the rail is measured
+// against it. Its value is each board's own, taken against the rail on a meter
+// on 2026-09-26; another chip's differs by its own tolerance, which Calibrate
+// in the applications then takes out once — and no longer has to be redone
+// when the USB supply changes.
 //
 // Read it on its own, with the longest sampling time. Interleaved with a
 // pin it read 8 % low, and at the shortest sampling time 6 % high.
 #if defined(ARDUINO_MINIMA)
 constexpr double kInternalReferenceVolts = 1.4414;
+#elif defined(ARDUINO_UNOWIFIR4)
+constexpr double kInternalReferenceVolts = 1.4352;
 #else
 constexpr double kInternalReferenceVolts = 1.4331;
 #endif
