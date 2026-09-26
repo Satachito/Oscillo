@@ -1,4 +1,4 @@
-import { USB_IDS, SERIAL_IDS, OP, MAX_PAYLOAD, request, responseHeader, identity, capabilities, inputRanges, ranges, view } from './protocol.mjs';
+import { USB_IDS, SERIAL_IDS, SERIAL_BAUD, OP, MAX_PAYLOAD, request, responseHeader, identity, capabilities, inputRanges, ranges, view } from './protocol.mjs';
 export const errors = ['OK', 'Unknown command', 'Wrong payload size', 'Invalid setting', 'Instrument busy', 'Acquisition not configured', 'No record available', 'Instrument error'];
 // One transaction at a time. Bulk packets are a byte stream, not message boundaries.
 export class BulkTransport {
@@ -130,7 +130,7 @@ export class Instrument {
     const port = await navigator.serial.requestPort({ filters: SERIAL_IDS });
     // Any rate but 1200, which an Arduino takes as the signal to drop into its
     // bootloader. CDC ignores the number otherwise.
-    await port.open({ baudRate: 115200, bufferSize: 8192 });
+    await port.open({ baudRate: SERIAL_BAUD, bufferSize: 8192 });
     try {
       await port.setSignals({ dataTerminalReady: true, requestToSend: true });
       return await Instrument.handshake(new SerialTransport(port));

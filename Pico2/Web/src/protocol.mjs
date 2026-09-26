@@ -1,14 +1,19 @@
 // PiLyzer protocol v1. Keep this in step with ../../docs/protocol.md.
 export const USB_IDS = { vendorId: 0x1209, productId: 0x0001 };
-// The ArLyzer on an Arduino Nano R4 or UNO R4 Minima is reached through the
-// board's own CDC serial port, under Arduino's identifiers: each board's
-// application and its bootloader.
-export const SERIAL_IDS = [0x0074, 0x0374, 0x0069, 0x0369].map(usbProductId => ({ usbVendorId: 0x2341, usbProductId }));
+// The ArLyzer on an Arduino Nano R4, UNO R4 Minima or UNO R4 WiFi is reached
+// through the board's USB serial port, under Arduino's identifiers: each
+// board's application and its bootloader, and on the WiFi its ESP32-S3 bridge.
+export const SERIAL_IDS = [0x0074, 0x0374, 0x0069, 0x0369, 0x1002, 0x006D].map(usbProductId => ({ usbVendorId: 0x2341, usbProductId }));
+// The WiFi's bridge carries the bytes over a UART at the rate the port is
+// opened at, and its sketch listens at this one; the others ignore it.
+export const SERIAL_BAUD = 230400;
 // The board ids an ArLyzer reports, and what its inputs are called on the
-// board rather than GPIOs. The UNO has only A0–A5, so D4 and D5 make eight.
+// board rather than GPIOs. An UNO has only A0–A5: the Minima adds D4 and D5,
+// the WiFi D10.
 export const ARLYZER_PINS = Object.freeze({
   4: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7'],
   5: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D4', 'D5'],
+  6: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D10'],
 });
 // Eight is what the wire format holds: a channel mask is one byte.
 export const MAX_ANALOG_CHANNELS = 8;
