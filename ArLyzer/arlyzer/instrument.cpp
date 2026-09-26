@@ -10,7 +10,7 @@ using namespace wire;
 namespace instrument {
 namespace {
 
-constexpr uint16_t kFirmwareVersion = 0x0003;  // 0.3: the reference is measured, not assumed
+constexpr uint16_t kFirmwareVersion = 0x0004;  // 0.4: the tick is 10 µs and 1.4 µs an input
 constexpr uint32_t kBoardId = 4;
 constexpr uint8_t kChannels = acquisition::kChannels;
 constexpr uint8_t kBits = 14;

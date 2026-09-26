@@ -17,10 +17,10 @@ constexpr uint32_t kMaxRecord = kBufferConversions / kChannels;
 
 class Recorder {
  public:
-  // `slotCycles` is the shortest time each enabled input may take within one
-  // tick, in clock cycles; `tickLimit` the longest tick the timer can count.
-  uint8_t configure(const wire::AnalogConfig &config, uint32_t clockHz, uint32_t slotCycles,
-                    uint32_t tickLimit, wire::AcquisitionPlan &plan);
+  // The shortest tick is `baseCycles` plus `inputCycles` for each enabled
+  // input, in clock cycles; `tickLimit` is the longest tick the timer counts.
+  uint8_t configure(const wire::AnalogConfig &config, uint32_t clockHz, uint32_t baseCycles,
+                    uint32_t inputCycles, uint32_t tickLimit, wire::AcquisitionPlan &plan);
   bool configured() const { return configured_; }
   uint8_t slots() const { return slots_; }
   uint8_t mask() const { return mask_; }

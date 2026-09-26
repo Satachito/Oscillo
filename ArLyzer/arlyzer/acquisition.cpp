@@ -6,12 +6,13 @@
 namespace acquisition {
 namespace {
 
-// 10 µs for each enabled input: one input samples at 100 kSa/s and eight at
-// 12.5 kSa/s each. Measured on a Nano R4 (2026-09-26), the interrupt itself is
-// what limits it — about 7 µs a tick with one input, 10 µs with four — and the
-// shortest clean ticks were 7 µs for one input, 8.5 µs for three and 18 µs for
-// four. Ten a channel clears every count with room to spare.
-constexpr double kMinSlotSeconds = 10e-6;
+// The shortest tick: 10 µs, and 1.4 µs more for each enabled input — one input
+// at 88 kSa/s, four at 64, eight at 47 kSa/s each. On a Nano R4 (2026-09-26)
+// the shortest ticks that kept a 1 kHz square at 1000 Hz, with or without a
+// trigger, were 9.5 µs with one input, 13 with four and 17.3 with eight —
+// about 8.3 µs + 1.13 µs an input. This keeps a fifth in hand.
+constexpr double kTickBaseSeconds = 10e-6;
+constexpr double kTickPerInputSeconds = 1.4e-6;
 constexpr uint8_t kTickPriority = 4;
 
 FspTimer timer;
@@ -22,8 +23,8 @@ uint8_t converterChannel[kChannels];  // A0–A7 as ANxx numbers
 uint8_t slotChannel[kChannels];       // the enabled ones, in slot order
 uint8_t slotCount = 0;
 bool primed = false;
-uint32_t lastTick = 0;     // DWT cycle count at the previous tick
-uint32_t lateCycles = 0;   // a gap longer than this means a tick was lost
+uint32_t due = 0;           // DWT cycle count this tick should have come at
+uint32_t tickCycles = 0;    // one tick, in CPU cycles
 
 record::Recorder recorder;
 
@@ -33,24 +34,26 @@ void onTick(timer_callback_args_t *) {
   const uint32_t now = DWT->CYCCNT;
   if (!recorder.running()) return;
   R_ADC0_Type *adc = R_ADC0;
-  // Either the scan has not finished, or the interrupt could not keep up and
-  // two ticks ran into one: the time axis would be wrong either way.
-  if (adc->ADCSR_b.ADST || (primed && now - lastTick > lateCycles)) {
+  // Either the scan has not finished, or the interrupt has fallen behind the
+  // timer. Its gaps can each look nearly right while it slips a little every
+  // tick, until two ticks run into one and a sample is gone, so it is the
+  // running total that is checked: half a tick behind is too far.
+  if (primed) due += tickCycles; else due = now;
+  if (adc->ADCSR_b.ADST || static_cast<int32_t>(now - due) > static_cast<int32_t>(tickCycles / 2)) {
     recorder.overrun();
     timer.stop();
     return;
   }
-  lastTick = now;
-  if (primed) {
-    uint16_t codes[kChannels];
+  // Take the last scan's results and start the next one before doing anything
+  // with them: the converter then works while the record does, and a tick
+  // only has to be as long as the slower of the two, not both end to end.
+  uint16_t codes[kChannels];
+  const bool previous = primed;
+  if (previous)
     for (uint8_t s = 0; s < slotCount; s++) codes[s] = adc->ADDR[slotChannel[s]];
-    if (!recorder.scan(codes)) {
-      timer.stop();
-      return;
-    }
-  }
   primed = true;
   adc->ADCSR_b.ADST = 1;
+  if (previous && !recorder.scan(codes)) timer.stop();
 }
 
 }  // namespace
@@ -114,8 +117,12 @@ uint32_t referenceMicrovolts() {
   return measured;
 }
 
+// The protocol states the floor as so much a channel, but the real one has a
+// fixed part as well. What it is told is the eight-input figure, so a host
+// asks for everything eight inputs can do; with fewer inputs the plan comes
+// back slower than asked, and the host draws from the plan.
 uint32_t minPeriodCycles() {
-  return static_cast<uint32_t>(kMinSlotSeconds * timerHz + 0.5);
+  return static_cast<uint32_t>((kTickBaseSeconds / kChannels + kTickPerInputSeconds) * timerHz + 0.999);
 }
 
 bool running() { return recorder.running(); }
@@ -125,7 +132,9 @@ uint8_t conversionsPerSample() { return recorder.slots(); }
 uint8_t configure(const wire::AnalogConfig &config, wire::AcquisitionPlan &plan) {
   if (timerHz == 0) return wire::ST_INTERNAL_ERROR;
   const uint32_t tickLimit = timerType == AGT_TIMER ? 0xFFFFu : 0xFFFFFFF0u;
-  const uint8_t status = recorder.configure(config, timerHz, minPeriodCycles(), tickLimit, plan);
+  const uint32_t base = static_cast<uint32_t>(kTickBaseSeconds * timerHz + 0.5);
+  const uint32_t perInput = static_cast<uint32_t>(kTickPerInputSeconds * timerHz + 0.5);
+  const uint8_t status = recorder.configure(config, timerHz, base, perInput, tickLimit, plan);
   if (status != wire::ST_OK) return status;
   slotCount = 0;
   for (uint8_t c = 0; c < kChannels; c++)
@@ -145,7 +154,7 @@ uint8_t arm() {
   R_ADC0->ADANSA[0] = static_cast<uint16_t>(bits);
   R_ADC0->ADANSA[1] = static_cast<uint16_t>(bits >> 16);
   primed = false;
-  lateCycles = static_cast<uint32_t>(static_cast<uint64_t>(recorder.tickCounts()) * SystemCoreClock / timerHz * 3 / 2);
+  tickCycles = static_cast<uint32_t>(static_cast<uint64_t>(recorder.tickCounts()) * SystemCoreClock / timerHz);
   recorder.arm(millis());
   // GTPR holds the period less one; the AGT's own call takes the count.
   const uint32_t counts = recorder.tickCounts();

@@ -8,8 +8,8 @@ bool active(uint8_t s) {
 }
 }  // namespace
 
-uint8_t Recorder::configure(const wire::AnalogConfig &config, uint32_t clockHz, uint32_t slotCycles,
-                            uint32_t tickLimit, wire::AcquisitionPlan &plan) {
+uint8_t Recorder::configure(const wire::AnalogConfig &config, uint32_t clockHz, uint32_t baseCycles,
+                            uint32_t inputCycles, uint32_t tickLimit, wire::AcquisitionPlan &plan) {
   if (running()) return wire::ST_BUSY;
   if (config.channelMask == 0 || config.triggerMode > wire::TRIGGER_NORMAL || config.triggerSlope > 1)
     return wire::ST_BAD_ARGUMENT;
@@ -35,7 +35,7 @@ uint8_t Recorder::configure(const wire::AnalogConfig &config, uint32_t clockHz, 
   // The fastest tick these inputs allow, and as much box-car averaging as
   // fits in the period asked for: that is both the anti-alias filter and the
   // extra resolution on a slow sweep.
-  const uint32_t floorCounts = slots_ * slotCycles;
+  const uint32_t floorCounts = baseCycles + slots_ * inputCycles;
   const double wanted = static_cast<double>(config.periodFemtoseconds) * 1e-15 * clockHz;
   const double factor = wanted / floorCounts;
   decimation_ = factor < 1 ? 1 : factor > 65535 ? 65535 : static_cast<uint32_t>(factor);

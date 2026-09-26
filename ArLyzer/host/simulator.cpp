@@ -76,7 +76,9 @@ void setLED(bool) {}
 namespace acquisition {
 namespace {
 constexpr uint32_t kClockHz = 48000000;
-constexpr uint32_t kSlotCycles = 480;
+// The Nano R4's own floor: 10 µs and 1.4 µs an input, at 48 MHz.
+constexpr uint32_t kBaseCycles = 480;
+constexpr uint32_t kInputCycles = 67;
 record::Recorder recorder;
 uint8_t slotChannel[kChannels];
 uint8_t slotCount = 0;
@@ -87,12 +89,12 @@ std::chrono::steady_clock::time_point armedAt;
 bool begin(const uint8_t *) { return true; }
 uint32_t clockHz() { return kClockHz; }
 uint32_t referenceMicrovolts() { return 5000000; }
-uint32_t minPeriodCycles() { return kSlotCycles; }
+uint32_t minPeriodCycles() { return kBaseCycles / kChannels + kInputCycles + 1; }
 bool running() { return recorder.running(); }
 uint8_t conversionsPerSample() { return recorder.slots(); }
 
 uint8_t configure(const wire::AnalogConfig &config, wire::AcquisitionPlan &plan) {
-  const uint8_t status = recorder.configure(config, kClockHz, kSlotCycles, 0xFFFFFFF0u, plan);
+  const uint8_t status = recorder.configure(config, kClockHz, kBaseCycles, kInputCycles, 0xFFFFFFF0u, plan);
   if (status != wire::ST_OK) return status;
   slotCount = 0;
   for (uint8_t c = 0; c < kChannels; c++)

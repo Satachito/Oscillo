@@ -55,7 +55,7 @@ static std::vector<uint16_t> readBack(const record::Recorder &r, uint32_t count)
 static void planTakesTheSlowestTickAndAveragesTheRest() {
   static record::Recorder r;
   AcquisitionPlan p;
-  CHECK(r.configure(config(0xFF, 1e-3, 1000, 0), kClock, kSlot, 0xFFFFFFF0u, p) == ST_OK);
+  CHECK(r.configure(config(0xFF, 1e-3, 1000, 0), kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_OK);
   CHECK(p.conversionsPerSample == 8);
   CHECK(p.decimation == 12);  // 48000 counts wanted, 3840 the fastest: 12 fit
   CHECK(r.tickCounts() % 8 == 0);
@@ -66,36 +66,47 @@ static void planTakesTheSlowestTickAndAveragesTheRest() {
 static void aPeriodTooShortGetsTheFloor() {
   static record::Recorder r;
   AcquisitionPlan p;
-  CHECK(r.configure(config(0x01, 1e-6, 500, 0), kClock, kSlot, 0xFFFFFFF0u, p) == ST_OK);
+  CHECK(r.configure(config(0x01, 1e-6, 500, 0), kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_OK);
   CHECK(p.decimation == 1);
   CHECK(r.tickCounts() == kSlot);
   CHECK(std::fabs(planPeriod(p) - 10e-6) < 1e-12);
 }
 
+// A fixed part and so much an input, as the board has it.
+static void theFloorHasAFixedPartAndOneAnInput() {
+  static record::Recorder r;
+  AcquisitionPlan p;
+  CHECK(r.configure(config(0x01, 1e-6, 500, 0), kClock, 312, 48, 0xFFFFFFF0u, p) == ST_OK);
+  CHECK(r.tickCounts() == 360);  // 312 + 48: 7.5 µs with one input
+  CHECK(r.configure(config(0xFF, 1e-6, 500, 0), kClock, 312, 48, 0xFFFFFFF0u, p) == ST_OK);
+  CHECK(r.tickCounts() == 696);  // 312 + 8 x 48: 14.5 µs with eight
+  CHECK(std::fabs(planPeriod(p) - 14.5e-6) < 1e-12);
+}
+
 static void recordsAreClampedToTheRing() {
   static record::Recorder r;
   AcquisitionPlan p;
-  CHECK(r.configure(config(0xFF, 1e-3, 5000, 4000), kClock, kSlot, 0xFFFFFFF0u, p) == ST_OK);
+  CHECK(r.configure(config(0xFF, 1e-3, 5000, 4000), kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_OK);
   CHECK(p.recordLength == record::kMaxRecord);
   CHECK(p.pretriggerLength == record::kMaxRecord - 1);
-  CHECK(r.configure(config(0x01, 1e-3, 5000, 10), kClock, kSlot, 0xFFFFFFF0u, p) == ST_OK);
+  CHECK(r.configure(config(0x01, 1e-3, 5000, 10), kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_OK);
   CHECK(p.recordLength == 5000);
 }
 
 static void badConfigurationsAreRefused() {
   static record::Recorder r;
   AcquisitionPlan p;
-  CHECK(r.configure(config(0x00, 1e-3, 100, 0), kClock, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
+  CHECK(r.configure(config(0x00, 1e-3, 100, 0), kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
   AnalogConfig filtered = config(0x01, 1e-3, 100, 0);
   filtered.lowPassHz = 1000;
-  CHECK(r.configure(filtered, kClock, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
-  CHECK(r.configure(config(0x01, 1e-3, 100, 0, 3), kClock, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
+  CHECK(r.configure(filtered, kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
+  CHECK(r.configure(config(0x01, 1e-3, 100, 0, 3), kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
 }
 
 static void freeRunFillsARecordAndLeftAligns() {
   static record::Recorder r;
   AcquisitionPlan p;
-  r.configure(config(0x05, 50e-6, 100, 0), kClock, kSlot, 0xFFFFFFF0u, p);
+  r.configure(config(0x05, 50e-6, 100, 0), kClock, 0, kSlot, 0xFFFFFFF0u, p);
   r.arm(0);
   uint32_t scans = 0;
   for (uint16_t i = 0; r.running(); i++, scans++) {
@@ -122,7 +133,7 @@ static void aRisingEdgeLandsAtThePretriggerIndex() {
   c.triggerSlot = 3;
   c.triggerLevel = 8000 * 4;
   c.triggerHysteresis = 100;
-  r.configure(c, kClock, kSlot, 0xFFFFFFF0u, p);
+  r.configure(c, kClock, 0, kSlot, 0xFFFFFFF0u, p);
   CHECK(p.decimation == 1);
   r.arm(0);
   uint32_t frame = 0;
@@ -151,7 +162,7 @@ static void hysteresisIgnoresNoiseAtTheLevel() {
   AnalogConfig c = config(0x01, 10e-6, 50, 10, TRIGGER_NORMAL);
   c.triggerLevel = 8000 * 4;
   c.triggerHysteresis = 400;
-  r.configure(c, kClock, kSlot, 0xFFFFFFF0u, p);
+  r.configure(c, kClock, 0, kSlot, 0xFFFFFFF0u, p);
   r.arm(0);
   for (int i = 0; i < 2000; i++) {
     const uint16_t code = i % 2 ? 8010 : 7990;  // 80 counts either side, inside the hysteresis
@@ -175,7 +186,7 @@ static void aFallingEdgeFires() {
   AnalogConfig c = config(0x01, 10e-6, 20, 5, TRIGGER_NORMAL);
   c.triggerSlope = 1;
   c.triggerLevel = 8000 * 4;
-  r.configure(c, kClock, kSlot, 0xFFFFFFF0u, p);
+  r.configure(c, kClock, 0, kSlot, 0xFFFFFFF0u, p);
   r.arm(0);
   int frame = 0;
   while (r.running()) {
@@ -191,7 +202,7 @@ static void autoHandsBackTheNewestRecordWhenNothingCrosses() {
   AcquisitionPlan p;
   AnalogConfig c = config(0x01, 10e-6, 100, 10, TRIGGER_AUTO);
   c.triggerLevel = 60000;
-  r.configure(c, kClock, kSlot, 0xFFFFFFF0u, p);
+  r.configure(c, kClock, 0, kSlot, 0xFFFFFFF0u, p);
   r.arm(1000);
   for (uint16_t i = 0; i < 250; i++) r.scan(&i);
   CHECK(!r.expire(1050));  // not yet
@@ -208,7 +219,7 @@ static void normalModeWaitsForever() {
   AcquisitionPlan p;
   AnalogConfig c = config(0x01, 10e-6, 100, 10, TRIGGER_NORMAL);
   c.triggerLevel = 60000;
-  r.configure(c, kClock, kSlot, 0xFFFFFFF0u, p);
+  r.configure(c, kClock, 0, kSlot, 0xFFFFFFF0u, p);
   r.arm(0);
   for (uint16_t i = 0; i < 500; i++) r.scan(&i);
   CHECK(!r.expire(1000000));
@@ -222,11 +233,11 @@ static void normalModeWaitsForever() {
 static void readsAreChecked() {
   static record::Recorder r;
   AcquisitionPlan p;
-  r.configure(config(0xFF, 10e-6 * 8, 1024, 0), kClock, kSlot, 0xFFFFFFF0u, p);
+  r.configure(config(0xFF, 10e-6 * 8, 1024, 0), kClock, 0, kSlot, 0xFFFFFFF0u, p);
   CHECK(r.checkRead(0, 10) == ST_NO_DATA);
   r.arm(0);
   AcquisitionPlan busy;
-  CHECK(r.configure(config(0x01, 1e-3, 10, 0), kClock, kSlot, 0xFFFFFFF0u, busy) == ST_BUSY);
+  CHECK(r.configure(config(0x01, 1e-3, 10, 0), kClock, 0, kSlot, 0xFFFFFFF0u, busy) == ST_BUSY);
   uint16_t codes[8] = {};
   while (r.running()) r.scan(codes);
   CHECK(r.checkRead(0, 512) == ST_OK);       // 8192 bytes, the most one reply holds
@@ -237,6 +248,7 @@ static void readsAreChecked() {
 int main() {
   planTakesTheSlowestTickAndAveragesTheRest();
   aPeriodTooShortGetsTheFloor();
+  theFloorHasAFixedPartAndOneAnInput();
   recordsAreClampedToTheRing();
   badConfigurationsAreRefused();
   freeRunFillsARecordAndLeftAligns();
