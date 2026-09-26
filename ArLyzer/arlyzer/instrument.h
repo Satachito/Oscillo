@@ -20,5 +20,8 @@ void begin(const Board &board);
 // One byte of the request stream. A stray byte before a frame's magic is
 // dropped, so the parser finds the next frame on its own.
 void receive(uint8_t byte);
+// Drops a frame that stopped arriving part way, so a lost byte costs one
+// request rather than every one after it.
+void flush();
 
 }  // namespace instrument

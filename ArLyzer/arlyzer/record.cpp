@@ -16,7 +16,8 @@ uint8_t Recorder::configure(const wire::AnalogConfig &config, uint32_t clockHz, 
   // No trigger filter is claimed in the capabilities, so none can be asked for.
   if (config.lowPassHz != 0) return wire::ST_BAD_ARGUMENT;
 
-  mask_ = config.channelMask;
+  mask_ = config.channelMask & ((1u << kChannels) - 1);
+  if (mask_ == 0) return wire::ST_BAD_ARGUMENT;
   slots_ = 0;
   for (uint8_t c = 0; c < kChannels; c++)
     if (mask_ & (1u << c)) slots_++;

@@ -153,12 +153,15 @@ int main() {
 
   instrument::begin({4, "ArLyzer Nano R4", writePort, sampleAll, setLED});
   uint8_t buffer[256];
+  uint32_t lastByteMs = 0;
   for (;;) {
     struct pollfd p{master, POLLIN, 0};
     if (poll(&p, 1, 1) > 0) {
       const ssize_t n = read(master, buffer, sizeof buffer);
       for (ssize_t i = 0; i < n; i++) instrument::receive(buffer[i]);
+      if (n > 0) lastByteMs = millisNow();
     }
+    if (millisNow() - lastByteMs > 50) instrument::flush();  // as the sketch does
     acquisition::poll();
   }
 }

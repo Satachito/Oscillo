@@ -8,12 +8,19 @@
 
 namespace record {
 
+// Eight inputs, but seven on an UNO R4 WiFi: its core links in every UART it
+// has, which leaves no room for an eight-input ring, and its eighth converter
+// input would have been D13 with the LED on it.
+#if defined(ARDUINO_UNOWIFIR4)
+constexpr uint8_t kChannels = 7;
+#else
 constexpr uint8_t kChannels = 8;
-// Conversions the ring holds. With all eight inputs on that is 1024 samples
-// each, and a record may use the whole ring: nothing is kept but the history in
+#endif
+// Conversions the ring holds: 1024 samples of each input with all of them on,
+// and a record may use the whole ring: nothing is kept but the history in
 // front of the trigger and the record itself.
-constexpr uint32_t kBufferConversions = 8192;
-constexpr uint32_t kMaxRecord = kBufferConversions / kChannels;
+constexpr uint32_t kMaxRecord = 1024;
+constexpr uint32_t kBufferConversions = kMaxRecord * kChannels;
 
 class Recorder {
  public:

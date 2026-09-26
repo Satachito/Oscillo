@@ -1,12 +1,17 @@
 // ArLyzer: the PiLyzer wire protocol (Pico2/docs/protocol.md) on an Arduino
-// Nano R4 or UNO R4 Minima, eight analogue inputs: immediate readings for the
-// meter, and timed, triggered records for the oscilloscope and the spectrum.
+// Nano R4, UNO R4 Minima or UNO R4 WiFi, eight analogue inputs (seven on the
+// WiFi): immediate readings for the meter, and timed, triggered records for
+// the oscilloscope and the spectrum.
 //
 // The transport is the board's USB CDC serial, not the vendor bulk interface
 // the Pico uses. The stock Renesas core builds its own USB descriptors and
 // compiles TinyUSB's vendor class out (CFG_TUD_VENDOR 0 in the variant's
 // tusb_config.h), so a sketch cannot add one. The frames are byte-for-byte the
 // same; only what carries them differs.
+//
+// On the WiFi the USB port is the ESP32-S3's, which passes the bytes on over a
+// UART at whatever rate the host opened the port at; on the others the rate
+// means nothing.
 //
 // This file is the board: the pins, the serial port and the meter's readings.
 // The protocol is instrument.cpp, the record's logic record.cpp, and the timer
@@ -25,6 +30,13 @@ constexpr uint8_t kChannels = acquisition::kChannels;
 constexpr uint32_t kBoardId = 5;
 constexpr char kName[] = "ArLyzer R4 Minima";
 const uint8_t kPins[kChannels] = {A0, A1, A2, A3, A4, A5, 4, 5};
+#elif defined(ARDUINO_UNOWIFIR4)
+// On the WiFi the one converter input off the analogue header that is free is
+// D10 (P103 = AN019). D13 (P102 = AN020) would be the next, but it carries the
+// board's LED, and there is no RAM for an eighth input anyway (record.h).
+constexpr uint32_t kBoardId = 6;
+constexpr char kName[] = "ArLyzer R4 WiFi";
+const uint8_t kPins[kChannels] = {A0, A1, A2, A3, A4, A5, 10};
 #else
 constexpr uint32_t kBoardId = 4;
 constexpr char kName[] = "ArLyzer Nano R4";
@@ -61,14 +73,24 @@ void setup() {
   analogReadResolution(14);
   acquisition::begin(kPins);
   instrument::begin({kBoardId, kName, writeSerial, sampleAll, setLED});
-  Serial.begin(115200);  // CDC ignores the rate; 1200 is the one that resets into the bootloader
+  // The WiFi's UART takes an interrupt a byte, and with the tick at its
+  // shortest there is little time for one: at 460800 and above, requests lost
+  // bytes while a record was being taken (2026-09-26). Raising the UART above
+  // the tick kept the bytes but made the ticks late instead. 230400 lost none.
+  // A native CDC port ignores the rate; 1200 is the one that resets into the
+  // bootloader on every board.
+  Serial.begin(230400);
 }
 
 void loop() {
+  static uint32_t lastByteMs = 0;
   while (Serial.available()) {
     const int b = Serial.read();
     if (b < 0) break;
     instrument::receive(static_cast<uint8_t>(b));
+    lastByteMs = millis();
   }
+  // A host sends a request all at once, so one quiet this long is not coming.
+  if (millis() - lastByteMs > 50) instrument::flush();
   acquisition::poll();
 }

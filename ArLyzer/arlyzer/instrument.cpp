@@ -153,17 +153,22 @@ void receive(uint8_t byte) {
     raw[headerFill++] = byte;
     if (headerFill < sizeof request) return;
     payloadFill = 0;
-    if (request.length == 0) {
-      dispatch(request, payload, 0);
+    // A length no request has is most likely a header that lost a byte on the
+    // way — a UART can drop one — and waiting for that many bytes would take
+    // every request after it as payload. Answer it now and look for the next.
+    if (request.length == 0 || request.length > kMaxRequest) {
+      if (request.length == 0) dispatch(request, payload, 0);
+      else respond(request, ST_BAD_LENGTH, nullptr, 0);
       headerFill = 0;
     }
     return;
   }
-  if (payloadFill < kMaxRequest) payload[payloadFill] = byte;
+  payload[payloadFill] = byte;
   if (++payloadFill < request.length) return;
-  if (request.length > kMaxRequest) respond(request, ST_BAD_LENGTH, nullptr, 0);
-  else dispatch(request, payload, request.length);
+  dispatch(request, payload, request.length);
   headerFill = 0;
 }
+
+void flush() { headerFill = 0; }
 
 }  // namespace instrument

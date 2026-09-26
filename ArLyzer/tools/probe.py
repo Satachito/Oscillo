@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Talk to an ArLyzer over its USB serial port and print what it says.
 
-    python3 probe.py                        # finds a Nano R4 or Minima by USB id
+    python3 probe.py                        # finds a Nano R4, Minima or WiFi by USB id
     python3 probe.py /dev/cu.usbmodem1101   # or name the port
     python3 probe.py --averages 256 --repeat 10
 
@@ -13,7 +13,7 @@ import serial
 from serial.tools import list_ports
 
 ARDUINO_VID = 0x2341
-ARLYZER_PIDS = {0x0074, 0x0374, 0x0069, 0x0369}  # Nano R4, UNO R4 Minima
+ARLYZER_PIDS = {0x0074, 0x0374, 0x0069, 0x0369, 0x1002, 0x006D}  # Nano R4, UNO R4 Minima, UNO R4 WiFi
 
 REQUEST, RESPONSE = 0xA5, 0x5A
 HEADER = struct.Struct('<BBBBHHI')
@@ -21,7 +21,7 @@ HEADER = struct.Struct('<BBBBHHI')
 
 class Device:
     def __init__(self, port):
-        self.port = serial.Serial(port, 115200, timeout=3)
+        self.port = serial.Serial(port, 230400, timeout=3)  # the WiFi's UART runs at this; CDC ignores it
         self.sequence = 0
 
     def call(self, opcode, payload=b''):

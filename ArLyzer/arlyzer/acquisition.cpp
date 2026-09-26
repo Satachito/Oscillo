@@ -19,7 +19,7 @@ FspTimer timer;
 uint8_t timerType = GPT_TIMER;
 uint32_t timerHz = 0;  // zero until a timer is running, which is what says it is
 
-uint8_t converterChannel[kChannels];  // A0–A7 as ANxx numbers
+uint8_t converterChannel[kChannels];  // the inputs as ANxx numbers
 uint8_t slotChannel[kChannels];       // the enabled ones, in slot order
 uint8_t slotCount = 0;
 bool primed = false;
