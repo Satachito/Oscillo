@@ -24,11 +24,11 @@ public enum Wire {
     /// RP2040 and RP2350 in BOOTSEL.
     public static let bootloaderProductIDs: Set<UInt16> = [0x0003, 0x000F]
 
-    /// An ArLyzer — the same protocol on an Arduino Nano R4 — is reached
-    /// through the board's own USB serial port, under Arduino's identifiers:
-    /// the application and the bootloader.
+    /// An ArLyzer — the same protocol on an Arduino Nano R4 or UNO R4 Minima —
+    /// is reached through the board's own USB serial port, under Arduino's
+    /// identifiers: each board's application and its bootloader.
     public static let arduinoVendorID: UInt16 = 0x2341
-    public static let arLyzerProductIDs: [UInt16] = [0x0074, 0x0374]
+    public static let arLyzerProductIDs: [UInt16] = [0x0074, 0x0374, 0x0069, 0x0369]
 
     /// The twelve-byte request header. Kept here rather than inside the
     /// transport so it can be checked against the shared wire fixture — the
