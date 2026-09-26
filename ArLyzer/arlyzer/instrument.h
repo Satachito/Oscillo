@@ -1,6 +1,6 @@
 // The protocol end of the instrument: frames in, frames out, dispatched to the
 // acquisition and the meter. Nothing here touches the board, so the same code
-// runs on the Nano R4 and in the host simulator (ArLyzer/host).
+// runs on a Nano R4, an UNO R4 Minima and in the host simulator (ArLyzer/host).
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
@@ -8,6 +8,8 @@
 namespace instrument {
 
 struct Board {
+  uint32_t id;       // the board id identify reports (protocol.md)
+  const char *name;  // at most 20 bytes
   void (*write)(const uint8_t *data, size_t length);
   // An immediate reading of all eight inputs, left-aligned into 16 bits.
   void (*sample)(uint16_t averages, uint16_t *readings);

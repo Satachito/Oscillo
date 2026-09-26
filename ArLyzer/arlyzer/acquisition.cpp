@@ -62,7 +62,8 @@ bool begin(const uint8_t *pins) {
   for (uint8_t c = 0; c < kChannels; c++) {
     // analogRead opens the converter at its full resolution and puts the pin
     // in analogue mode; acquisition then drives the same converter directly.
-    (void)analogRead(pins[c]);
+    // By port and pin, so that D4 on an UNO is D4 and not A4.
+    (void)analogRead(digitalPinToBspPin(pins[c]));
     converterChannel[c] = GET_CHANNEL(getPinCfgs(pins[c], PIN_CFG_REQ_ADC)[0]);
   }
   int8_t channel = FspTimer::get_available_timer(timerType);
@@ -92,7 +93,11 @@ uint32_t clockHz() { return timerHz; }
 //
 // Read it on its own, with the longest sampling time. Interleaved with a
 // pin it read 8 % low, and at the shortest sampling time 6 % high.
+#if defined(ARDUINO_MINIMA)
+constexpr double kInternalReferenceVolts = 1.43;  // the data sheet's typical, until measured
+#else
 constexpr double kInternalReferenceVolts = 1.4331;
+#endif
 
 uint32_t referenceMicrovolts() {
   static uint32_t measured = 5000000;

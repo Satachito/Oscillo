@@ -151,7 +151,7 @@ int main() {
   std::printf("%s\n", ttyname(slave));
   std::fflush(stdout);
 
-  instrument::begin({writePort, sampleAll, setLED});
+  instrument::begin({4, "ArLyzer Nano R4", writePort, sampleAll, setLED});
   uint8_t buffer[256];
   for (;;) {
     struct pollfd p{master, POLLIN, 0};

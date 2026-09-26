@@ -34,14 +34,15 @@ Exactly one response follows each request, in order. The host never pipelines.
 
 ### Over a USB serial port
 
-An ArLyzer — this protocol on an Arduino Nano R4 (`ArLyzer/`) — cannot offer
-the vendor interface: the board's stock Arduino core builds its own USB
-descriptors and compiles TinyUSB's vendor class out. It carries the same frames,
-byte for byte, over its USB CDC serial port instead (Arduino's `2341:0074`, or
-`2341:0374` from the bootloader). A serial port has no packets, so there are no
-zero-length packets either; the header's length is the only boundary. Open it
-at any rate but 1200 baud, which an Arduino takes as the signal to drop into
-its bootloader, and assert DTR.
+An ArLyzer — this protocol on an Arduino Nano R4 or UNO R4 Minima (`ArLyzer/`) —
+cannot offer the vendor interface: the board's stock Arduino core builds its own
+USB descriptors and compiles TinyUSB's vendor class out. It carries the same
+frames, byte for byte, over its USB CDC serial port instead (Arduino's
+`2341:0074` on a Nano R4 and `2341:0069` on a Minima, or `2341:0374` and
+`2341:0369` from their bootloaders). A serial port has no packets, so there are
+no zero-length packets either; the header's length is the only boundary. Open it
+at any rate but 1200 baud, which an Arduino takes as the signal to drop into its
+bootloader, and assert DTR.
 
 ### Frame header
 
@@ -111,7 +112,7 @@ alignment.
 | 0 | `u32` | magic `0x5A594C50` (`"PLYZ"`) |
 | 4 | `u16` | protocol version — 1 |
 | 6 | `u16` | firmware version, `major << 8 \| minor` |
-| 8 | `u32` | board id — 0 bare Pico 2, 1 PiLyzer AFE rev A, 3 PL2407AFE, 4 ArLyzer on an Arduino Nano R4 (2 is retired) |
+| 8 | `u32` | board id — 0 bare Pico 2, 1 PiLyzer AFE rev A, 3 PL2407AFE, 4 ArLyzer on an Arduino Nano R4, 5 ArLyzer on an Arduino UNO R4 Minima (2 is retired) |
 | 12 | `char[20]` | product name, NUL padded |
 
 The application refuses to talk to a device whose magic or protocol version it

@@ -11,7 +11,6 @@ namespace instrument {
 namespace {
 
 constexpr uint16_t kFirmwareVersion = 0x0004;  // 0.4: the tick is 10 µs and 1.4 µs an input
-constexpr uint32_t kBoardId = 4;
 constexpr uint8_t kChannels = acquisition::kChannels;
 constexpr uint8_t kBits = 14;
 constexpr uint32_t kMaxRequest = 64;  // the longest request in protocol v1 is 32
@@ -58,8 +57,9 @@ void dispatch(const Header &req, const uint8_t *data, uint32_t length) {
       id.magic = kIdentityMagic;
       id.protocolVersion = kProtocolVersion;
       id.firmwareVersion = kFirmwareVersion;
-      id.boardId = kBoardId;
-      memcpy(id.name, "ArLyzer Nano R4", 15);
+      id.boardId = io.id;
+      const size_t n = strlen(io.name);
+      memcpy(id.name, io.name, n < sizeof id.name ? n : sizeof id.name);
       respond(req, ST_OK, &id, sizeof id);
       return;
     }
