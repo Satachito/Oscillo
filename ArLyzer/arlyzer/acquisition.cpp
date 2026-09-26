@@ -82,6 +82,14 @@ bool begin(const uint8_t *pins) {
   return timerHz > 0;
 }
 
+// The nominal rate. The timer runs from the chip's on-chip oscillator (HOCO),
+// which is untrimmed and good to ±1 %, and none of these boards carries a
+// crystal to hold it to — the WiFi's RTC falls back to the low-speed on-chip
+// oscillator for the same reason. The Nano R4 and the Minima read a 1 kHz
+// square as 1000.1 Hz; the first WiFi read it as 1001.9 Hz, its HOCO 0.19 %
+// slow (2026-09-26). That was left as it is rather than corrected for one
+// board: the time axis and every frequency on it carry the oscillator's own
+// error.
 uint32_t clockHz() { return timerHz; }
 
 // The rail was 5.22 V on the first Nano R4, 4.5 % above nominal, 4.89 V on the
