@@ -10,7 +10,7 @@ using namespace wire;
 namespace instrument {
 namespace {
 
-constexpr uint16_t kFirmwareVersion = 0x0004;  // 0.4: the tick is 10 µs and 1.4 µs an input
+constexpr uint16_t kFirmwareVersion = 0x0005;  // 0.5: the Minima and the WiFi, several ports, lost bytes survived
 constexpr uint8_t kChannels = acquisition::kChannels;
 constexpr uint8_t kBits = 14;
 
