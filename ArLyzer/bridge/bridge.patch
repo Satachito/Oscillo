@@ -1,0 +1,40 @@
+diff --git a/UNOR4USBBridge/UNOR4USBBridge.ino b/UNOR4USBBridge/UNOR4USBBridge.ino
+index f8a0098..e173965 100644
+--- a/UNOR4USBBridge/UNOR4USBBridge.ino
++++ b/UNOR4USBBridge/UNOR4USBBridge.ino
+@@ -9,6 +9,7 @@
+ // implement AT server via github.com/SudoMaker/chAT
+ 
+ #include "at_handler.h"
++#include "arlyzer_net.h"
+ 
+ #include "USB.h"
+ #include "USBCDC.h"
+@@ -157,7 +158,9 @@ void setup() {
+   SERIAL_USER_INTERNAL.begin(115200, SERIAL_8N1, 44, 43);
+   SERIAL_AT.setRxBufferSize(8192);
+   SERIAL_AT.setTxBufferSize(8192);
+-  SERIAL_AT.begin(115200, SERIAL_8N1, 6, 5);
++  // ArLyzer: this line carries the instrument's frames, not AT commands, at
++  // the rate its sketch listens at.
++  SERIAL_AT.begin(230400, SERIAL_8N1, 6, 5);
+   USB.begin();
+ #endif
+   /* Set up wifi event */
+@@ -169,14 +172,8 @@ void setup() {
+   Debug.setDebugOutputStream(&USBSerial);
+   Debug.setDebugLevel(DBG_ERROR);
+ 
+-  xTaskCreatePinnedToCore(
+-      atLoop, /* Function to implement the task */
+-      "Task1", /* Name of the task */
+-      10000,  /* Stack size in words */
+-      NULL,  /* Task input parameter */
+-      1,  /* Priority of the task */
+-      &atTask,  /* Task handle. */
+-      0); /* Core where the task should run */
++  // ArLyzer: the radio serves the instrument instead of the AT commands.
++  arlyzerNetBegin(SERIAL_AT);
+ 
+ }
+ 
