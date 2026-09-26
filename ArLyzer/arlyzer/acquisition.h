@@ -16,6 +16,9 @@ bool begin(const uint8_t *pins);
 
 // The timer's clock, which is the base clock every plan is stated in.
 uint32_t clockHz();
+// The converter's reference, measured: on a Nano R4 it is the board's own
+// 5 V rail, which is whatever the USB port delivers.
+uint32_t referenceMicrovolts();
 // The shortest time allowed for each enabled input within one sample, in
 // clock cycles. Not the converter's conversion time: the interrupt that reads
 // one scan and starts the next has to fit as well.

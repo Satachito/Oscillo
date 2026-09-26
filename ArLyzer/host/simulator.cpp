@@ -86,6 +86,7 @@ std::chrono::steady_clock::time_point armedAt;
 
 bool begin(const uint8_t *) { return true; }
 uint32_t clockHz() { return kClockHz; }
+uint32_t referenceMicrovolts() { return 5000000; }
 uint32_t minPeriodCycles() { return kSlotCycles; }
 bool running() { return recorder.running(); }
 uint8_t conversionsPerSample() { return recorder.slots(); }

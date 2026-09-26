@@ -80,6 +80,40 @@ bool begin(const uint8_t *pins) {
 
 uint32_t clockHz() { return timerHz; }
 
+// The rail was 5.22 V on the first Nano R4, 4.5 % above nominal, and it moves
+// with the port and the cable. The chip's internal reference does not, so the
+// rail is measured against it. Its value is this board's, taken against the
+// rail on a meter (5.225 V) on 2026-09-26; another chip's differs by its own
+// tolerance, which Calibrate in the applications then takes out once — and
+// no longer has to be redone when the USB supply changes.
+//
+// Read it on its own, with the longest sampling time. Interleaved with a
+// pin it read 8 % low, and at the shortest sampling time 6 % high.
+constexpr double kInternalReferenceVolts = 1.4331;
+
+uint32_t referenceMicrovolts() {
+  static uint32_t measured = 5000000;
+  if (recorder.running()) return measured;
+  R_ADC0_Type *adc = R_ADC0;
+  while (adc->ADCSR_b.ADST) {}
+  const uint16_t low = adc->ADANSA[0], high = adc->ADANSA[1];
+  adc->ADANSA[0] = 0;
+  adc->ADANSA[1] = 0;
+  adc->ADSSTRO = 0xFF;  // the reference wants the longest sampling time
+  adc->ADEXICR_b.OCSA = 1;
+  uint32_t total = 0;
+  for (int i = 0; i < 256; i++) {
+    adc->ADCSR_b.ADST = 1;
+    while (adc->ADCSR_b.ADST) {}
+    total += adc->ADOCDR;
+  }
+  adc->ADEXICR_b.OCSA = 0;
+  adc->ADANSA[0] = low;
+  adc->ADANSA[1] = high;
+  if (total) measured = static_cast<uint32_t>(kInternalReferenceVolts * 16383.0 * 256 / total * 1e6 + 0.5);
+  return measured;
+}
+
 uint32_t minPeriodCycles() {
   return static_cast<uint32_t>(kMinSlotSeconds * timerHz + 0.5);
 }

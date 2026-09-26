@@ -10,13 +10,10 @@ using namespace wire;
 namespace instrument {
 namespace {
 
-constexpr uint16_t kFirmwareVersion = 0x0002;  // 0.2
+constexpr uint16_t kFirmwareVersion = 0x0003;  // 0.3: the reference is measured, not assumed
 constexpr uint32_t kBoardId = 4;
 constexpr uint8_t kChannels = acquisition::kChannels;
 constexpr uint8_t kBits = 14;
-// The RA4M1 runs on 5 V here and the default reference is its own supply, so
-// this is only as good as the USB 5 V it came from.
-constexpr uint32_t kReferenceMicrovolts = 5000000;
 constexpr uint32_t kMaxRequest = 64;  // the longest request in protocol v1 is 32
 
 Board io;
@@ -75,7 +72,7 @@ void dispatch(const Header &req, const uint8_t *data, uint32_t length) {
       caps.analogMinPeriodCycles = acquisition::minPeriodCycles();
       caps.analogMaxRecord = acquisition::kMaxRecord;
       caps.analogMaxPretrigger = acquisition::kMaxRecord - 1;
-      caps.referenceMicrovolts = kReferenceMicrovolts;
+      caps.referenceMicrovolts = acquisition::referenceMicrovolts();
       caps.flags = CAP_REPORTS_RANGES;
       respond(req, ST_OK, &caps, sizeof caps);
       return;
