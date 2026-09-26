@@ -1,7 +1,7 @@
 import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { ARLYZER_BOARD, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
+import { ARLYZER_PINS, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
 import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -72,7 +72,7 @@ const acquisition = new Acquisition(value => { frame = value; renderFrame(); }, 
 });
 function caps() { return instrument?.caps || demoCaps; }
 // The pin an analogue channel is read on, for the channel card's note.
-function inputPin(i) { return instrument?.identity?.board === ARLYZER_BOARD ? `A${i}` : `GPIO ${26 + i}`; }
+function inputPin(i) { return ARLYZER_PINS[instrument?.identity?.board]?.[i] ?? `GPIO ${26 + i}`; }
 // The instrument's own range list. Offline there is no instrument to ask, so
 // the panel previews the front end this application was built alongside.
 function frontEnd() { return instrument?.ranges ?? ranges(1); }

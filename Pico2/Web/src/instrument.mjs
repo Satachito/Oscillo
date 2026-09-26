@@ -85,7 +85,7 @@ export class BulkTransport {
   async close() { this.closed = true; this.buffer = new Uint8Array(); if (this.device.opened) await this.device.close(); }
 }
 // The same frames over a USB serial port, for boards whose USB stack offers
-// CDC and nothing else — the ArLyzer on an Arduino Nano R4. A serial port is a
+// CDC and nothing else — the ArLyzer on an Arduino R4. A serial port is a
 // byte stream just as the bulk pipe is, so framing and resynchronisation are
 // the bulk transport's own; only the reads and writes differ.
 export class SerialTransport extends BulkTransport {

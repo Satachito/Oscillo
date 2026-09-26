@@ -1,10 +1,15 @@
 // PiLyzer protocol v1. Keep this in step with ../../docs/protocol.md.
 export const USB_IDS = { vendorId: 0x1209, productId: 0x0001 };
-// The ArLyzer on an Arduino Nano R4 is reached through the board's own CDC
-// serial port, under Arduino's identifiers: the application and the bootloader.
-export const SERIAL_IDS = [{ usbVendorId: 0x2341, usbProductId: 0x0074 }, { usbVendorId: 0x2341, usbProductId: 0x0374 }];
-// The board id an ArLyzer reports; its inputs are named A0–A7, not GPIOs.
-export const ARLYZER_BOARD = 4;
+// The ArLyzer on an Arduino Nano R4 or UNO R4 Minima is reached through the
+// board's own CDC serial port, under Arduino's identifiers: each board's
+// application and its bootloader.
+export const SERIAL_IDS = [0x0074, 0x0374, 0x0069, 0x0369].map(usbProductId => ({ usbVendorId: 0x2341, usbProductId }));
+// The board ids an ArLyzer reports, and what its inputs are called on the
+// board rather than GPIOs. The UNO has only A0–A5, so D4 and D5 make eight.
+export const ARLYZER_PINS = Object.freeze({
+  4: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7'],
+  5: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D4', 'D5'],
+});
 // Eight is what the wire format holds: a channel mask is one byte.
 export const MAX_ANALOG_CHANNELS = 8;
 export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, inputRanges: 7, signals: 8, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
