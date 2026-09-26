@@ -151,17 +151,18 @@ int main() {
   std::printf("%s\n", ttyname(slave));
   std::fflush(stdout);
 
-  instrument::begin({4, "ArLyzer Nano R4", writePort, sampleAll, setLED});
+  instrument::begin({4, "ArLyzer Nano R4", sampleAll, setLED});
+  instrument::Port port(writePort);
   uint8_t buffer[256];
   uint32_t lastByteMs = 0;
   for (;;) {
     struct pollfd p{master, POLLIN, 0};
     if (poll(&p, 1, 1) > 0) {
       const ssize_t n = read(master, buffer, sizeof buffer);
-      for (ssize_t i = 0; i < n; i++) instrument::receive(buffer[i]);
+      for (ssize_t i = 0; i < n; i++) port.receive(buffer[i]);
       if (n > 0) lastByteMs = millisNow();
     }
-    if (millisNow() - lastByteMs > 50) instrument::flush();  // as the sketch does
+    if (millisNow() - lastByteMs > 50) port.flush();  // as the sketch does
     acquisition::poll();
   }
 }

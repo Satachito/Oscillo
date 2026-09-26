@@ -49,6 +49,34 @@ int readPin(uint8_t pin) { return analogRead(digitalPinToBspPin(pin)); }
 
 void writeSerial(const uint8_t *data, size_t length) { Serial.write(data, length); }
 
+// A serial stream and the requests arriving on it.
+struct Link {
+  arduino::HardwareSerial &serial;
+  instrument::Port port;
+  uint32_t lastByteMs;
+};
+
+void serve(Link &link) {
+  while (link.serial.available()) {
+    const int b = link.serial.read();
+    if (b < 0) break;
+    link.port.receive(static_cast<uint8_t>(b));
+    link.lastByteMs = millis();
+  }
+  // A host sends a request all at once, so one quiet this long is not coming.
+  if (millis() - link.lastByteMs > 50) link.port.flush();
+}
+
+Link usb{Serial, instrument::Port(writeSerial), 0};
+
+#if defined(ARDUINO_UNOWIFIR4)
+// The WiFi's second UART, to the ESP32-S3, carries what its radio receives
+// when the ESP32 runs ArLyzer's bridge (ArLyzer/bridge) rather than the stock
+// one; with the stock one nothing arrives on it.
+void writeRadio(const uint8_t *data, size_t length) { Serial2.write(data, length); }
+Link radio{Serial2, instrument::Port(writeRadio), 0};
+#endif
+
 void sampleAll(uint16_t averages, uint16_t *readings) {
   if (averages == 0) averages = 1;
   if (averages > 4096) averages = 4096;
@@ -72,7 +100,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   analogReadResolution(14);
   acquisition::begin(kPins);
-  instrument::begin({kBoardId, kName, writeSerial, sampleAll, setLED});
+  instrument::begin({kBoardId, kName, sampleAll, setLED});
   // The WiFi's UART takes an interrupt a byte, and with the tick at its
   // shortest there is little time for one: at 460800 and above, requests lost
   // bytes while a record was being taken (2026-09-26). Raising the UART above
@@ -80,17 +108,15 @@ void setup() {
   // A native CDC port ignores the rate; 1200 is the one that resets into the
   // bootloader on every board.
   Serial.begin(230400);
+#if defined(ARDUINO_UNOWIFIR4)
+  Serial2.begin(230400);
+#endif
 }
 
 void loop() {
-  static uint32_t lastByteMs = 0;
-  while (Serial.available()) {
-    const int b = Serial.read();
-    if (b < 0) break;
-    instrument::receive(static_cast<uint8_t>(b));
-    lastByteMs = millis();
-  }
-  // A host sends a request all at once, so one quiet this long is not coming.
-  if (millis() - lastByteMs > 50) instrument::flush();
+  serve(usb);
+#if defined(ARDUINO_UNOWIFIR4)
+  serve(radio);
+#endif
   acquisition::poll();
 }
