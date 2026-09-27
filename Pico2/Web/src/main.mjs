@@ -307,6 +307,11 @@ function showLowPass() {
   $('lpf-value').value = on ? `${settings.lpf.toLocaleString()} Hz` : 'Off';
 }
 function synchronize() {
+  // An ArLyzer has no logic inputs: it reports none, and no clock to time
+  // them with. Asking it for a logic capture anyway divided by that zero.
+  const logicInputs = caps().logicChannels > 0 && caps().logicClock > 0;
+  if (!logicInputs && settings.mode === 'logic') settings.mode = 'scope';
+  for (const el of document.querySelectorAll('[data-mode="logic"]')) { el.disabled = !logicInputs; el.title = logicInputs ? '' : 'This instrument has no logic inputs.'; }
   const active = activeChannels(settings, caps());
   if (!active.includes(settings.source)) settings.source = active[0] ?? 0;
   settleTriggerLevel();
