@@ -308,6 +308,17 @@ public final class USBInstrument: Instrument {
     /// Switches the sine and the three noises on or off, and says which sine
     /// frequency the device settled on.
     @discardableResult
+    /// Stores the network and name on a Pico 2 W; it joins them a moment later.
+    public func setNetwork(_ configuration: NetworkConfiguration) throws {
+        _ = try send(.setNetwork, configuration.encoded())
+    }
+
+    public func networkStatus() throws -> NetworkStatus {
+        let data = try send(.networkStatus)
+        guard let status = NetworkStatus(data) else { throw InstrumentError.shortReply(.networkStatus, data.count) }
+        return status
+    }
+
     public func setSignals(enabled: Bool, sineHz: Int) throws -> Int {
         var writer = ByteWriter()
         writer.append(UInt8(enabled ? 1 : 0))

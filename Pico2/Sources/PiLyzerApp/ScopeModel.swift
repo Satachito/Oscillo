@@ -273,6 +273,9 @@ final class ScopeModel: ObservableObject {
             settings.ensureAnalogChannels(instrument.capabilities.analogChannels)
             if !instrument.capabilities.hasTriggerLowPass { settings.trigger.lowPassHz = 0 }
             if !instrument.capabilities.hasLogic && settings.mode == .logic { settings.mode = .scope }
+            networkStatus = nil
+            networkMessage = nil
+            if instrument.capabilities.hasNetworkSetup { refreshNetwork() }
             normalizeAnalogSelection()
             seedTriggerLevel()
             settleTriggerLevel()
@@ -376,6 +379,58 @@ final class ScopeModel: ObservableObject {
     }
 
     // MARK: - Derived readouts
+
+    // MARK: - A Pico 2 W's network
+
+    @Published private(set) var networkStatus: NetworkStatus?
+    @Published var networkMessage: String?
+    private var networkWatch = 0
+
+    /// Asks the board which network it is on, if it takes one.
+    func refreshNetwork() {
+        guard capabilities.hasNetworkSetup, isConnected else { networkStatus = nil; return }
+        engine.networkStatus { [weak self] result in
+            switch result {
+            case let .success(status): self?.networkStatus = status
+            case let .failure(error): self?.networkMessage = "Could not ask the board: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Stores a network on the board, then asks after it until it has joined
+    /// or forty-five seconds have gone.
+    func saveNetwork(_ configuration: NetworkConfiguration) {
+        if let problem = configuration.problem { networkMessage = problem; return }
+        networkMessage = nil
+        engine.setNetwork(configuration) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success:
+                self.networkMessage = configuration.ssid.isEmpty
+                    ? "Forgotten: the board is on USB only." : "Saved. Joining \(configuration.ssid)…"
+                self.watchNetwork(until: Date().addingTimeInterval(45))
+            case let .failure(error):
+                self.networkMessage = "The board refused it: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func watchNetwork(until deadline: Date) {
+        networkWatch += 1
+        let watch = networkWatch
+        func tick() {
+            guard watch == networkWatch, isConnected else { return }
+            engine.networkStatus { [weak self] result in
+                guard let self, watch == self.networkWatch else { return }
+                if case let .success(status) = result {
+                    self.networkStatus = status
+                    if status.state == .joined || status.state == .notSet { self.networkMessage = nil; return }
+                }
+                if Date() < deadline { DispatchQueue.main.asyncAfter(deadline: .now() + 2) { tick() } }
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { tick() }
+    }
 
     /// What the board calls logic line `line`: D2–D9 on an ArLyzer.
     func logicName(_ line: Int) -> String { instrument?.identity.logicName(line) ?? "D\(line)" }

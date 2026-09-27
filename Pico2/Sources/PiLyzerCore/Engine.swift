@@ -313,6 +313,33 @@ public final class InstrumentEngine {
         }
     }
 
+    /// A Pico 2 W's network. Asked between steps of a running acquisition,
+    /// like everything else the instrument hears; a refusal is the caller's to
+    /// show and does not end the connection.
+    public func networkStatus(completion: @escaping (Result<NetworkStatus, Error>) -> Void) {
+        queue.async { [self] in
+            guard let device = instrument as? USBInstrument else {
+                callbackQueue.async { completion(.failure(InstrumentError.notConnected)) }
+                return
+            }
+            let result = Result { try device.networkStatus() }
+            callbackQueue.async { completion(result) }
+        }
+    }
+
+    /// Stores a network on a Pico 2 W, which joins it a moment later.
+    public func setNetwork(_ configuration: NetworkConfiguration,
+                           completion: @escaping (Result<Void, Error>) -> Void) {
+        queue.async { [self] in
+            guard let device = instrument as? USBInstrument else {
+                callbackQueue.async { completion(.failure(InstrumentError.notConnected)) }
+                return
+            }
+            let result = Result { try device.setNetwork(configuration) }
+            callbackQueue.async { completion(result) }
+        }
+    }
+
     /// One immediate reading of all inputs, in volts.
     public func readNow(completion: @escaping ([Double]) -> Void) {
         queue.async { [self] in

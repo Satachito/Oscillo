@@ -58,6 +58,7 @@ struct ControlPanelView: View {
                     loggerSection
                 }
                 if model.capabilities.hasCalibrationOutput { testOutputSection }
+                if model.capabilities.hasNetworkSetup && model.isConnected { NetworkSection(model: model) }
                 instrumentSection
                 Text("PiLyzer for macOS")
                     .font(.system(size: 9))
@@ -831,5 +832,69 @@ struct Choice<Value: Hashable, Content: View>: View {
     var body: some View {
         Picker(title, selection: selection, content: content)
             .fixedSize()
+    }
+}
+
+/// A Pico 2 W's network, as the browser application's Wi-Fi section has it:
+/// what the board is on, and a new one to store. The password is only ever
+/// sent, never shown back — the board does not return it.
+struct NetworkSection: View {
+    @ObservedObject var model: ScopeModel
+    @State private var ssid = ""
+    @State private var password = ""
+    @State private var hostname = ""
+    @State private var filled = false
+
+    var body: some View {
+        Section("Wi-Fi", tag: "PICO 2 W") {
+            Text(statusText)
+                .font(.caption.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+            TextField("Network", text: $ssid)
+            SecureField("Password", text: $password)
+            TextField("Name (pilyzer)", text: $hostname)
+            if let message = model.networkMessage {
+                Text(message).font(.caption).foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Button("Save to the board") {
+                    model.saveNetwork(NetworkConfiguration(ssid: ssid.trimmingCharacters(in: .whitespaces),
+                                                           password: password,
+                                                           hostname: hostname.trimmingCharacters(in: .whitespaces).lowercased()))
+                    password = ""
+                }
+                .disabled(ssid.trimmingCharacters(in: .whitespaces).isEmpty)
+                Spacer()
+                Button("Forget") {
+                    ssid = ""
+                    password = ""
+                    model.saveNetwork(.forget)
+                }
+            }
+            Text("2.4 GHz networks only. The password is kept on the board and never read back; "
+                 + "the board joins as soon as it is saved, and keeps the network through firmware updates.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear { model.refreshNetwork() }
+        .onChange(of: model.networkStatus) { status in
+            guard let status, !filled else { return }
+            ssid = status.ssid
+            hostname = status.hostname == "pilyzer" ? "" : status.hostname
+            filled = true
+        }
+    }
+
+    private var statusText: String {
+        guard let status = model.networkStatus else { return "Asking the board…" }
+        switch status.state {
+        case .notSet: return "No network set: the board is on USB only."
+        case .joining: return "Joining \(status.ssid)…"
+        case .joined: return "On \(status.ssid) · \(status.url ?? "") (\(status.address ?? ""))"
+        case .failing: return "Cannot join \(status.ssid): check its name and password, and that it is 2.4 GHz. "
+            + "Trying again every 40 s."
+        }
     }
 }
