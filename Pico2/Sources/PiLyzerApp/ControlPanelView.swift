@@ -283,7 +283,7 @@ struct ControlPanelView: View {
                 ForEach(TriggerMode.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             Choice("On", selection: $model.settings.logic.triggerChannel) {
-                ForEach(0..<model.capabilities.logicChannels, id: \.self) { Text("D\($0)").tag($0) }
+                ForEach(0..<model.capabilities.logicChannels, id: \.self) { Text(model.logicName($0)).tag($0) }
             }
             Choice("Edge", selection: $model.settings.logic.triggerSlope) {
                 ForEach(TriggerSlope.allCases, id: \.self) { Text($0.label).tag($0) }
@@ -301,7 +301,7 @@ struct ControlPanelView: View {
                             if on { model.settings.logic.enabledChannels.insert(channel) }
                             else { model.settings.logic.enabledChannels.remove(channel) }
                         })) {
-                            Text("D\(channel)").font(.system(size: 10, design: .monospaced))
+                            Text(model.logicName(channel)).font(.system(size: 10, design: .monospaced))
                         }
                         .toggleStyle(.checkbox)
                 }
@@ -355,7 +355,7 @@ struct ControlPanelView: View {
 
     private func channelChoice(_ title: String, value: Binding<Int>) -> some View {
         Choice(title, selection: value) {
-            ForEach(0..<model.capabilities.logicChannels, id: \.self) { Text("D\($0)").tag($0) }
+            ForEach(0..<model.capabilities.logicChannels, id: \.self) { Text(model.logicName($0)).tag($0) }
         }
     }
 

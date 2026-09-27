@@ -42,9 +42,10 @@ public enum Export {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    public static func csv(logic frame: LogicFrame) -> String {
+    /// `names` are what the board calls its lines; D0, D1… without them.
+    public static func csv(logic frame: LogicFrame, names: [String]? = nil) -> String {
         guard !frame.isEmpty else { return "" }
-        let channels = (0..<frame.channelCount).map { "D\($0)" }.joined(separator: ",")
+        let channels = (0..<frame.channelCount).map { names?[safe: $0] ?? "D\($0)" }.joined(separator: ",")
         var lines = ["time_s,\(channels)"]
         for index in 0..<frame.samples.count {
             var row = [String(format: "%.9g", frame.time(at: index))]
@@ -58,12 +59,13 @@ public enum Export {
 
     /// Only the transitions, which is a far smaller file than every sample and
     /// usually what a timing question actually needs.
-    public static func csv(logicTransitions frame: LogicFrame) -> String {
+    public static func csv(logicTransitions frame: LogicFrame, names: [String]? = nil) -> String {
         guard !frame.isEmpty else { return "" }
         var lines = ["time_s,channel,level"]
         for channel in 0..<frame.channelCount {
+            let name = names?[safe: channel] ?? "D\(channel)"
             for index in LogicAnalysis.transitions(of: frame, channel: channel) {
-                lines.append(String(format: "%.9g,D%d,%d", frame.time(at: index), channel,
+                lines.append(String(format: "%.9g,%@,%d", frame.time(at: index), name,
                                     frame.level(channel, at: index) ? 1 : 0))
             }
         }
@@ -79,4 +81,8 @@ public enum Export {
         }
         return lines.joined(separator: "\n") + "\n"
     }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

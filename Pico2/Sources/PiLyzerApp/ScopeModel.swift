@@ -377,6 +377,9 @@ final class ScopeModel: ObservableObject {
 
     // MARK: - Derived readouts
 
+    /// What the board calls logic line `line`: D2–D9 on an ArLyzer.
+    func logicName(_ line: Int) -> String { instrument?.identity.logicName(line) ?? "D\(line)" }
+
     func measurements(for channel: Int) -> Measurements? {
         guard let trace = frame.trace(channel), !trace.samples.isEmpty else { return nil }
         return Measurements.of(trace.samples, samplePeriod: frame.samplePeriod)
@@ -450,7 +453,8 @@ final class ScopeModel: ObservableObject {
             return ("spectrum.csv", Export.csv(spectra: spectra, scale: settings.spectrum.scale))
         case .logic:
             if decoderKind == .none {
-                return ("logic.csv", Export.csv(logicTransitions: logicFrame))
+                return ("logic.csv", Export.csv(logicTransitions: logicFrame,
+                                                names: (0..<8).map(logicName)))
             }
             return ("decoded.csv", Export.csv(decoded: decoded, frame: logicFrame))
         case .meter:

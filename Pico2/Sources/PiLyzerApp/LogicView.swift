@@ -92,7 +92,7 @@ struct LogicView: View {
             }
             context.strokeTrace(points, color: Theme.logicColor(channel), width: 1.3)
 
-            context.draw(Text("D\(channel)").font(.system(size: 10, design: .monospaced))
+            context.draw(Text(model.logicName(channel)).font(.system(size: 10, design: .monospaced))
                 .foregroundColor(Theme.logicColor(channel)),
                          at: CGPoint(x: 14, y: lane * CGFloat(row) + lane / 2))
         }
@@ -123,7 +123,7 @@ struct LogicActivityRow: View {
                                          count: 4),
                           alignment: .leading, spacing: 12) {
                     ForEach(model.logicActivity) { activity in
-                        MeasurementCard(title: "D\(activity.channel)",
+                        MeasurementCard(title: model.logicName(activity.channel),
                                         colour: Theme.logicColor(activity.channel)) {
                             if activity.isIdle {
                                 MeasurementRow("State", model.logicFrame.level(activity.channel, at: 0)

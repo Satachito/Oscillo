@@ -141,4 +141,20 @@ struct LogicTests {
         _ = configuration.encoded()
         #expect(DeviceCapabilities.unavailable.hasLogic)
     }
+
+    @Test("An ArLyzer names its logic lines after the Arduino pins, D2–D9")
+    func arLyzerLogicNames() {
+        for board: UInt32 in [4, 5, 6] {
+            let identity = DeviceIdentity(protocolVersion: Wire.version, firmwareVersion: 0x0006,
+                                          boardID: board, name: "ArLyzer")
+            #expect((0..<8).map(identity.logicName) == ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"])
+        }
+        let pico = DeviceIdentity(protocolVersion: Wire.version, firmwareVersion: 0x0110, boardID: 1, name: "PiLyzer")
+        #expect(pico.logicName(0) == "D0" && pico.logicName(7) == "D7")
+        let frame = LogicFrame(samples: [0, 1, 0, 1], samplePeriod: 6e-6, triggerIndex: 0,
+                               triggered: false, channelCount: 8)
+        let names = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"]
+        #expect(Export.csv(logic: frame, names: names).hasPrefix("time_s,D2,D3,D4,D5,D6,D7,D8,D9\n"))
+        #expect(Export.csv(logicTransitions: frame, names: names).contains(",D2,1"))
+    }
 }

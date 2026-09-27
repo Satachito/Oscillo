@@ -100,7 +100,7 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
         case .meter:
             return "Logging all inputs · min/mean/max a point"
         case .logic:
-            return "Trigger: \(model.settings.logic.triggerMode.label) · D\(model.settings.logic.triggerChannel)"
+            return "Trigger: \(model.settings.logic.triggerMode.label) · \(model.logicName(model.settings.logic.triggerChannel))"
         default:
             let filter = model.settings.trigger.lowPassHz > 0 && model.capabilities.hasTriggerLowPass
                 ? " · LPF " + Format.frequency(Double(model.settings.trigger.lowPassHz)) : ""

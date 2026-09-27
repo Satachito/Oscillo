@@ -161,6 +161,14 @@ public struct DeviceIdentity: Equatable, Sendable {
     /// other value is a front end that scales and shifts them.
     public var hasFrontEnd: Bool { boardID != 0 }
 
+    /// An ArLyzer: the protocol on an Arduino Nano R4 (4), UNO R4 Minima (5)
+    /// or UNO R4 WiFi (6).
+    public var isArLyzer: Bool { (4...6).contains(boardID) }
+
+    /// What a logic line is called on the board. An ArLyzer's D0–D7 are the
+    /// Arduino's D2–D9, since D0 and D1 are an UNO's serial port.
+    public func logicName(_ line: Int) -> String { "D\(isArLyzer ? line + 2 : line)" }
+
     /// The GPIO the test square wave comes out of. The PL2407AFE brings its
     /// own SG OUT pad here, and every other board followed it.
     public static let calibrationOutputPin = 22
