@@ -451,9 +451,13 @@ function renderFrame() {
       ['Frequency', fmt(entry.quality.fundamental.frequency, 'Hz')], ['Level', fmt(entry.quality.fundamental.amplitude, 'V')],
       ['THD', percent(entry.quality.thd)], ['THD+N', percent(entry.quality.thdPlusNoise)],
       ['SNR', decibels(entry.quality.snr)], ['SINAD', decibels(entry.quality.sinad)], ['ENOB', `${entry.quality.enob.toFixed(1)} bits`]]
-      // No tone the record resolves: say how low it can reach, which is what
-      // a slower time base changes.
-      : [['Frequency', '—'], ['Lowest measurable', fmt(lowestMeasurable(entry), 'Hz')]]);
+      // Below the spectrum's reach the waveform can still give the frequency,
+      // as the oscilloscope does from the same record; the rest needs the
+      // spectrum, so the card says how low it reaches, which a slower time
+      // base changes.
+      : entry.waveformFrequency
+        ? [['Frequency', fmt(entry.waveformFrequency, 'Hz')], ['Read from', 'Waveform'], ['Spectrum from', fmt(lowestMeasurable(entry), 'Hz')]]
+        : [['Frequency', '—'], ['Lowest measurable', fmt(lowestMeasurable(entry), 'Hz')]]);
     if (measured.length === 1 && shown.length === 1) addCard('Harmonics', '', measured[0].quality.harmonics.slice(0, 5).map((peak, i) => [`H${i + 2}`, fmt(peak.amplitude, 'V')]));
     $('measurements').style.setProperty('--cards', columns(shown.length + (measured.length === 1 && shown.length === 1 ? 1 : 0)));
     if (!shown.length) { const el = document.createElement('div'); el.className = 'measurement-placeholder'; el.textContent = 'A tone has to be on screen before its distortion can be measured.'; $('measurements').append(el); }

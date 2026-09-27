@@ -29,7 +29,9 @@ export class Plot {
     }
     return frame.traces.map(trace => {
       const averaged = averageSpectra((this.history.get(trace.index) || []).slice(-depth));
-      return { index: trace.index, ...averaged, fullScale: Math.abs(scaleFor(settings, caps, frontEnd, trace.index).span) / 2, quality: spectrumQuality(averaged, settings.spectrumHarmonics) };
+      // The oscilloscope's own reading, from the edges: a cycle and a bit is
+      // enough for it, where the spectrum needs two and a half.
+      return { index: trace.index, ...averaged, fullScale: Math.abs(scaleFor(settings, caps, frontEnd, trace.index).span) / 2, quality: spectrumQuality(averaged, settings.spectrumHarmonics), waveformFrequency: trace.stats?.frequency ?? null };
     });
   }
   draw() {
