@@ -14,7 +14,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0111   // 1.17: a Pico 2 W answers mDNS over IPv6 too, so pilyzer.local opens at once
+#define PILYZER_FIRMWARE_VERSION 0x0112   // 1.18: a Pico 2 W takes its network from the host and keeps it in flash
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3

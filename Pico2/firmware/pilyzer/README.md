@@ -122,11 +122,22 @@ Safari has no WebUSB — not on iOS, not anywhere — so a phone cannot reach th
 instrument the way a laptop does. A **Pico 2 W** can hand out the front panel
 itself instead, over a network, and then any browser will do.
 
+The released `PiLyzer-Pico2W.uf2` has no network in it. Copy it onto the Pico
+2 W, connect it over USB, and give it your network from the **Wi-Fi** section
+of the web application or the Mac app: network name, password, and the name it
+should answer to. It keeps them in flash, where a firmware update leaves them,
+and joins at once. The password is never read back.
+
+Building it yourself works the same way:
+
 ```sh
-cmake -S . -B build-w -G Ninja -DCMAKE_BUILD_TYPE=Release \
-    -DPILYZER_WIFI=ON -DPILYZER_WIFI_SSID='your network' -DPILYZER_WIFI_PASSWORD='its password'
+cmake -S . -B build-w -G Ninja -DCMAKE_BUILD_TYPE=Release -DPILYZER_WIFI=ON
 cmake --build build-w
 ```
+
+`-DPILYZER_WIFI_SSID='your network' -DPILYZER_WIFI_PASSWORD='its password'`
+bake a network in to start from instead, for a board that is never given one
+over USB; one set over USB takes its place.
 
 Then open **`http://pilyzer.local`**. There is no address to find and no
 network to join: the instrument joins yours, answers to a name over mDNS, and
@@ -145,9 +156,10 @@ work. The board's LED lights once it has an address and is serving the page;
 until then it stays dark and the instrument keeps trying, every 40 seconds,
 while USB carries on as usual.
 
-The credentials are cache variables, not files, so nothing of yours is in the
-repository. Without `-DPILYZER_WIFI=ON` the build is exactly what it was —
-`pico2`, no radio, 41 kB of flash against the Wi-Fi build's 397 kB.
+Credentials baked in are cache variables, not files, so nothing of yours is in
+the repository — but they are in the UF2, so a build made with them is not one
+to hand out. Without `-DPILYZER_WIFI=ON` the build is exactly what it was —
+`pico2`, no radio.
 
 **How it works.** `bake-web.py` gzips the built application into flash, where
 118,636 bytes become 40,839. A small server hands those out and answers

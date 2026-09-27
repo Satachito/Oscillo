@@ -49,9 +49,9 @@ if(PILYZER_WIFI)
     set(PILYZER_WIFI_SSID "" CACHE STRING "Network the instrument joins")
     set(PILYZER_WIFI_PASSWORD "" CACHE STRING "Its password")
     set(PILYZER_HOSTNAME "pilyzer" CACHE STRING "The name it answers to, as <name>.local")
-    if(PILYZER_WIFI_SSID STREQUAL "")
-        message(FATAL_ERROR "PILYZER_WIFI needs -DPILYZER_WIFI_SSID=... and -DPILYZER_WIFI_PASSWORD=...")
-    endif()
+    # Optional. Without them the instrument joins nothing until a host tells
+    # it a network over USB (OP_SET_NETWORK), which is how the released UF2
+    # works; with them this build has a network to start from.
 
     # The browser application, gzipped into flash. Regenerated whenever the
     # built application changes, so the firmware cannot serve a stale panel.
@@ -66,7 +66,7 @@ if(PILYZER_WIFI)
     add_custom_target(pilyzer_web DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/web_files.h)
     add_dependencies(pilyzer pilyzer_web)
 
-    target_sources(pilyzer PRIVATE http_request.c http_server.c wifi.c)
+    target_sources(pilyzer PRIVATE http_request.c http_server.c network_config.c wifi.c)
     # Ninja does not see a generated header as a dependency until it has
     # compiled against it once, and even then it went on serving the old
     # panel after the application was rebuilt; say it outright.
@@ -80,7 +80,9 @@ if(PILYZER_WIFI)
         PILYZER_HOSTNAME="${PILYZER_HOSTNAME}")
     target_link_libraries(pilyzer PRIVATE
         pico_cyw43_arch_lwip_poll
-        pico_lwip_mdns)
+        pico_lwip_mdns
+        pico_flash
+        hardware_flash)
 endif()
 
 # The instrument owns the USB port; stdio must not fight it for the link.

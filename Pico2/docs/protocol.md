@@ -96,6 +96,8 @@ transfer.
 | `0x06` | `rebootToBootloader` | — | — (device restarts) |
 | `0x07` | `inputRanges` | — | `InputRange[analogueRanges]` (firmware 1.7) |
 | `0x08` | `setSignals` | `u8 on, u32 sineHz` | `u32 actualSineHz` (firmware 1.9) |
+| `0x09` | `setNetwork` | `NetworkConfig` | — (a Pico 2 W, firmware 1.18) |
+| `0x0A` | `networkStatus` | — | `NetworkStatus` (a Pico 2 W, firmware 1.18) |
 | `0x10` | `analogConfigure` | `AnalogConfig` | `AcquisitionPlan` |
 | `0x11` | `analogArm` | — | — |
 | `0x12` | `analogStatus` | — | `AcquisitionStatus` |
@@ -159,7 +161,8 @@ bit 4 the device answers `inputRanges` (firmware 1.7 and later), bit 5 the
 device has a signal generator — a sine and white, pink and brown noise on four
 consecutive pins of its own (firmware 1.9 and later). They are GPIO16–19, the
 same four on every board, so a host that names them does not have to ask which
-board it is talking to.
+board it is talking to. Bit 6: a Pico 2 W, which takes the network it joins
+from the host with `setNetwork` (firmware 1.18 and later).
 
 Analogue samples are unsigned 16-bit values, left-aligned from the converter's
 own resolution: a 12-bit code `c` arrives as `c << 4`. So a reading at the top
@@ -289,6 +292,35 @@ nanoseconds.
 | 4 | `u32` | samples available per channel |
 | 8 | `u32` | index of the trigger within the record |
 | 12 | `u32` | reserved |
+
+### `NetworkConfig` — 128 bytes
+
+What a Pico 2 W joins and the name it answers to, as `<name>.local`. UTF-8,
+zero-padded; a string that fills its field needs no terminator.
+
+| Offset | Type | Field |
+| ---: | --- | --- |
+| 0 | `char[32]` | SSID; empty forgets the network |
+| 32 | `char[64]` | password: WPA2/WPA3, 8–63 characters or 64 hexadecimal digits; empty is an open network |
+| 96 | `char[32]` | name: lower-case letters, digits and hyphens, up to 31, not starting or ending with a hyphen; empty is `pilyzer` |
+
+The instrument refuses anything else with `badArgument`. It keeps what it is
+given in flash, where a firmware update leaves it, and answers before it
+joins: over Wi-Fi, leaving the old network first would take the reply with
+it. A network that is still being joined is left only once that join ends.
+
+### `NetworkStatus` — 72 bytes
+
+| Offset | Type | Field |
+| ---: | --- | --- |
+| 0 | `u8` | state — 0 no network set, 1 joining, 2 joined, 3 cannot join (tried again every 40 s) |
+| 1 | `u8` | source — 0 none, 1 set by a host, 2 built in with `-DPILYZER_WIFI_SSID` |
+| 2 | `u16` | reserved |
+| 4 | `u8[4]` | IPv4 address, once joined |
+| 8 | `char[32]` | SSID |
+| 40 | `char[32]` | name |
+
+The password is never sent back.
 
 ## Reading a record
 

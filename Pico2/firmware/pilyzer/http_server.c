@@ -18,7 +18,7 @@ bool pilyzer_execute(const uint8_t *packet, uint32_t length,
 // A request is a header and at most a short payload — the volume all goes the
 // other way — so what has to be buffered per connection is the head and little
 // else.
-#define REQUEST_BUFFER   (HTTP_MAX_HEAD + 128)
+#define REQUEST_BUFFER   (HTTP_MAX_HEAD + 12 + 128)   // a head, then a frame up to OP_SET_NETWORK's
 #define RESPONSE_HEAD    192
 #define SPANS            3          // response head, then up to two body parts
 

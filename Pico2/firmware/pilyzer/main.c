@@ -23,7 +23,9 @@
 #endif
 #include "tusb.h"
 
-#define MAX_REQUEST_PAYLOAD 64
+// The longest request is OP_SET_NETWORK's 128 bytes, and the longest inline
+// reply OP_NETWORK_STATUS's 72.
+#define MAX_REQUEST_PAYLOAD 128
 
 // --- Outgoing frames ----------------------------------------------------
 // A response is a header, optionally a small inline payload, and optionally a
@@ -215,7 +217,11 @@ static void fill_capabilities(pilyzer_capabilities_t *capabilities)
     capabilities->flags = CAP_CALIBRATION_OUTPUT | CAP_TRIGGER_LOWPASS |
                           CAP_REPORTS_RANGES |
                           (ANALOG_RANGES > 1 ? CAP_SOFTWARE_RANGE : 0) |
-                          (signals_available() ? CAP_SIGNAL_GENERATOR : 0);
+                          (signals_available() ? CAP_SIGNAL_GENERATOR : 0)
+#if PILYZER_WIFI
+                          | CAP_NETWORK
+#endif
+                          ;
 }
 
 // What this board's front end does to a voltage on its way to the converter.
@@ -284,6 +290,24 @@ static void handle(const pilyzer_header_t *header, const uint8_t *payload)
         respond(opcode, sequence, ST_OK, &actual, sizeof actual, NULL, 0);
         return;
     }
+#if PILYZER_WIFI
+    case OP_SET_NETWORK: {
+        if (length < sizeof(pilyzer_network_config_t)) {
+            respond(opcode, sequence, ST_BAD_LENGTH, NULL, 0, NULL, 0);
+            return;
+        }
+        pilyzer_network_config_t config;
+        memcpy(&config, payload, sizeof config);
+        respond(opcode, sequence, wifi_configure(&config), NULL, 0, NULL, 0);
+        return;
+    }
+    case OP_NETWORK_STATUS: {
+        pilyzer_network_status_t status;
+        wifi_status(&status);
+        respond(opcode, sequence, ST_OK, &status, sizeof status, NULL, 0);
+        return;
+    }
+#endif
     case OP_REBOOT_BOOTLOADER:
         respond(opcode, sequence, ST_OK, NULL, 0, NULL, 0);
         reboot_when_drained = true;

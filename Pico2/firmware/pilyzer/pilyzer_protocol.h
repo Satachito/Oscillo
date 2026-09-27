@@ -20,6 +20,8 @@ enum pilyzer_opcode {
     OP_REBOOT_BOOTLOADER     = 0x06,
     OP_INPUT_RANGES          = 0x07,
     OP_SET_SIGNALS           = 0x08,
+    OP_SET_NETWORK           = 0x09,   // a Pico 2 W: the network it joins and its name
+    OP_NETWORK_STATUS        = 0x0A,
 
     OP_ANALOG_CONFIGURE      = 0x10,
     OP_ANALOG_ARM            = 0x11,
@@ -68,6 +70,8 @@ enum pilyzer_state {
 #define CAP_REPORTS_RANGES     (1u << 4)
 // The device can put a sine and three noises on four pins of its own.
 #define CAP_SIGNAL_GENERATOR   (1u << 5)
+// A Pico 2 W: the host can tell it which network to join (OP_SET_NETWORK).
+#define CAP_NETWORK            (1u << 6)
 
 #define PILYZER_HEADER_SIZE 12
 
@@ -167,7 +171,41 @@ typedef struct __attribute__((packed)) {
     uint32_t count;
 } pilyzer_read_request_t;
 
+// OP_SET_NETWORK. UTF-8, zero-padded; a string that fills its field needs no
+// terminator. An empty SSID forgets the network; an empty hostname is
+// "pilyzer".
+typedef struct __attribute__((packed)) {
+    char ssid[32];
+    char password[64];
+    char hostname[32];
+} pilyzer_network_config_t;
+
+enum pilyzer_network_state {
+    NET_NOT_SET  = 0,   // no network to join
+    NET_JOINING  = 1,
+    NET_JOINED   = 2,
+    NET_FAILING  = 3,   // refused, or not there; tried again every 40 s
+};
+
+enum pilyzer_network_source {
+    NET_SOURCE_NONE   = 0,
+    NET_SOURCE_STORED = 1,   // set by a host, kept in flash
+    NET_SOURCE_BUILT  = 2,   // compiled in with -DPILYZER_WIFI_SSID
+};
+
+// OP_NETWORK_STATUS. Never the password.
+typedef struct __attribute__((packed)) {
+    uint8_t  state;
+    uint8_t  source;
+    uint16_t reserved;
+    uint8_t  ipv4[4];
+    char     ssid[32];
+    char     hostname[32];
+} pilyzer_network_status_t;
+
 _Static_assert(sizeof(pilyzer_header_t)       == 12, "header layout");
+_Static_assert(sizeof(pilyzer_network_config_t) == 128, "network config layout");
+_Static_assert(sizeof(pilyzer_network_status_t)  == 72, "network status layout");
 _Static_assert(sizeof(pilyzer_identity_t)     == 32, "identity layout");
 _Static_assert(sizeof(pilyzer_capabilities_t) == 48, "capabilities layout");
 _Static_assert(sizeof(pilyzer_analog_config_t)== 32, "analog config layout");
