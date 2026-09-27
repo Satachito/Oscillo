@@ -48,6 +48,11 @@ class Recorder {
   // Where frames `offset`, `offset + 1`… of the record are, and how many of
   // them sit next to each other before the ring wraps.
   uint32_t contiguous(uint32_t offset, uint32_t count, const uint16_t **frames) const;
+  // The ring's memory, which the logic side records into while this one is
+  // idle; `discard` then says nothing in it is this record's any more.
+  uint8_t *storage() { return reinterpret_cast<uint8_t *>(ring_); }
+  static constexpr uint32_t kStorageBytes = kBufferConversions * sizeof(uint16_t);
+  void discard();
 
  private:
   void commit();

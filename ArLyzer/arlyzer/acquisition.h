@@ -3,6 +3,7 @@
 // hardware: a timer and the converter. What they feed is record::Recorder.
 #pragma once
 #include <stdint.h>
+#include "logic.h"
 #include "protocol.h"
 #include "record.h"
 
@@ -11,8 +12,9 @@ namespace acquisition {
 constexpr uint8_t kChannels = record::kChannels;
 constexpr uint32_t kMaxRecord = record::kMaxRecord;
 
-// Finds each pin's converter channel and claims a timer. False if no timer was free.
-bool begin(const uint8_t *pins);
+// Finds each analogue pin's converter channel and each logic pin's port, and
+// claims a timer. False if no timer was free.
+bool begin(const uint8_t *pins, const uint8_t *logicPins);
 
 // The timer's clock, which is the base clock every plan is stated in.
 uint32_t clockHz();
@@ -35,5 +37,18 @@ void poll();
 uint8_t checkRead(uint32_t offset, uint32_t count);
 uint8_t conversionsPerSample();
 uint32_t contiguous(uint32_t offset, uint32_t count, const uint16_t **frames);
+
+// The logic side: eight digital inputs, D2–D9, sampled by the same timer into
+// the same memory, so never while a record is being taken.
+constexpr uint8_t kLogicChannels = logic::kChannels;
+uint32_t logicClockHz();  // the fastest it samples
+uint32_t logicMaxRecord();
+bool logicRunning();
+uint8_t logicConfigure(const wire::LogicConfig &config, wire::AcquisitionPlan &plan);
+uint8_t logicArm();
+uint8_t logicAbort();
+void logicStatus(wire::AcquisitionStatus &out);
+uint8_t logicCheckRead(uint32_t offset, uint32_t count);
+uint32_t logicContiguous(uint32_t offset, uint32_t count, const uint8_t **samples);
 
 }  // namespace acquisition

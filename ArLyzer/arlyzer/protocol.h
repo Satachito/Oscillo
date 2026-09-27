@@ -23,6 +23,10 @@ enum Opcode : uint8_t {
   OP_ANALOG_READ = 0x13,
   OP_ANALOG_ABORT = 0x14,
   OP_ANALOG_SAMPLE = 0x15,
+  OP_LOGIC_CONFIGURE = 0x20,
+  OP_LOGIC_ARM = 0x21,
+  OP_LOGIC_STATUS = 0x22,
+  OP_LOGIC_READ = 0x23,
   OP_LOGIC_ABORT = 0x24,
 };
 
@@ -87,6 +91,12 @@ struct __attribute__((packed)) AnalogConfig {
   uint32_t recordLength, pretriggerLength, autoTimeoutMicroseconds, lowPassHz;
 };
 
+struct __attribute__((packed)) LogicConfig {
+  uint8_t triggerMode, triggerChannel, triggerSlope, reserved;
+  uint64_t periodFemtoseconds;
+  uint32_t recordLength, pretriggerLength, autoTimeoutMicroseconds;
+};
+
 struct __attribute__((packed)) AcquisitionPlan {
   uint32_t clockHz, divisorQ8, decimation, recordLength, pretriggerLength;
   uint8_t channelMask, conversionsPerSample;
@@ -108,6 +118,7 @@ static_assert(sizeof(Identity) == 32, "identity is 32 bytes");
 static_assert(sizeof(Capabilities) == 48, "capabilities is 48 bytes");
 static_assert(sizeof(InputRange) == 32, "an input range is 32 bytes");
 static_assert(sizeof(AnalogConfig) == 32, "an analogue configuration is 32 bytes");
+static_assert(sizeof(LogicConfig) == 24, "a logic configuration is 24 bytes");
 static_assert(sizeof(AcquisitionPlan) == 24, "a plan is 24 bytes");
 static_assert(sizeof(AcquisitionStatus) == 16, "a status is 16 bytes");
 

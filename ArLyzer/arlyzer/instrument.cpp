@@ -10,7 +10,7 @@ using namespace wire;
 namespace instrument {
 namespace {
 
-constexpr uint16_t kFirmwareVersion = 0x0005;  // 0.5: the Minima and the WiFi, several ports, lost bytes survived
+constexpr uint16_t kFirmwareVersion = 0x0006;  // 0.6: a logic analyser on D2–D9
 constexpr uint8_t kChannels = acquisition::kChannels;
 constexpr uint8_t kBits = 14;
 
@@ -68,6 +68,10 @@ void dispatch(Write write, const Header &req, const uint8_t *data, uint32_t leng
       caps.analogMaxRecord = acquisition::kMaxRecord;
       caps.analogMaxPretrigger = acquisition::kMaxRecord - 1;
       caps.referenceMicrovolts = acquisition::referenceMicrovolts();
+      caps.logicChannels = acquisition::kLogicChannels;
+      caps.logicClockHz = acquisition::logicClockHz();
+      caps.logicMaxRecord = acquisition::logicMaxRecord();
+      caps.logicMaxPretrigger = acquisition::logicMaxRecord() - 1;
       caps.flags = CAP_REPORTS_RANGES;
       respond(write, req, ST_OK, &caps, sizeof caps);
       return;
@@ -118,12 +122,48 @@ void dispatch(Write write, const Header &req, const uint8_t *data, uint32_t leng
     case OP_ANALOG_ABORT:
       respond(write, req, acquisition::abort(), nullptr, 0);
       return;
+    case OP_LOGIC_CONFIGURE: {
+      if (length < sizeof(LogicConfig)) { respond(write, req, ST_BAD_LENGTH, nullptr, 0); return; }
+      LogicConfig config;
+      memcpy(&config, data, sizeof config);
+      AcquisitionPlan plan;
+      const uint8_t status = acquisition::logicConfigure(config, plan);
+      respond(write, req, status, &plan, status == ST_OK ? sizeof plan : 0);
+      return;
+    }
+    case OP_LOGIC_ARM:
+      respond(write, req, acquisition::logicArm(), nullptr, 0);
+      return;
+    case OP_LOGIC_STATUS: {
+      AcquisitionStatus status;
+      acquisition::logicStatus(status);
+      respond(write, req, ST_OK, &status, sizeof status);
+      return;
+    }
+    case OP_LOGIC_READ: {
+      if (length < sizeof(ReadRequest)) { respond(write, req, ST_BAD_LENGTH, nullptr, 0); return; }
+      ReadRequest read;
+      memcpy(&read, data, sizeof read);
+      const uint8_t status = acquisition::logicCheckRead(read.offset, read.count);
+      if (status != ST_OK) { respond(write, req, status, nullptr, 0); return; }
+      sendHeader(write, req, ST_OK, read.count);
+      uint32_t offset = read.offset, count = read.count;
+      while (count > 0) {
+        const uint8_t *samples;
+        const uint32_t run = acquisition::logicContiguous(offset, count, &samples);
+        write(samples, run);
+        offset += run;
+        count -= run;
+      }
+      return;
+    }
     case OP_LOGIC_ABORT:
-      respond(write, req, ST_OK, nullptr, 0);  // there is no logic analyser to stop
+      respond(write, req, acquisition::logicAbort(), nullptr, 0);
       return;
     case OP_ANALOG_SAMPLE: {
-      // The immediate reading shares the converter with the record.
-      if (acquisition::running()) { respond(write, req, ST_BUSY, nullptr, 0); return; }
+      // The immediate reading shares the converter with the record, and the
+      // timer's interrupt with the logic side.
+      if (acquisition::running() || acquisition::logicRunning()) { respond(write, req, ST_BUSY, nullptr, 0); return; }
       uint16_t averages = 1;
       if (length >= 2) memcpy(&averages, data, sizeof averages);
       uint16_t readings[kChannels];

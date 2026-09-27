@@ -339,6 +339,14 @@ square wave and GPIO16–19 for the generator as every other board. That leaves
 GPIO0, GPIO1, GPIO14, GPIO15, GPIO20, GPIO21 and GPIO28 free, GPIO28 being the
 only one of them the converter can read.
 
+An ArLyzer's logic inputs D0–D7 are the Arduino's D2–D9 on all three boards — D0
+and D1 are the UNOs' serial port and D10–D13 SPI's. They are read from the port
+registers by the same timer that paces the analogue side, into the same memory,
+so the two never run at once; the fastest rate is 166,667 samples/s (6 µs),
+which the capabilities give as the logic clock, and a record holds up to 16,384
+samples (14,336 on the WiFi). The inputs are the RA4M1's own at the board's 5 V,
+and a 3.3 V signal reads high.
+
 The capability reply advertises three analogue channels. `analogSample` returns
 three little-endian u16 readings (CH1, CH2, CH3), one per advertised channel;
 older two-channel firmware returns two readings. The app uses the advertised

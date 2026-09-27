@@ -154,6 +154,10 @@ void Recorder::abort() {
   if (active(state_)) state_ = wire::ACQ_ABORTED;
 }
 
+void Recorder::discard() {
+  if (!active(state_)) state_ = wire::ACQ_IDLE;
+}
+
 void Recorder::overrun() {
   if (active(state_)) state_ = wire::ACQ_OVERRUN;
 }

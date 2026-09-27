@@ -1,7 +1,7 @@
 // ArLyzer: the PiLyzer wire protocol (Pico2/docs/protocol.md) on an Arduino
 // Nano R4, UNO R4 Minima or UNO R4 WiFi, eight analogue inputs (seven on the
-// WiFi): immediate readings for the meter, and timed, triggered records for
-// the oscilloscope and the spectrum.
+// WiFi): immediate readings for the meter, timed, triggered records for the
+// oscilloscope and the spectrum, and a logic analyser on D2–D9.
 //
 // The transport is the board's USB CDC serial, not the vendor bulk interface
 // the Pico uses. The stock Renesas core builds its own USB descriptors and
@@ -42,6 +42,10 @@ constexpr uint32_t kBoardId = 4;
 constexpr char kName[] = "ArLyzer Nano R4";
 const uint8_t kPins[kChannels] = {A0, A1, A2, A3, A4, A5, A6, A7};
 #endif
+
+// Logic D0–D7 are the board's D2–D9 on every R4: D0 and D1 are the serial
+// port's on the UNOs, and D10–D13 SPI's.
+const uint8_t kLogicPins[acquisition::kLogicChannels] = {2, 3, 4, 5, 6, 7, 8, 9};
 
 // analogRead(4) is A4, not D4: a number below A0 is taken as an analogue
 // index. The port-and-pin form reads the pin itself, whichever header it is on.
@@ -99,7 +103,7 @@ void setLED(bool on) { digitalWrite(LED_BUILTIN, on ? HIGH : LOW); }
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   analogReadResolution(14);
-  acquisition::begin(kPins);
+  acquisition::begin(kPins, kLogicPins);
   instrument::begin({kBoardId, kName, sampleAll, setLED});
   // The WiFi's UART takes an interrupt a byte, and with the tick at its
   // shortest there is little time for one: at 460800 and above, requests lost

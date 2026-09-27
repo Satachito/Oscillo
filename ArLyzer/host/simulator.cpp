@@ -3,11 +3,12 @@
 // converter replaced by known signals. It prints the port to connect to, so the
 // applications can be driven end to end without a Nano R4.
 //
-//   xcrun c++ -std=c++17 -O2 -I ../arlyzer ../arlyzer/instrument.cpp ../arlyzer/record.cpp simulator.cpp -o arlyzer-sim
+//   xcrun c++ -std=c++17 -O2 -I ../arlyzer ../arlyzer/instrument.cpp ../arlyzer/record.cpp ../arlyzer/logic.cpp simulator.cpp -o arlyzer-sim
 //   ./arlyzer-sim                  # prints /dev/ttysNNN
 //
 // CH1 a 1 kHz sine, CH2 a 500 Hz square, CH3 a 250 Hz triangle, CH4–CH8 sines
-// at 100–500 Hz, all about 2.5 V, with a little noise.
+// at 100–500 Hz, all about 2.5 V, with a little noise. Logic D0–D7 count at
+// 2 kHz, so D0 is a 1 kHz square, D1 500 Hz, and so on down.
 #include <fcntl.h>
 #include <poll.h>
 #include <termios.h>
@@ -79,14 +80,21 @@ constexpr uint32_t kClockHz = 48000000;
 // The Nano R4's own floor: 10 µs and 1.4 µs an input, at 48 MHz.
 constexpr uint32_t kBaseCycles = 480;
 constexpr uint32_t kInputCycles = 67;
+constexpr uint32_t kLogicFloorCycles = 288;  // 6 µs, as on the board
 record::Recorder recorder;
+logic::Recorder logicRecorder;
+uint64_t logicTicksFed = 0;
+std::chrono::steady_clock::time_point logicArmedAt;
 uint8_t slotChannel[kChannels];
 uint8_t slotCount = 0;
 uint64_t ticksFed = 0;
 std::chrono::steady_clock::time_point armedAt;
 }  // namespace
 
-bool begin(const uint8_t *) { return true; }
+bool begin(const uint8_t *, const uint8_t *) {
+  logicRecorder.attach(recorder.storage(), record::Recorder::kStorageBytes);
+  return true;
+}
 uint32_t clockHz() { return kClockHz; }
 uint32_t referenceMicrovolts() { return 5000000; }
 uint32_t minPeriodCycles() { return kBaseCycles / kChannels + kInputCycles + 1; }
@@ -94,6 +102,7 @@ bool running() { return recorder.running(); }
 uint8_t conversionsPerSample() { return recorder.slots(); }
 
 uint8_t configure(const wire::AnalogConfig &config, wire::AcquisitionPlan &plan) {
+  if (logicRecorder.running()) return wire::ST_BUSY;
   const uint8_t status = recorder.configure(config, kClockHz, kBaseCycles, kInputCycles, 0xFFFFFFF0u, plan);
   if (status != wire::ST_OK) return status;
   slotCount = 0;
@@ -103,8 +112,9 @@ uint8_t configure(const wire::AnalogConfig &config, wire::AcquisitionPlan &plan)
 }
 
 uint8_t arm() {
-  if (recorder.running()) return wire::ST_BUSY;
+  if (recorder.running() || logicRecorder.running()) return wire::ST_BUSY;
   if (!recorder.configured()) return wire::ST_NOT_CONFIGURED;
+  logicRecorder.discard();
   recorder.arm(millisNow());
   ticksFed = 0;
   armedAt = std::chrono::steady_clock::now();
@@ -131,6 +141,47 @@ void poll() {
     }
   }
   recorder.expire(millisNow());
+  if (logicRecorder.running()) {
+    const double tick = static_cast<double>(logicRecorder.tickCounts()) / kClockHz;
+    const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - logicArmedAt).count();
+    const uint64_t due = static_cast<uint64_t>(elapsed / tick);
+    while (logicTicksFed < due && logicRecorder.running()) {
+      const double t = logicTicksFed * tick;
+      logicRecorder.sample(static_cast<uint8_t>(static_cast<uint64_t>(t * 2000)));
+      logicTicksFed++;
+    }
+  }
+  logicRecorder.expire(millisNow());
+}
+
+uint32_t logicClockHz() { return kClockHz / kLogicFloorCycles; }
+uint32_t logicMaxRecord() { return logicRecorder.capacity(); }
+bool logicRunning() { return logicRecorder.running(); }
+
+uint8_t logicConfigure(const wire::LogicConfig &config, wire::AcquisitionPlan &plan) {
+  if (recorder.running()) return wire::ST_BUSY;
+  return logicRecorder.configure(config, kClockHz, kLogicFloorCycles, 0xFFFFFFF0u, plan);
+}
+
+uint8_t logicArm() {
+  if (recorder.running() || logicRecorder.running()) return wire::ST_BUSY;
+  if (!logicRecorder.configured()) return wire::ST_NOT_CONFIGURED;
+  recorder.discard();
+  logicRecorder.arm(millisNow());
+  logicTicksFed = 0;
+  logicArmedAt = std::chrono::steady_clock::now();
+  return wire::ST_OK;
+}
+
+uint8_t logicAbort() {
+  logicRecorder.abort();
+  return wire::ST_OK;
+}
+
+void logicStatus(wire::AcquisitionStatus &out) { logicRecorder.status(out); }
+uint8_t logicCheckRead(uint32_t offset, uint32_t count) { return logicRecorder.checkRead(offset, count); }
+uint32_t logicContiguous(uint32_t offset, uint32_t count, const uint8_t **samples) {
+  return logicRecorder.contiguous(offset, count, samples);
 }
 
 void status(wire::AcquisitionStatus &out) { recorder.status(out); }
@@ -151,6 +202,7 @@ int main() {
   std::printf("%s\n", ttyname(slave));
   std::fflush(stdout);
 
+  acquisition::begin(nullptr, nullptr);
   instrument::begin({4, "ArLyzer Nano R4", sampleAll, setLED});
   instrument::Port port(writePort);
   uint8_t buffer[256];

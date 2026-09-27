@@ -13,6 +13,12 @@ namespace {
 // about 8.3 µs + 1.13 µs an input. This keeps a fifth in hand.
 constexpr double kTickBaseSeconds = 10e-6;
 constexpr double kTickPerInputSeconds = 1.4e-6;
+// The logic side's shortest tick: 6 µs, 167 kSa/s. Its interrupt reads two
+// port registers, looks the eight lines up in two tables and records the
+// byte, about 240 cycles with the way in and out (2026-09-27, UNO R4 WiFi).
+// At 5 µs that left the UART too little time and requests lost bytes while a
+// record was being taken; 5.5 µs held. This keeps a tenth in hand.
+constexpr double kLogicTickSeconds = 6e-6;
 constexpr uint8_t kTickPriority = 4;
 
 FspTimer timer;
@@ -27,11 +33,64 @@ uint32_t due = 0;           // DWT cycle count this tick should have come at
 uint32_t tickCycles = 0;    // one tick, in CPU cycles
 
 record::Recorder recorder;
+logic::Recorder logicRecorder;
+
+// Which side the timer is feeding. The two never run at once: they share the
+// timer, and the logic side records into the analogue ring.
+enum class Side : uint8_t { analog, logic };
+volatile Side side = Side::analog;
+
+// The logic inputs, D2–D9 on every board, as the port registers they are
+// read from — ports 1 and 3 on all three R4s. Each port's bits are turned
+// into logic bits by a table: testing the eight lines one at a time took 158
+// cycles a sample, most of the 2 µs budget, where two lookups take a tenth.
+constexpr uint8_t kMaxPorts = 2;
+constexpr uint32_t kTableBytes = 512 + 64;  // the WiFi's nine-bit span on port 1, and room for another
+R_PORT0_Type *logicPort[kMaxPorts];
+uint8_t logicPortCount = 0;
+uint8_t portShift[kMaxPorts];
+uint16_t portMask[kMaxPorts];
+uint8_t *portTable[kMaxPorts];
+uint8_t tables[kTableBytes];
+uint8_t logicPin[logic::kChannels];
+// Analogue inputs that are logic inputs too — D4 and D5 on the Minima — and
+// so have to be put back into analogue mode before the converter scans them.
+bsp_io_port_pin_t sharedPin[kChannels];
+uint8_t sharedCount = 0;
+
+void onLogicTick(uint32_t now) {
+  if (!logicRecorder.running()) return;
+  if (primed) due += tickCycles; else due = now;
+  primed = true;
+  // A tick is only lost once the interrupt runs a whole tick late: the timer
+  // holds one event pending, and a second merges with it. So seven eighths of
+  // one is late but whole. Half, as the analogue side allows, turned ticks of
+  // 4 to 6 µs into overruns while every sample was there: the main loop's
+  // short stretches with interrupts off delay a tick by up to 3.7 µs.
+  if (static_cast<int32_t>(now - due) > static_cast<int32_t>(tickCycles - tickCycles / 8)) {
+    logicRecorder.overrun();
+    timer.stop();
+    return;
+  }
+  // Both ports first, then the tables, so the lines are read as nearly
+  // together as the registers allow.
+  const uint16_t first = logicPort[0]->PIDR;
+  const uint16_t second = logicPortCount > 1 ? logicPort[1]->PIDR : 0;
+  uint8_t bits = portTable[0][(first >> portShift[0]) & portMask[0]];
+  if (logicPortCount > 1) bits |= portTable[1][(second >> portShift[1]) & portMask[1]];
+  if (!logicRecorder.sample(bits)) timer.stop();
+}
 
 // Every tick: take the scan the last tick started, then start the next. The
 // converter works between ticks, so the interrupt never waits on it.
+IRQn_Type tickIrq = static_cast<IRQn_Type>(-1);
+
 void onTick(timer_callback_args_t *) {
   const uint32_t now = DWT->CYCCNT;
+  if (side == Side::logic) {
+    onLogicTick(now);
+    return;
+  }
   if (!recorder.running()) return;
   R_ADC0_Type *adc = R_ADC0;
   // Either the scan has not finished, or the interrupt has fallen behind the
@@ -56,9 +115,80 @@ void onTick(timer_callback_args_t *) {
   if (previous && !recorder.scan(codes)) timer.stop();
 }
 
+// The timer's interrupt, straight from the vector table. Through FSP's own
+// handler and FspTimer's callback it cost about 5 µs a tick before any of it
+// was ours, which capped the logic side below 100 kSa/s. All the event needs
+// is its flag cleared in the interrupt controller.
+void tickVector() {
+  R_ICU->IELSR_b[tickIrq].IR = 0;
+  onTick(nullptr);
+}
+
+// Starts the timer with its first tick a whole period away: the counter from
+// zero, and no cycle end left pending from the last record.
+void startTimer(uint32_t counts) {
+  primed = false;
+  tickCycles = static_cast<uint32_t>(static_cast<uint64_t>(counts) * SystemCoreClock / timerHz);
+  // GTPR holds the period less one; the AGT's own call takes the count.
+  timer.set_period(timerType == AGT_TIMER ? counts : counts - 1);
+  if (timerType == GPT_TIMER) {
+    R_GPT0_Type *gpt = reinterpret_cast<R_GPT0_Type *>(
+        R_GPT0_BASE + (R_GPT1_BASE - R_GPT0_BASE) * timer.get_channel());
+    gpt->GTCNT = 0;
+    gpt->GTST = 0;  // status flags clear by writing zero
+  } else {
+    timer.reset();
+  }
+  const IRQn_Type irq = timer.get_cfg()->cycle_end_irq;
+  if (irq >= 0) {
+    R_BSP_IrqStatusClear(irq);
+    NVIC_ClearPendingIRQ(irq);
+  }
+  timer.start();
+}
+
+uint32_t tickLimit() { return timerType == AGT_TIMER ? 0xFFFFu : 0xFFFFFFF0u; }
+uint32_t logicFloorCounts() { return static_cast<uint32_t>(kLogicTickSeconds * timerHz + 0.5); }
+
 }  // namespace
 
-bool begin(const uint8_t *pins) {
+bool begin(const uint8_t *pins, const uint8_t *logicPins) {
+  logicRecorder.attach(recorder.storage(), record::Recorder::kStorageBytes);
+  uint8_t lineSlot[logic::kChannels], lineBit[logic::kChannels];
+  uint8_t low[kMaxPorts] = {15, 15}, high[kMaxPorts] = {0, 0};
+  for (uint8_t i = 0; i < logic::kChannels; i++) {
+    logicPin[i] = logicPins[i];
+    const bsp_io_port_pin_t bsp = digitalPinToBspPin(logicPins[i]);
+    R_PORT0_Type *port = reinterpret_cast<R_PORT0_Type *>(IOPORT_PRV_PORT_ADDRESS(bsp >> 8));
+    uint8_t slot = 0;
+    while (slot < logicPortCount && logicPort[slot] != port) slot++;
+    if (slot == logicPortCount) {
+      if (logicPortCount == kMaxPorts) return false;
+      logicPort[logicPortCount++] = port;
+    }
+    lineSlot[i] = slot;
+    lineBit[i] = bsp & 0xFF;
+    if (lineBit[i] < low[slot]) low[slot] = lineBit[i];
+    if (lineBit[i] > high[slot]) high[slot] = lineBit[i];
+    for (uint8_t c = 0; c < kChannels; c++)
+      if (digitalPinToBspPin(pins[c]) == bsp) sharedPin[sharedCount++] = bsp;
+  }
+  // One table a port, indexed by the span of its bits that carry lines.
+  uint32_t used = 0;
+  for (uint8_t p = 0; p < logicPortCount; p++) {
+    const uint32_t entries = 1u << (high[p] - low[p] + 1);
+    if (used + entries > kTableBytes) return false;
+    portShift[p] = low[p];
+    portMask[p] = static_cast<uint16_t>(entries - 1);
+    portTable[p] = tables + used;
+    for (uint32_t value = 0; value < entries; value++) {
+      uint8_t bits = 0;
+      for (uint8_t i = 0; i < logic::kChannels; i++)
+        if (lineSlot[i] == p && (value >> (lineBit[i] - low[p])) & 1) bits |= 1u << i;
+      portTable[p][value] = bits;
+    }
+    used += entries;
+  }
   for (uint8_t c = 0; c < kChannels; c++) {
     // analogRead opens the converter at its full resolution and puts the pin
     // in analogue mode; acquisition then drives the same converter directly.
@@ -75,6 +205,12 @@ bool begin(const uint8_t *pins) {
   // tens of µs on a Nano R4, enough to find the next scan still running.
   if (!timer.setup_overflow_irq(kTickPriority) || !timer.open()) return false;
   timer.stop();
+  // The core keeps the vector table in RAM (IRQManager writes it), so the
+  // timer's entry can point at tickVector instead of FSP's handler.
+  tickIrq = timer.get_cfg()->cycle_end_irq;
+  if (tickIrq < 0) return false;
+  reinterpret_cast<volatile uint32_t *>(SCB->VTOR)[16 + tickIrq] = reinterpret_cast<uint32_t>(&tickVector);
+  __DSB();
   timer.set_period_buffer(false);
   timerHz = timer.get_freq_hz();
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;  // the cycle counter the lost-tick check reads
@@ -147,10 +283,10 @@ uint8_t conversionsPerSample() { return recorder.slots(); }
 
 uint8_t configure(const wire::AnalogConfig &config, wire::AcquisitionPlan &plan) {
   if (timerHz == 0) return wire::ST_INTERNAL_ERROR;
-  const uint32_t tickLimit = timerType == AGT_TIMER ? 0xFFFFu : 0xFFFFFFF0u;
+  if (logicRecorder.running()) return wire::ST_BUSY;
   const uint32_t base = static_cast<uint32_t>(kTickBaseSeconds * timerHz + 0.5);
   const uint32_t perInput = static_cast<uint32_t>(kTickPerInputSeconds * timerHz + 0.5);
-  const uint8_t status = recorder.configure(config, timerHz, base, perInput, tickLimit, plan);
+  const uint8_t status = recorder.configure(config, timerHz, base, perInput, tickLimit(), plan);
   if (status != wire::ST_OK) return status;
   slotCount = 0;
   for (uint8_t c = 0; c < kChannels; c++)
@@ -159,9 +295,12 @@ uint8_t configure(const wire::AnalogConfig &config, wire::AcquisitionPlan &plan)
 }
 
 uint8_t arm() {
-  if (recorder.running()) return wire::ST_BUSY;
+  if (recorder.running() || logicRecorder.running()) return wire::ST_BUSY;
   if (!recorder.configured()) return wire::ST_NOT_CONFIGURED;
   timer.stop();
+  side = Side::analog;
+  logicRecorder.discard();  // its samples were in this ring
+  for (uint8_t i = 0; i < sharedCount; i++) R_IOPORT_PinCfg(&g_ioport_ctrl, sharedPin[i], IOPORT_CFG_ANALOG_ENABLE);
   while (R_ADC0->ADCSR_b.ADST) {}
   // Scan only the enabled inputs. analogRead puts its own selection back the
   // next time the meter asks.
@@ -169,28 +308,8 @@ uint8_t arm() {
   for (uint8_t s = 0; s < slotCount; s++) bits |= 1u << slotChannel[s];
   R_ADC0->ADANSA[0] = static_cast<uint16_t>(bits);
   R_ADC0->ADANSA[1] = static_cast<uint16_t>(bits >> 16);
-  primed = false;
-  tickCycles = static_cast<uint32_t>(static_cast<uint64_t>(recorder.tickCounts()) * SystemCoreClock / timerHz);
   recorder.arm(millis());
-  // GTPR holds the period less one; the AGT's own call takes the count.
-  const uint32_t counts = recorder.tickCounts();
-  timer.set_period(timerType == AGT_TIMER ? counts : counts - 1);
-  // The first tick a whole period away: the counter from zero, and no cycle
-  // end left pending from the last record.
-  if (timerType == GPT_TIMER) {
-    R_GPT0_Type *gpt = reinterpret_cast<R_GPT0_Type *>(
-        R_GPT0_BASE + (R_GPT1_BASE - R_GPT0_BASE) * timer.get_channel());
-    gpt->GTCNT = 0;
-    gpt->GTST = 0;  // status flags clear by writing zero
-  } else {
-    timer.reset();
-  }
-  const IRQn_Type irq = timer.get_cfg()->cycle_end_irq;
-  if (irq >= 0) {
-    R_BSP_IrqStatusClear(irq);
-    NVIC_ClearPendingIRQ(irq);
-  }
-  timer.start();
+  startTimer(recorder.tickCounts());
   return wire::ST_OK;
 }
 
@@ -204,10 +323,21 @@ uint8_t abort() {
   return wire::ST_OK;
 }
 
+// Interrupts go off only around the check itself, and only while there is a
+// record to check: the loop runs this all the time, and a tick that lands in
+// the gap waits for it.
 void poll() {
-  noInterrupts();
-  if (recorder.expire(millis())) timer.stop();
-  interrupts();
+  const uint32_t now = millis();
+  if (recorder.running()) {
+    noInterrupts();
+    if (recorder.expire(now)) timer.stop();
+    interrupts();
+  }
+  if (logicRecorder.running()) {
+    noInterrupts();
+    if (logicRecorder.expire(now)) timer.stop();
+    interrupts();
+  }
 }
 
 void status(wire::AcquisitionStatus &out) {
@@ -220,6 +350,57 @@ uint8_t checkRead(uint32_t offset, uint32_t count) { return recorder.checkRead(o
 
 uint32_t contiguous(uint32_t offset, uint32_t count, const uint16_t **frames) {
   return recorder.contiguous(offset, count, frames);
+}
+
+}  // namespace acquisition
+
+namespace acquisition {
+
+// The fastest the logic side samples, which is what the capabilities call its
+// clock: a host offers no rate above it.
+uint32_t logicClockHz() { return timerHz ? timerHz / logicFloorCounts() : 0; }
+uint32_t logicMaxRecord() { return logicRecorder.capacity(); }
+bool logicRunning() { return logicRecorder.running(); }
+
+uint8_t logicConfigure(const wire::LogicConfig &config, wire::AcquisitionPlan &plan) {
+  if (timerHz == 0) return wire::ST_INTERNAL_ERROR;
+  if (recorder.running()) return wire::ST_BUSY;
+  return logicRecorder.configure(config, timerHz, logicFloorCounts(), tickLimit(), plan);
+}
+
+uint8_t logicArm() {
+  if (recorder.running() || logicRecorder.running()) return wire::ST_BUSY;
+  if (!logicRecorder.configured()) return wire::ST_NOT_CONFIGURED;
+  timer.stop();
+  // The meter leaves shared pins in analogue mode, where they read as zero.
+  for (uint8_t i = 0; i < logic::kChannels; i++) pinMode(logicPin[i], INPUT);
+  recorder.discard();  // the logic samples go into its ring
+  side = Side::logic;
+  logicRecorder.arm(millis());
+  startTimer(logicRecorder.tickCounts());
+  return wire::ST_OK;
+}
+
+uint8_t logicAbort() {
+  noInterrupts();
+  if (logicRecorder.running()) {
+    timer.stop();
+    logicRecorder.abort();
+  }
+  interrupts();
+  return wire::ST_OK;
+}
+
+void logicStatus(wire::AcquisitionStatus &out) {
+  noInterrupts();
+  logicRecorder.status(out);
+  interrupts();
+}
+
+uint8_t logicCheckRead(uint32_t offset, uint32_t count) { return logicRecorder.checkRead(offset, count); }
+
+uint32_t logicContiguous(uint32_t offset, uint32_t count, const uint8_t **samples) {
+  return logicRecorder.contiguous(offset, count, samples);
 }
 
 }  // namespace acquisition
