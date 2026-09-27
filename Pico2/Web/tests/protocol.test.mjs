@@ -599,6 +599,16 @@ test('a square whose fundamental is out of reach is not read at its third harmon
   const q = spectrumQuality(spectrum(square(972, 512), r4Period, 'Hann'), 5);
   assert.ok(Math.abs(q.fundamental.frequency / 972 - 1) < .01, `read ${q.fundamental.frequency}`);
 });
+test('a square near the bottom of the spectrum reads the same distortion as one higher up', () => {
+  // Harmonics 3 and 5 of a square are a third and a fifth of it: 38.9 % up to
+  // the fifth, 48.3 % with everything. 288 Hz sits three bins up.
+  const square = (f, n) => Float64Array.from({ length: n }, (_, i) => (i * r4Period * f + .1) % 1 < .5 ? 3.3 : 0);
+  for (const f of [288, 648, 1458]) {
+    const q = spectrumQuality(spectrum(square(f, 512), r4Period, 'Hann'), 5);
+    assert.ok(Math.abs(q.thd - .389) < .01, `${f} Hz THD ${q.thd}`);
+    assert.ok(Math.abs(q.thdPlusNoise - .483) < .01, `${f} Hz THD+N ${q.thdPlusNoise}`);
+  }
+});
 test('a tone the record resolves reads within a hundredth', () => {
   for (const f of [432, 648, 972, 1458]) {
     const q = spectrumQuality(spectrum(sine(f, 512), r4Period, 'Hann'), 5);

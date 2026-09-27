@@ -175,14 +175,20 @@ export function spectrumQuality(s, harmonicCount) {
     for (let i = Math.max(bin - skirt, 0); i <= Math.min(bin + skirt, a.length - 1); i++) if (!claimed.has(i)) { total += a[i] * a[i]; if (claim) claimed.add(i); }
     return total;
   };
-  for (let i = 0; i <= skirt; i++) claimed.add(i);
+  // The fundamental first: near the bottom of the spectrum its own bins are
+  // also the DC skirt's, and claimed the other way round a 288 Hz tone three
+  // bins up lost its own peak to DC and read 94 % THD.
   const fundamentalPower = power(strongest, true), harmonics = [];
+  for (let i = 0; i <= skirt; i++) claimed.add(i);
   let harmonicPower = 0;
   for (let order = 2; order <= Math.max(harmonicCount, 2); order++) {
     const bin = strongest * order;
     if (bin + skirt >= a.length) break;
-    // A harmonic closer than two skirts to the fundamental is not resolved from it.
-    if (bin - strongest <= 2 * skirt) continue;
+    // A harmonic whose peak falls inside the fundamental's skirt is not
+    // resolved from it. One just past it is: the bins they share went to the
+    // fundamental already. Skipping everything within two skirts left a low
+    // square's third harmonic to be counted as noise.
+    if (bin - strongest <= skirt) continue;
     harmonicPower += power(bin, true); harmonics.push(interpolatedPeak(a, bin, s.resolution));
   }
   let noisePower = 0;
