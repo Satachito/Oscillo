@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "acquisition.h"
+#include "network.h"
 #include "protocol.h"
 
 using namespace wire;
@@ -10,7 +11,7 @@ using namespace wire;
 namespace instrument {
 namespace {
 
-constexpr uint16_t kFirmwareVersion = 0x0006;  // 0.6: a logic analyser on D2–D9
+constexpr uint16_t kFirmwareVersion = 0x0007;  // 0.7: an UNO R4 WiFi's network set from a host
 constexpr uint8_t kChannels = acquisition::kChannels;
 constexpr uint8_t kBits = 14;
 
@@ -45,7 +46,7 @@ void sendRecord(Write write, const Header &req, uint32_t offset, uint32_t count)
   }
 }
 
-void dispatch(Write write, const Header &req, const uint8_t *data, uint32_t length) {
+void dispatch(Write write, bool bridge, const Header &req, const uint8_t *data, uint32_t length) {
   switch (req.opcode) {
     case OP_IDENTIFY: {
       Identity id{};
@@ -72,7 +73,7 @@ void dispatch(Write write, const Header &req, const uint8_t *data, uint32_t leng
       caps.logicClockHz = acquisition::logicClockHz();
       caps.logicMaxRecord = acquisition::logicMaxRecord();
       caps.logicMaxPretrigger = acquisition::logicMaxRecord() - 1;
-      caps.flags = CAP_REPORTS_RANGES;
+      caps.flags = CAP_REPORTS_RANGES | (network::bridged() ? CAP_NETWORK : 0);
       respond(write, req, ST_OK, &caps, sizeof caps);
       return;
     }
@@ -92,6 +93,33 @@ void dispatch(Write write, const Header &req, const uint8_t *data, uint32_t leng
       if (length < 2) { respond(write, req, ST_BAD_LENGTH, nullptr, 0); return; }
       respond(write, req, data[0] < kChannels && data[1] == 0 ? ST_OK : ST_BAD_ARGUMENT, nullptr, 0);
       return;
+    case OP_SET_NETWORK: {
+      if (!network::bridged()) break;
+      if (length < sizeof(NetworkConfig)) { respond(write, req, ST_BAD_LENGTH, nullptr, 0); return; }
+      NetworkConfig config;
+      memcpy(&config, data, sizeof config);
+      respond(write, req, network::configure(config), nullptr, 0);
+      memset(&config, 0, sizeof config);
+      return;
+    }
+    case OP_NETWORK_STATUS: {
+      if (!network::bridged()) break;
+      NetworkStatus status;
+      network::status(status);
+      respond(write, req, ST_OK, &status, sizeof status);
+      return;
+    }
+    case OP_BRIDGE_SYNC: {
+      if (!bridge) break;
+      if (length < sizeof(NetworkStatus)) { respond(write, req, ST_BAD_LENGTH, nullptr, 0); return; }
+      NetworkStatus status;
+      memcpy(&status, data, sizeof status);
+      NetworkOffer offer;
+      const bool offered = network::sync(status, offer);
+      respond(write, req, ST_OK, &offer, offered ? sizeof offer : 0);
+      memset(&offer, 0, sizeof offer);
+      return;
+    }
     case OP_ANALOG_CONFIGURE: {
       if (length < sizeof(AnalogConfig)) { respond(write, req, ST_BAD_LENGTH, nullptr, 0); return; }
       AnalogConfig config;
@@ -172,9 +200,9 @@ void dispatch(Write write, const Header &req, const uint8_t *data, uint32_t leng
       return;
     }
     default:
-      respond(write, req, ST_UNKNOWN_OPCODE, nullptr, 0);
-      return;
+      break;
   }
+  respond(write, req, ST_UNKNOWN_OPCODE, nullptr, 0);
 }
 
 }  // namespace
@@ -192,7 +220,7 @@ void Port::receive(uint8_t byte) {
     // way — a UART can drop one — and waiting for that many bytes would take
     // every request after it as payload. Answer it now and look for the next.
     if (request_.length == 0 || request_.length > kMaxRequest) {
-      if (request_.length == 0) dispatch(write_, request_, payload_, 0);
+      if (request_.length == 0) dispatch(write_, bridge_, request_, payload_, 0);
       else respond(write_, request_, ST_BAD_LENGTH, nullptr, 0);
       headerFill_ = 0;
     }
@@ -200,8 +228,10 @@ void Port::receive(uint8_t byte) {
   }
   payload_[payloadFill_] = byte;
   if (++payloadFill_ < request_.length) return;
-  dispatch(write_, request_, payload_, request_.length);
+  dispatch(write_, bridge_, request_, payload_, request_.length);
   headerFill_ = 0;
+  // A password waits in no buffer longer than it has to.
+  if (request_.opcode == OP_SET_NETWORK) memset(payload_, 0, sizeof payload_);
 }
 
 }  // namespace instrument

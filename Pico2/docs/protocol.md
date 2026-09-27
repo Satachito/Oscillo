@@ -96,8 +96,8 @@ transfer.
 | `0x06` | `rebootToBootloader` | — | — (device restarts) |
 | `0x07` | `inputRanges` | — | `InputRange[analogueRanges]` (firmware 1.7) |
 | `0x08` | `setSignals` | `u8 on, u32 sineHz` | `u32 actualSineHz` (firmware 1.9) |
-| `0x09` | `setNetwork` | `NetworkConfig` | — (a Pico 2 W, firmware 1.18) |
-| `0x0A` | `networkStatus` | — | `NetworkStatus` (a Pico 2 W, firmware 1.18) |
+| `0x09` | `setNetwork` | `NetworkConfig` | — (a Pico 2 W, firmware 1.18; an UNO R4 WiFi, ArLyzer 0.7) |
+| `0x0A` | `networkStatus` | — | `NetworkStatus` (the same boards) |
 | `0x10` | `analogConfigure` | `AnalogConfig` | `AcquisitionPlan` |
 | `0x11` | `analogArm` | — | — |
 | `0x12` | `analogStatus` | — | `AcquisitionStatus` |
@@ -162,7 +162,9 @@ device has a signal generator — a sine and white, pink and brown noise on four
 consecutive pins of its own (firmware 1.9 and later). They are GPIO16–19, the
 same four on every board, so a host that names them does not have to ask which
 board it is talking to. Bit 6: a Pico 2 W, which takes the network it joins
-from the host with `setNetwork` (firmware 1.18 and later).
+from the host with `setNetwork` (firmware 1.18 and later), or an UNO R4 WiFi
+whose ESP32-S3 runs ArLyzer's bridge (ArLyzer 0.7 and later; not with
+Arduino's own firmware there, which has no use for a network).
 
 Analogue samples are unsigned 16-bit values, left-aligned from the converter's
 own resolution: a 12-bit code `c` arrives as `c << 4`. So a reading at the top
@@ -295,26 +297,38 @@ nanoseconds.
 
 ### `NetworkConfig` — 128 bytes
 
-What a Pico 2 W joins and the name it answers to, as `<name>.local`. UTF-8,
-zero-padded; a string that fills its field needs no terminator.
+What a Pico 2 W or an UNO R4 WiFi joins and the name it answers to, as
+`<name>.local`. UTF-8, zero-padded; a string that fills its field needs no
+terminator.
 
 | Offset | Type | Field |
 | ---: | --- | --- |
 | 0 | `char[32]` | SSID; empty forgets the network |
 | 32 | `char[64]` | password: WPA2/WPA3, 8–63 characters or 64 hexadecimal digits; empty is an open network |
-| 96 | `char[32]` | name: lower-case letters, digits and hyphens, up to 31, not starting or ending with a hyphen; empty is `pilyzer` |
+| 96 | `char[32]` | name: lower-case letters, digits and hyphens, up to 31, not starting or ending with a hyphen; empty is `pilyzer` (`arlyzer` on an UNO R4 WiFi) |
 
 The instrument refuses anything else with `badArgument`. It keeps what it is
 given in flash, where a firmware update leaves it, and answers before it
 joins: over Wi-Fi, leaving the old network first would take the reply with
 it. A network that is still being joined is left only once that join ends.
 
+On an UNO R4 WiFi the host talks to the RA4M1 and the radio is the ESP32-S3's,
+so the RA4M1 hands the network on. The bridge asks for it once a second over
+the UART between the two with `bridgeSync` (`0x7E`), carrying its own
+`NetworkStatus` with the generation of the last network it took in the
+reserved field; the reply is empty, or a 132-byte offer — `u16` generation,
+`u16` reserved, then the `NetworkConfig`. The RA4M1 forgets the network,
+password and all, once the bridge names its generation, and until then
+answers `networkStatus` as joining it. The bridge keeps it in its
+own NVS. `bridgeSync` is answered on that UART only, and the bridge passes
+none on from the network, so no host sees an offer.
+
 ### `NetworkStatus` — 72 bytes
 
 | Offset | Type | Field |
 | ---: | --- | --- |
 | 0 | `u8` | state — 0 no network set, 1 joining, 2 joined, 3 cannot join (tried again every 40 s) |
-| 1 | `u8` | source — 0 none, 1 set by a host, 2 built in with `-DPILYZER_WIFI_SSID` |
+| 1 | `u8` | source — 0 none, 1 set by a host, 2 built in with `-DPILYZER_WIFI_SSID` (on an UNO R4 WiFi, `ARLYZER_WIFI_SSID`) |
 | 2 | `u16` | reserved |
 | 4 | `u8[4]` | IPv4 address, once joined |
 | 8 | `char[32]` | SSID |

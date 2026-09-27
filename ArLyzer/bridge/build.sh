@@ -3,16 +3,20 @@
 # bridge (arduino/uno-r4-wifi-usb-bridge, at the commit below) with its AT
 # server replaced by arlyzer_net.cpp. See README.md.
 #
-#   ARLYZER_WIFI_SSID='your network' ARLYZER_WIFI_PASSWORD='its password' ./build.sh
+#   ./build.sh
 #
-# ARLYZER_HOSTNAME (default arlyzer) is the name it answers to over mDNS.
+# The network is set from the app afterwards, over USB, and kept on the board.
+# ARLYZER_WIFI_SSID and ARLYZER_WIFI_PASSWORD build one in instead, for a board
+# that has never been told one; such a build is not for handing out.
+# ARLYZER_HOSTNAME (default arlyzer) is the name it answers to over mDNS until
+# the app gives it another.
 # ARDUINO_CLI names the arduino-cli to use (default: the one on PATH).
 # The first run fetches the bridge, its submodules and its toolchain into
 # build/ — about 1 GB — and later runs reuse them.
 set -euo pipefail
 
-: "${ARLYZER_WIFI_SSID:?set ARLYZER_WIFI_SSID to the 2.4 GHz network the board joins}"
-: "${ARLYZER_WIFI_PASSWORD:?set ARLYZER_WIFI_PASSWORD}"
+ssid=${ARLYZER_WIFI_SSID:-}
+password=${ARLYZER_WIFI_PASSWORD:-}
 hostname=${ARLYZER_HOSTNAME:-arlyzer}
 cli=${ARDUINO_CLI:-arduino-cli}
 
@@ -42,8 +46,8 @@ cp "$repo/Pico2/firmware/pilyzer/http_request.h" "$repo/Pico2/firmware/pilyzer/h
 (cd "$repo/Pico2/Web" && npm run build >/dev/null)
 python3 "$repo/Pico2/firmware/pilyzer/bake-web.py" "$repo/Pico2/Web/dist" "$sketch/web_files.h"
 
-# The network goes into the build, never into the repository.
-python3 - "$sketch/arlyzer_config.h" "$ARLYZER_WIFI_SSID" "$ARLYZER_WIFI_PASSWORD" "$hostname" <<'EOF'
+# A built-in network goes into the build, never into the repository.
+python3 - "$sketch/arlyzer_config.h" "$ssid" "$password" "$hostname" <<'EOF'
 import sys
 def c(text):  # a C string literal, octal escapes so no hex escape runs on
     return '"' + ''.join(chr(b) if 32 <= b < 127 and chr(b) not in '"\\?' else f'\\{b:03o}'

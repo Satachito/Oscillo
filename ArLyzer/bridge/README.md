@@ -7,7 +7,8 @@ library drives over a second UART. This directory builds that same firmware
 with the AT server swapped for ArLyzer's own network side
 (`arlyzer_net.cpp`), the way a Pico 2 W serves PiLyzer:
 
-- it joins your network and answers to **`http://arlyzer.local`** over mDNS;
+- it joins the network the app gives it and answers to
+  **`http://arlyzer.local`** over mDNS;
 - it hands out the browser application from its own flash, gzipped;
 - it passes each `POST /rpc` to the RA4M1 over the second UART, at 230400
   baud, and sends the reply back — the same frames the USB port carries, so
@@ -26,10 +27,14 @@ works over USB alone.
 ## Build
 
 ```sh
-ARLYZER_WIFI_SSID='your network' ARLYZER_WIFI_PASSWORD='its password' ./build.sh
+./build.sh
 ```
 
-The radio is 2.4 GHz only. `ARLYZER_HOSTNAME` changes the name from `arlyzer`.
+No network goes into the build: the app sets it (below), so the same build
+serves every board and can be handed out. `ARLYZER_WIFI_SSID` and
+`ARLYZER_WIFI_PASSWORD` build one in for a board that has never been told
+one — such a build carries the password, so it is not for handing out.
+`ARLYZER_HOSTNAME` changes the default name from `arlyzer`.
 The first run fetches Arduino's bridge at the commit `build.sh` names, its
 submodules and its ESP32 toolchain into `build/` — about 1 GB — and later runs
 reuse them. The network goes into `build/.../arlyzer_config.h`, never into the
@@ -58,6 +63,20 @@ esptool --chip esp32s3 --port /dev/cu.usbmodemXXXX write_flash 0 build/esp32-ori
 Arduino's updater
 ([unor4wifi-updater](https://github.com/arduino/uno-r4-wifi-usb-bridge/tree/main/unor4wifi-updater))
 restores its current release just as well.
+
+## Set the network
+
+Connect the board over USB in the Mac or browser application: a Wi-Fi
+section appears (ArLyzer firmware 0.7 on the RA4M1, and this bridge on the
+ESP32-S3). Type the network, its password and, if you like, another name, and
+save. The radio is 2.4 GHz only.
+
+The application talks to the RA4M1, and the RA4M1 hands the network on: the
+bridge asks it once a second over the UART between them, takes the network,
+keeps it in the ESP32-S3's NVS — which `flash.sh` leaves alone, so it survives
+an update — and joins. The password is never read back, and the RA4M1 forgets
+it once the bridge has it. `Forget` erases it, and the radio driver's own copy
+too. Pico2/docs/protocol.md has the exchange.
 
 ## What to expect
 

@@ -21,15 +21,16 @@ struct Board {
 
 void begin(const Board &board);
 
-// The longest request in protocol v1 is 32 bytes.
-constexpr uint32_t kMaxRequest = 64;
+// The longest request is setNetwork's 128 bytes (and bridgeSync's 72).
+constexpr uint32_t kMaxRequest = 128;
 
 // One stream that requests arrive on and replies go back out of. A board may
 // answer on more than one — the UNO R4 WiFi on its USB port and over its
-// radio — and each keeps its own half-received frame.
+// radio — and each keeps its own half-received frame. Only the port to the
+// WiFi's ESP32-S3 is `bridge`, the one bridgeSync is answered on (network.h).
 class Port {
  public:
-  explicit Port(Write write) : write_(write) {}
+  explicit Port(Write write, bool bridge = false) : write_(write), bridge_(bridge) {}
   // One byte of the request stream. A stray byte before a frame's magic is
   // dropped, so the parser finds the next frame on its own.
   void receive(uint8_t byte);
@@ -39,6 +40,7 @@ class Port {
 
  private:
   Write write_;
+  bool bridge_;
   wire::Header request_{};
   uint8_t payload_[kMaxRequest];
   size_t headerFill_ = 0;

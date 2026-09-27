@@ -3,7 +3,7 @@
 // converter replaced by known signals. It prints the port to connect to, so the
 // applications can be driven end to end without a Nano R4.
 //
-//   xcrun c++ -std=c++17 -O2 -I ../arlyzer ../arlyzer/instrument.cpp ../arlyzer/record.cpp ../arlyzer/logic.cpp simulator.cpp -o arlyzer-sim
+//   xcrun c++ -std=c++17 -O2 -I ../arlyzer ../arlyzer/instrument.cpp ../arlyzer/record.cpp ../arlyzer/logic.cpp ../arlyzer/network.cpp simulator.cpp -o arlyzer-sim
 //   ./arlyzer-sim                  # prints /dev/ttysNNN
 //
 // CH1 a 1 kHz sine, CH2 a 500 Hz square, CH3 a 250 Hz triangle, CH4–CH8 sines

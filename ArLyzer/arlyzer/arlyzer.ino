@@ -74,11 +74,25 @@ void serve(Link &link) {
 Link usb{Serial, instrument::Port(writeSerial), 0};
 
 #if defined(ARDUINO_UNOWIFIR4)
+// The USB side's receive interrupts, a step above the other UART interrupts
+// (12) and still well below the tick (4). With the bridge asking after the
+// network once a second, a request from USB lost about one byte in three
+// hundred to an overrun on SCI9 while SCI1 was receiving: SCI1's receive
+// interrupt holds SCI9's off longer than the 43 µs a byte takes at 230400.
+// Raising SCI1's as well brought the overruns back, so it stays where it is.
+void raiseUsbReceive() {
+  for (uint32_t irq = 0; irq < BSP_ICU_VECTOR_MAX_ENTRIES; irq++) {
+    const uint32_t event = R_ICU->IELSR[irq] & 0x1FF;
+    if (event == ELC_EVENT_SCI9_RXI || event == ELC_EVENT_SCI9_ERI) NVIC_SetPriority(static_cast<IRQn_Type>(irq), 11);
+  }
+}
+
 // The WiFi's second UART, to the ESP32-S3, carries what its radio receives
 // when the ESP32 runs ArLyzer's bridge (ArLyzer/bridge) rather than the stock
-// one; with the stock one nothing arrives on it.
+// one, and the bridge's own questions about the network it joins
+// (network.h); with the stock one nothing arrives on it.
 void writeRadio(const uint8_t *data, size_t length) { Serial2.write(data, length); }
-Link radio{Serial2, instrument::Port(writeRadio), 0};
+Link radio{Serial2, instrument::Port(writeRadio, true), 0};
 #endif
 
 void sampleAll(uint16_t averages, uint16_t *readings) {
@@ -114,6 +128,7 @@ void setup() {
   Serial.begin(230400);
 #if defined(ARDUINO_UNOWIFIR4)
   Serial2.begin(230400);
+  raiseUsbReceive();
 #endif
 }
 

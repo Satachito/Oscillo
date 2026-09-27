@@ -17,6 +17,8 @@ enum Opcode : uint8_t {
   OP_SET_LED = 0x03,
   OP_SET_RANGE = 0x04,
   OP_INPUT_RANGES = 0x07,
+  OP_SET_NETWORK = 0x09,     // an UNO R4 WiFi running ArLyzer's bridge
+  OP_NETWORK_STATUS = 0x0A,
   OP_ANALOG_CONFIGURE = 0x10,
   OP_ANALOG_ARM = 0x11,
   OP_ANALOG_STATUS = 0x12,
@@ -28,6 +30,10 @@ enum Opcode : uint8_t {
   OP_LOGIC_STATUS = 0x22,
   OP_LOGIC_READ = 0x23,
   OP_LOGIC_ABORT = 0x24,
+  // Between the RA4M1 and ArLyzer's bridge on the WiFi's ESP32-S3 only, over
+  // the UART between them: never answered on USB, and the bridge passes none
+  // on from the network (network.h).
+  OP_BRIDGE_SYNC = 0x7E,
 };
 
 enum Status : uint8_t {
@@ -54,6 +60,10 @@ enum AcquisitionState : uint8_t {
 enum TriggerMode : uint8_t { TRIGGER_FREE_RUN = 0, TRIGGER_AUTO = 1, TRIGGER_NORMAL = 2 };
 
 constexpr uint32_t CAP_REPORTS_RANGES = 1u << 4;
+constexpr uint32_t CAP_NETWORK = 1u << 6;
+
+enum NetworkState : uint8_t { NET_NOT_SET = 0, NET_JOINING = 1, NET_JOINED = 2, NET_FAILING = 3 };
+enum NetworkSource : uint8_t { NET_SOURCE_NONE = 0, NET_SOURCE_STORED = 1, NET_SOURCE_BUILT = 2 };
 
 struct __attribute__((packed)) Header {
   uint8_t magic, opcode, status, flags;
@@ -113,6 +123,31 @@ struct __attribute__((packed)) ReadRequest {
   uint32_t offset, count;
 };
 
+// setNetwork: UTF-8, zero-padded; a string that fills its field needs no
+// terminator. An empty SSID forgets the network, an empty name is the default.
+struct __attribute__((packed)) NetworkConfig {
+  char ssid[32];
+  char password[64];
+  char hostname[32];
+};
+
+// networkStatus. Never the password. From the bridge, `reserved` carries the
+// generation of the last offer it took (network.h).
+struct __attribute__((packed)) NetworkStatus {
+  uint8_t state, source;
+  uint16_t reserved;
+  uint8_t ipv4[4];
+  char ssid[32];
+  char hostname[32];
+};
+
+// The reply to bridgeSync when a host has set a network the bridge has not
+// yet taken.
+struct __attribute__((packed)) NetworkOffer {
+  uint16_t generation, reserved;
+  NetworkConfig config;
+};
+
 static_assert(sizeof(Header) == 12, "header is 12 bytes");
 static_assert(sizeof(Identity) == 32, "identity is 32 bytes");
 static_assert(sizeof(Capabilities) == 48, "capabilities is 48 bytes");
@@ -121,5 +156,8 @@ static_assert(sizeof(AnalogConfig) == 32, "an analogue configuration is 32 bytes
 static_assert(sizeof(LogicConfig) == 24, "a logic configuration is 24 bytes");
 static_assert(sizeof(AcquisitionPlan) == 24, "a plan is 24 bytes");
 static_assert(sizeof(AcquisitionStatus) == 16, "a status is 16 bytes");
+static_assert(sizeof(NetworkConfig) == 128, "a network configuration is 128 bytes");
+static_assert(sizeof(NetworkStatus) == 72, "a network status is 72 bytes");
+static_assert(sizeof(NetworkOffer) == 132, "a network offer is 132 bytes");
 
 }  // namespace wire
