@@ -13,7 +13,7 @@ struct LogicView: View {
 
     var body: some View {
         Workspace(model: model) {
-            Text("D0–D7 · 3.3 V logic")
+            Text("\(model.logicName(0))–\(model.logicName(7)) · \(model.instrument?.identity.isArLyzer == true ? "5 V logic: 3.3 V may not read high" : "3.3 V logic")")
                 .font(Theme.monoSmall)
                 .foregroundStyle(Theme.readout)
         } screen: {
