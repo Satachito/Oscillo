@@ -835,9 +835,9 @@ struct Choice<Value: Hashable, Content: View>: View {
     }
 }
 
-/// A Pico 2 W's network, as the browser application's Wi-Fi section has it:
-/// what the board is on, and a new one to store. The password is only ever
-/// sent, never shown back — the board does not return it.
+/// A Pico 2 W's or an UNO R4 WiFi's network, as the browser application's
+/// Wi-Fi section has it: what the board is on, and a new one to store. The
+/// password is only ever sent, never shown back — the board does not return it.
 struct NetworkSection: View {
     @ObservedObject var model: ScopeModel
     @State private var ssid = ""
@@ -846,14 +846,14 @@ struct NetworkSection: View {
     @State private var filled = false
 
     var body: some View {
-        Section("Wi-Fi", tag: "PICO 2 W") {
+        Section("Wi-Fi", tag: onArLyzer ? "R4 WIFI" : "PICO 2 W") {
             Text(statusText)
                 .font(.caption.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
             TextField("Network", text: $ssid)
             SecureField("Password", text: $password)
-            TextField("Name (pilyzer)", text: $hostname)
+            TextField("Name (\(defaultName))", text: $hostname)
             if let message = model.networkMessage {
                 Text(message).font(.caption).foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
@@ -882,10 +882,13 @@ struct NetworkSection: View {
         .onChange(of: model.networkStatus) { status in
             guard let status, !filled else { return }
             ssid = status.ssid
-            hostname = status.hostname == "pilyzer" ? "" : status.hostname
+            hostname = status.hostname == defaultName ? "" : status.hostname
             filled = true
         }
     }
+
+    private var onArLyzer: Bool { model.instrument?.identity.isArLyzer ?? false }
+    private var defaultName: String { onArLyzer ? "arlyzer" : "pilyzer" }
 
     private var statusText: String {
         guard let status = model.networkStatus else { return "Asking the board…" }

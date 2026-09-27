@@ -1,6 +1,6 @@
 import Foundation
 
-/// The network a Pico 2 W joins and the name it answers to, as
+/// The network a Pico 2 W or an UNO R4 WiFi joins and the name it answers to, as
 /// `setNetwork` carries them: fixed UTF-8 fields, zero-padded.
 public struct NetworkConfiguration: Equatable, Sendable {
     public static let ssidBytes = 32
