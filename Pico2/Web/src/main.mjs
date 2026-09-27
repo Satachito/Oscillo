@@ -368,6 +368,7 @@ function synchronize() {
   // ranges on GPIO2-5, so its generator starts above them.
   $('signal-controls').hidden = !instrument || !(caps().flags & 32);
   $('network-section').hidden = !instrument || instrument.demo || !(caps().flags & 64);
+  $('network-tag').textContent = onArLyzer() ? 'R4 WIFI' : 'PICO 2 W'; $('network-name').placeholder = defaultName();
   $('network-over-wifi').hidden = !overNetwork;
   $('signal-sine-row').hidden = !settings.signalsEnabled;
   settings.averaging = Math.min(Math.max(Math.round(settings.averaging) || 1, 1), 100); $('averaging').value = settings.averaging;
@@ -556,9 +557,12 @@ async function connect(demo, serial = false) {
   } catch (e) { if (e.name !== 'NotFoundError') showError(e.message); instrument = null; acquisition.attach(null); }
   finally { connecting = false; updateButtons(); }
 }
-// A Pico 2 W's network: what it is on now, and a new one to store. The board
-// joins it a moment after saying yes, so the status is asked again for a while.
+// A Pico 2 W's or an UNO R4 WiFi's network: what it is on now, and a new one
+// to store. The board joins it a moment after saying yes, so the status is
+// asked again for a while.
 let networkWatch = 0;
+function onArLyzer() { return !!ARLYZER_PINS[instrument?.identity?.board]; }
+function defaultName() { return onArLyzer() ? 'arlyzer' : 'pilyzer'; }
 async function refreshNetwork(fillFields = false) {
   if (!instrument || instrument.demo || !(caps().flags & 64)) return null;
   try {
@@ -570,7 +574,7 @@ async function refreshNetwork(fillFields = false) {
       joined: `On ${s.ssid}${where}`,
       failing: `Cannot join ${s.ssid}: check its name and password, and that it is 2.4 GHz. Trying again every 40 s.`,
     }[s.state];
-    if (fillFields) { $('network-ssid').value = s.ssid; $('network-name').value = s.hostname === 'pilyzer' ? '' : s.hostname; $('network-password').value = ''; }
+    if (fillFields) { $('network-ssid').value = s.ssid; $('network-name').value = s.hostname === defaultName() ? '' : s.hostname; $('network-password').value = ''; }
     return s;
   } catch (e) { $('network-status').textContent = `Could not ask the board: ${e.message}`; return null; }
 }

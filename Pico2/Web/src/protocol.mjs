@@ -243,8 +243,9 @@ export function setSpectrumResolution(settings, timebase, caps, channels) {
 // The axis ends at the span, unless the record in hand does not reach it.
 export const displayedTop = (span, nyquist) => span > 0 ? Math.min(span, nyquist) : nyquist;
 
-// A Pico 2 W's network, set over USB (capability bit 6). Fixed UTF-8 fields,
-// zero-padded, as the firmware reads them (pilyzer_protocol.h).
+// A Pico 2 W's or an UNO R4 WiFi's network, set over USB (capability bit 6).
+// Fixed UTF-8 fields, zero-padded, as the firmware reads them
+// (pilyzer_protocol.h).
 export const NETWORK_FIELDS = Object.freeze({ ssid: 32, password: 64, hostname: 32 });
 // Why the instrument would refuse this network, in words, or null. The same
 // rules as the firmware's (wifi.c).
