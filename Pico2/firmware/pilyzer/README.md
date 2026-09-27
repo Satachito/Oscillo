@@ -133,6 +133,12 @@ network to join: the instrument joins yours, answers to a name over mDNS, and
 Safari resolves `.local` natively. The name is `-DPILYZER_HOSTNAME=` if one
 instrument is not enough.
 
+It answers over IPv6 as well (1.17): a Mac asks mDNS for both addresses, and
+until the instrument had an IPv6 one to give, every visit waited five seconds
+for the answer that never came. It keeps to its link-local address and takes no
+global one from the router, so it is no easier to reach from outside the house
+than it is on IPv4; the page and `/rpc` have no login.
+
 The radio is **2.4 GHz only**, so name that network, not a 5 GHz one — on a
 Buffalo router the `-G-` name rather than the `-A-` one. WPA2 and WPA3 both
 work. The board's LED lights once it has an address and is serving the page;

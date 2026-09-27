@@ -41,6 +41,20 @@ bool wifi_start(const char *ssid, const char *password, const char *hostname)
     return true;
 }
 
+// Link-local only. The router hands out a global address as well, and the
+// radio driver turns autoconfiguration on to take it, which could make the
+// instrument reachable from beyond the house on a network that lets IPv6 in;
+// the page and /rpc have no login. So autoconfiguration goes off again and any
+// address it took goes, leaving slot 0, the link-local one mDNS answers with.
+// (Allowing only that one slot instead stopped the firmware dead within
+// minutes of joining.)
+static void keep_link_local_only(struct netif *n)
+{
+    netif_set_ip6_autoconfig_enabled(n, 0);
+    for (s8_t i = 1; i < LWIP_IPV6_NUM_ADDRESSES; i++)
+        if (!ip6_addr_isinvalid(netif_ip6_addr_state(n, i))) netif_ip6_addr_set_state(n, i, IP6_ADDR_INVALID);
+}
+
 void wifi_poll(void)
 {
     if (!radio) return;
@@ -48,6 +62,7 @@ void wifi_poll(void)
 
     int status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
     if (status == CYW43_LINK_UP) {
+        keep_link_local_only(netif_default);
         if (!served) {
             served = true;
             mdns_resp_init();
