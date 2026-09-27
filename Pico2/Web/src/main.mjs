@@ -421,7 +421,7 @@ function renderFrame() {
     el.append(clip);
     $('legend').append(el);
   }
-  if (settings.mode === 'logic') $('legend').textContent = `${logicName(0)}–${logicName(7)} · ${ARLYZER_PINS[instrument?.identity?.board] ? '5 V inputs; 3.3 V reads high' : '3.3 V logic'}`;
+  if (settings.mode === 'logic') $('legend').textContent = `${logicName(0)}–${logicName(7)} · ${ARLYZER_PINS[instrument?.identity?.board] ? '5 V logic: 3.3 V may not read high' : '3.3 V logic'}`;
   // Not "logging every…" — the frame outlives a stop, and that verb next to
   // the Stopped dot on the same line told two different stories about the
   // same log.

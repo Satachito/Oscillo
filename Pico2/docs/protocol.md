@@ -344,8 +344,11 @@ and D1 are the UNOs' serial port and D10–D13 SPI's. They are read from the por
 registers by the same timer that paces the analogue side, into the same memory,
 so the two never run at once; the fastest rate is 166,667 samples/s (6 µs),
 which the capabilities give as the logic clock, and a record holds up to 16,384
-samples (14,336 on the WiFi). The inputs are the RA4M1's own at the board's 5 V,
-and a 3.3 V signal reads high.
+samples (14,336 on the WiFi). The inputs are the RA4M1's own, powered at 5 V, so
+they want 5 V logic: on a Nano R4 neither D2 nor D9 read the board's own 3.3 V
+as high, where 5 V did (2026-09-27). The UNO R4 WiFi's D2 did read a 3.3 V
+square, but that is one pin on one board. A 3.3 V circuit wants a level shifter,
+such as a 74HCT245, between it and the inputs.
 
 The capability reply advertises three analogue channels. `analogSample` returns
 three little-endian u16 readings (CH1, CH2, CH3), one per advertised channel;
