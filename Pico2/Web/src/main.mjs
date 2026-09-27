@@ -1,7 +1,7 @@
 import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
+import { OP as WIRE, encodeNetworkConfig, networkStatus as readNetworkStatus, networkProblem, ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
 import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, lowestMeasurable, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -367,6 +367,8 @@ function synchronize() {
   // Every board has one, but not on the same pins: a PL2407AFE switches its
   // ranges on GPIO2-5, so its generator starts above them.
   $('signal-controls').hidden = !instrument || !(caps().flags & 32);
+  $('network-section').hidden = !instrument || instrument.demo || !(caps().flags & 64);
+  $('network-over-wifi').hidden = !overNetwork;
   $('signal-sine-row').hidden = !settings.signalsEnabled;
   settings.averaging = Math.min(Math.max(Math.round(settings.averaging) || 1, 1), 100); $('averaging').value = settings.averaging;
   $('averaging-row').hidden = settings.mode !== 'scope' && settings.mode !== 'spectrum';
@@ -548,11 +550,53 @@ async function connect(demo, serial = false) {
     settings.record = Math.min(settings.record, caps().maxRecord);
     if (!(caps().flags & 8)) settings.lpf = 0;
     synchronize();
+    refreshNetwork(true);
     if (demo) acquisition.start(settings);
     else { await instrument.abort(); $('status').textContent = 'Connected · press Run'; }
   } catch (e) { if (e.name !== 'NotFoundError') showError(e.message); instrument = null; acquisition.attach(null); }
   finally { connecting = false; updateButtons(); }
 }
+// A Pico 2 W's network: what it is on now, and a new one to store. The board
+// joins it a moment after saying yes, so the status is asked again for a while.
+let networkWatch = 0;
+async function refreshNetwork(fillFields = false) {
+  if (!instrument || instrument.demo || !(caps().flags & 64)) return null;
+  try {
+    const s = readNetworkStatus(await instrument.command(WIRE.networkStatus));
+    const where = s.state === 'joined' ? ` · http://${s.hostname}.local (${s.address})` : '';
+    $('network-status').textContent = {
+      'not set': 'No network set: the board is on USB only.',
+      joining: `Joining ${s.ssid}…`,
+      joined: `On ${s.ssid}${where}`,
+      failing: `Cannot join ${s.ssid}: check its name and password, and that it is 2.4 GHz. Trying again every 40 s.`,
+    }[s.state];
+    if (fillFields) { $('network-ssid').value = s.ssid; $('network-name').value = s.hostname === 'pilyzer' ? '' : s.hostname; $('network-password').value = ''; }
+    return s;
+  } catch (e) { $('network-status').textContent = `Could not ask the board: ${e.message}`; return null; }
+}
+function watchNetwork() {
+  const watch = ++networkWatch, until = Date.now() + 45000;
+  const tick = async () => {
+    if (watch !== networkWatch || !instrument) return;
+    const s = await refreshNetwork();
+    if (s && (s.state === 'joined' || s.state === 'not set')) return;
+    if (Date.now() < until) setTimeout(tick, 2000);
+  };
+  setTimeout(tick, 1000);
+}
+async function saveNetwork(config) {
+  const problem = networkProblem(config);
+  $('network-problem').hidden = !problem; $('network-problem').textContent = problem || '';
+  if (problem) return;
+  try {
+    await instrument.command(WIRE.setNetwork, encodeNetworkConfig(config));
+    $('network-password').value = '';
+    $('network-status').textContent = config.ssid ? `Saved. Joining ${config.ssid}…` : 'Forgotten: the board is on USB only.';
+    if (config.ssid) watchNetwork();
+  } catch (e) { $('network-problem').hidden = false; $('network-problem').textContent = `The board refused it: ${e.message}`; }
+}
+$('network-save').onclick = () => saveNetwork({ ssid: $('network-ssid').value.trim(), password: $('network-password').value, hostname: $('network-name').value.trim().toLowerCase() });
+$('network-forget').onclick = () => { $('network-ssid').value = ''; saveNetwork({ ssid: '', password: '', hostname: '' }); };
 $('connect').onclick = () => connect(false); $('demo').onclick = () => connect(true); $('connect-serial').onclick = () => connect(false, true);
 $('empty-demo').onclick = () => instrument ? acquisition.start(settings, true) : connect(true);
 $('disconnect').onclick = async () => {

@@ -20,7 +20,7 @@ export const ARLYZER_PINS = Object.freeze({
 export const logicNames = board => Array.from({ length: 8 }, (_, i) => `D${ARLYZER_PINS[board] ? i + 2 : i}`);
 // Eight is what the wire format holds: a channel mask is one byte.
 export const MAX_ANALOG_CHANNELS = 8;
-export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, inputRanges: 7, signals: 8, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
+export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, inputRanges: 7, signals: 8, setNetwork: 9, networkStatus: 10, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
 export const MAX_PAYLOAD = 8192;
 export const view = bytes => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 export function request(opcode, sequence, payload = new Uint8Array()) {
@@ -242,3 +242,33 @@ export function setSpectrumResolution(settings, timebase, caps, channels) {
 }
 // The axis ends at the span, unless the record in hand does not reach it.
 export const displayedTop = (span, nyquist) => span > 0 ? Math.min(span, nyquist) : nyquist;
+
+// A Pico 2 W's network, set over USB (capability bit 6). Fixed UTF-8 fields,
+// zero-padded, as the firmware reads them (pilyzer_protocol.h).
+export const NETWORK_FIELDS = Object.freeze({ ssid: 32, password: 64, hostname: 32 });
+// Why the instrument would refuse this network, in words, or null. The same
+// rules as the firmware's (wifi.c).
+export function networkProblem({ ssid, password, hostname }) {
+  const bytes = text => new TextEncoder().encode(text).length;
+  if (!ssid) return null;
+  if (bytes(ssid) > NETWORK_FIELDS.ssid) return 'The network name is longer than 32 bytes.';
+  const hex = password.length === 64 && /^[0-9a-f]+$/i.test(password);
+  if (password && !hex && (bytes(password) < 8 || bytes(password) > 63)) return 'A WPA password is 8 to 63 characters, or 64 hexadecimal digits.';
+  const name = hostname || 'pilyzer';
+  if (!/^[a-z0-9-]{1,31}$/.test(name) || name.startsWith('-') || name.endsWith('-')) return 'The name is lower-case letters, digits and hyphens, up to 31, not starting or ending with a hyphen.';
+  return null;
+}
+export function encodeNetworkConfig({ ssid = '', password = '', hostname = '' }) {
+  const bytes = new Uint8Array(128), encoder = new TextEncoder();
+  bytes.set(encoder.encode(ssid).slice(0, 32), 0);
+  bytes.set(encoder.encode(password).slice(0, 64), 32);
+  bytes.set(encoder.encode(hostname).slice(0, 32), 96);
+  return bytes;
+}
+const NETWORK_STATES = ['not set', 'joining', 'joined', 'failing'];
+export function networkStatus(bytes) {
+  size(bytes, 72, 'network status');
+  const text = (from, length) => new TextDecoder().decode(bytes.slice(from, from + length)).replace(/\0.*$/s, '');
+  const state = NETWORK_STATES[bytes[0]] ?? 'not set';
+  return { state, source: ['none', 'stored', 'built in'][bytes[1]] ?? 'none', address: state === 'joined' ? [...bytes.slice(4, 8)].join('.') : null, ssid: text(8, 32), hostname: text(40, 32) };
+}

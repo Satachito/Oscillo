@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { logicNames, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, displayedTop, fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { logicNames, encodeNetworkConfig, networkStatus, networkProblem, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, displayedTop, fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport, SerialTransport } from '../src/instrument.mjs';
 import { HttpTransport, available } from '../src/net.mjs';
@@ -644,6 +644,26 @@ test('an ArLyzer names its logic lines after the Arduino pins, D2–D9', () => {
   assert.deepEqual(logicNames(1), ['D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7']);
   const text = csv({ kind: 'logic', samples: Uint8Array.from([1, 2]), period: 6e-6, triggerIndex: 0, names: logicNames(6) });
   assert.equal(text.split('\n')[0], 'time_s,D2,D3,D4,D5,D6,D7,D8,D9');
+});
+test('a network is sent as three zero-padded fields, and the status read back', () => {
+  const bytes = encodeNetworkConfig({ ssid: 'Home-2G', password: 'correct horse', hostname: 'bench' });
+  assert.equal(bytes.length, 128);
+  assert.equal(new TextDecoder().decode(bytes.slice(0, 7)), 'Home-2G'); assert.equal(bytes[7], 0);
+  assert.equal(new TextDecoder().decode(bytes.slice(32, 45)), 'correct horse');
+  assert.equal(new TextDecoder().decode(bytes.slice(96, 101)), 'bench');
+  const status = new Uint8Array(72); status[0] = 2; status[1] = 1; status.set([192, 168, 0, 11], 4);
+  status.set(new TextEncoder().encode('Home-2G'), 8); status.set(new TextEncoder().encode('bench'), 40);
+  assert.deepEqual(networkStatus(status), { state: 'joined', source: 'stored', address: '192.168.0.11', ssid: 'Home-2G', hostname: 'bench' });
+  status[0] = 3; assert.equal(networkStatus(status).address, null);
+});
+test('a network the board would refuse is caught before it is sent', () => {
+  assert.equal(networkProblem({ ssid: 'Home', password: 'longenough', hostname: '' }), null);
+  assert.equal(networkProblem({ ssid: 'Cafe', password: '', hostname: 'pilyzer' }), null);   // open network
+  assert.equal(networkProblem({ ssid: '', password: 'x', hostname: 'Bad Name' }), null);    // forgetting
+  assert.match(networkProblem({ ssid: 'Home', password: 'short', hostname: '' }), /8 to 63/);
+  assert.equal(networkProblem({ ssid: 'Home', password: 'a'.repeat(64), hostname: '' }), null);
+  assert.match(networkProblem({ ssid: 'Home', password: 'longenough', hostname: 'Bench_1' }), /lower-case/);
+  assert.match(networkProblem({ ssid: 'x'.repeat(33), password: '', hostname: '' }), /32 bytes/);
 });
 test('dBV is referenced to one volt RMS', () => {
   assert.ok(Math.abs(levelOf(Math.SQRT2, 'dBV', 1)) < 1e-9);
