@@ -196,12 +196,21 @@ struct QualityRow: View {
                             MeasurementRow("ENOB", String(format: "%.1f bits", quality.effectiveBits))
                         }
                     } else {
-                        // No tone the record resolves: say how low it reaches,
-                        // which is what a slower sweep changes.
+                        // Below the spectrum's reach the waveform can still
+                        // give the frequency, as the oscilloscope does from
+                        // the same record; the rest needs the spectrum, so the
+                        // card says how low it reaches, which a slower sweep
+                        // changes.
                         MeasurementCard(title: "Channel \(entry.channel + 1)",
                                         colour: Theme.channelColor(entry.channel)) {
-                            MeasurementRow("Frequency", "—")
-                            MeasurementRow("Lowest measurable", Format.frequency(entry.spectrum.lowestMeasurable))
+                            if let frequency = model.measurements(for: entry.channel)?.frequency {
+                                MeasurementRow("Frequency", Format.frequency(frequency))
+                                MeasurementRow("Read from", "Waveform")
+                                MeasurementRow("Spectrum from", Format.frequency(entry.spectrum.lowestMeasurable))
+                            } else {
+                                MeasurementRow("Frequency", "—")
+                                MeasurementRow("Lowest measurable", Format.frequency(entry.spectrum.lowestMeasurable))
+                            }
                         }
                     }
                 }
