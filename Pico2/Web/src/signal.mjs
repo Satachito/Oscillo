@@ -49,12 +49,16 @@ export function spectrumCsv(spectra) {
 }
 // The windows the macOS app offers: what each is for, the coefficients, and
 // how many bins one tone is smeared over, which the distortion figures need.
+// `reach` is the lowest tone, in bins, each window reads every time: below it
+// the DC skirt can still swallow the tone. Found by sweeping sines and squares
+// from one bin to eight at every phase (Rectangular 1.58, Flat top 4.64, the
+// others 2.50), and rounded up.
 export const WINDOWS = {
-  Rectangular: { advice: 'No window. Only for signals that fit the record exactly.', enbw: 1, at: () => 1 },
-  Hann: { advice: 'General purpose.', enbw: 1.5, at: x => .5 - .5 * Math.cos(x) },
-  Hamming: { advice: 'Slightly narrower than Hann, with higher distant sidelobes.', enbw: 1.36, at: x => .54 - .46 * Math.cos(x) },
-  'Blackman-Harris': { advice: 'Lowest sidelobes; use next to a strong tone.', enbw: 2, at: x => .35875 - .48829 * Math.cos(x) + .14128 * Math.cos(2 * x) - .01168 * Math.cos(3 * x) },
-  'Flat top': { advice: 'Most accurate amplitude; poorest resolution.', enbw: 3.77, at: x => .21557895 - .41663158 * Math.cos(x) + .277263158 * Math.cos(2 * x) - .083578947 * Math.cos(3 * x) + .006947368 * Math.cos(4 * x) },
+  Rectangular: { advice: 'No window. Only for signals that fit the record exactly.', enbw: 1, reach: 1.6, at: () => 1 },
+  Hann: { advice: 'General purpose.', enbw: 1.5, reach: 2.5, at: x => .5 - .5 * Math.cos(x) },
+  Hamming: { advice: 'Slightly narrower than Hann, with higher distant sidelobes.', enbw: 1.36, reach: 2.5, at: x => .54 - .46 * Math.cos(x) },
+  'Blackman-Harris': { advice: 'Lowest sidelobes; use next to a strong tone.', enbw: 2, reach: 2.5, at: x => .35875 - .48829 * Math.cos(x) + .14128 * Math.cos(2 * x) - .01168 * Math.cos(3 * x) },
+  'Flat top': { advice: 'Most accurate amplitude; poorest resolution.', enbw: 3.77, reach: 4.7, at: x => .21557895 - .41663158 * Math.cos(x) + .277263158 * Math.cos(2 * x) - .083578947 * Math.cos(3 * x) + .006947368 * Math.cos(4 * x) },
 };
 export const SPECTRUM_SCALES = ['dBV', 'dBu', 'dBFS', 'V'];
 // Amplitudes are volts peak. dBV and dBu are of the RMS, dBFS of the peak
@@ -148,9 +152,10 @@ export function averageSpectra(spectra) {
 // fundamental's own skirt and a clean tone reports distortion it does not have.
 // The bins the DC skirt covers. Nothing below them can be told from the mean.
 const skirtOf = s => Math.ceil((WINDOWS[s.window] || WINDOWS.Hann).enbw) + 1;
-// The lowest frequency a tone can be measured at in this spectrum: a record
-// shorter than about three of its cycles leaves it inside the DC skirt.
-export const lowestMeasurable = s => skirtOf(s) * s.resolution;
+// The lowest frequency a tone is measured at in this spectrum, every time.
+// Below it none is reported, so the card never shows a reading lower than the
+// limit it states.
+export const lowestMeasurable = s => (WINDOWS[s.window] || WINDOWS.Hann).reach * s.resolution;
 export function spectrumQuality(s, harmonicCount) {
   const a = s.amplitudes; if (!a || a.length <= 8) return null;
   const skirt = skirtOf(s);
@@ -164,6 +169,7 @@ export function spectrumQuality(s, harmonicCount) {
   let skirtPeak = 0;
   for (let i = 1; i < skirt; i++) skirtPeak = Math.max(skirtPeak, a[i]);
   if (a[strongest] <= a[strongest - 1] || skirtPeak >= a[strongest]) return null;
+  if (interpolatedPeak(a, strongest, s.resolution).frequency < lowestMeasurable(s)) return null;
   const claimed = new Set(), power = (bin, claim) => {
     let total = 0;
     for (let i = Math.max(bin - skirt, 0); i <= Math.min(bin + skirt, a.length - 1); i++) if (!claimed.has(i)) { total += a[i] * a[i]; if (claim) claimed.add(i); }

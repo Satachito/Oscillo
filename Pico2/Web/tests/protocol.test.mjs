@@ -605,6 +605,15 @@ test('a tone the record resolves reads within a hundredth', () => {
     assert.ok(Math.abs(q.fundamental.frequency / f - 1) < .01, `${f} Hz read ${q.fundamental.frequency}`);
   }
 });
+test('no reading is ever below the lowest measurable frequency the card states', () => {
+  for (const window of Object.keys(WINDOWS)) for (let f = 60; f < 700; f += 3) {
+    const s = spectrum(sine(f, 512), r4Period, window), q = spectrumQuality(s, 5);
+    if (q) assert.ok(q.fundamental.frequency >= lowestMeasurable(s), `${window} ${f} Hz`);
+  }
+  // 288 Hz on seven inputs at 1 ms/div: measured, and above the limit shown.
+  const s = spectrum(sine(288, 512), r4Period, 'Hann'), q = spectrumQuality(s, 5);
+  assert.ok(Math.abs(q.fundamental.frequency - 288) < 3 && lowestMeasurable(s) < 288);
+});
 test('no frequency is ever negative or beyond half a bin of its peak', () => {
   for (let f = 50; f < 2000; f += 37) {
     const s = spectrum(sine(f, 512), r4Period, 'Hann'), q = spectrumQuality(s, 5);
