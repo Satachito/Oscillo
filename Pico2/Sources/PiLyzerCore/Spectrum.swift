@@ -121,6 +121,11 @@ public struct Spectrum: Equatable, Sendable {
     public var windowUsed: SpectrumWindow
 
     public var frequencies: [Double] { amplitudes.indices.map { Double($0) * binWidth } }
+    /// The bins the DC skirt covers. Nothing below them can be told from the mean.
+    public var skirtBins: Int { Int(ceil(windowUsed.equivalentNoiseBandwidth)) + 1 }
+    /// The lowest frequency a tone can be measured at: a record shorter than
+    /// about three of its cycles leaves it inside the DC skirt.
+    public var lowestMeasurable: Double { Double(skirtBins) * binWidth }
     public var count: Int { amplitudes.count }
     public var nyquist: Double { sampleRate / 2 }
 
@@ -172,7 +177,11 @@ public struct Spectrum: Equatable, Sendable {
         let centre = log(max(amplitudes[index], 1e-18))
         let right = log(max(amplitudes[index + 1], 1e-18))
         let denominator = left - 2 * centre + right
-        let shift = abs(denominator) < 1e-15 ? 0 : 0.5 * (left - right) / denominator
+        // Half a bin either way at most: off a true maximum the parabola opens
+        // the wrong way and its vertex can land anywhere, a negative frequency
+        // included.
+        let raw = abs(denominator) < 1e-15 ? 0 : 0.5 * (left - right) / denominator
+        let shift = min(max(raw, -0.5), 0.5)
         let amplitude = exp(centre - 0.25 * (left - right) * shift)
         return SpectrumPeak(frequency: (Double(index) + shift) * binWidth,
                             amplitude: amplitude, bin: index)
@@ -301,7 +310,7 @@ public enum SpectrumAnalyzer {
     /// Measures distortion and noise around the strongest tone in the spectrum.
     public static func quality(of spectrum: Spectrum, harmonics harmonicCount: Int) -> SpectrumQuality? {
         guard spectrum.amplitudes.count > 8 else { return nil }
-        let skirt = Int(ceil(spectrum.windowUsed.equivalentNoiseBandwidth)) + 1
+        let skirt = spectrum.skirtBins
 
         // Ignore the DC skirt: the mean was removed, but the window leaves a
         // little of it behind and it is not a tone.
@@ -310,6 +319,14 @@ public enum SpectrumAnalyzer {
             strongest = index
         }
         guard spectrum.amplitudes[strongest] > 0 else { return nil }
+        // A tone below what the record resolves stays inside the DC skirt.
+        // Then the strongest bin past it is either the skirt's own slope, whose
+        // "frequency" is anything, negative included, or a harmonic: a 288 Hz
+        // square read as 845 Hz, its third. Either way there is no
+        // fundamental to report.
+        let skirtPeak = spectrum.amplitudes[1..<skirt].max() ?? 0
+        guard spectrum.amplitudes[strongest] > spectrum.amplitudes[strongest - 1],
+              spectrum.amplitudes[strongest] > skirtPeak else { return nil }
         let fundamental = spectrum.interpolatedPeak(at: strongest)
 
         var claimed = Set<Int>()

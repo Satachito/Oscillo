@@ -180,10 +180,10 @@ struct QualityRow: View {
     var body: some View {
         MeasurementStrip {
             let measured = model.spectra.filter { $0.quality != nil }
-            if measured.isEmpty {
+            if model.spectra.isEmpty {
                 MeasurementPlaceholder(text: "A tone has to be on screen before its distortion can be measured.")
             } else {
-                ForEach(measured) { entry in
+                ForEach(model.spectra) { entry in
                     if let quality = entry.quality {
                         MeasurementCard(title: "Channel \(entry.channel + 1)",
                                         colour: Theme.channelColor(entry.channel)) {
@@ -195,9 +195,17 @@ struct QualityRow: View {
                             MeasurementRow("SINAD", Format.decibels(quality.sinadDB))
                             MeasurementRow("ENOB", String(format: "%.1f bits", quality.effectiveBits))
                         }
+                    } else {
+                        // No tone the record resolves: say how low it reaches,
+                        // which is what a slower sweep changes.
+                        MeasurementCard(title: "Channel \(entry.channel + 1)",
+                                        colour: Theme.channelColor(entry.channel)) {
+                            MeasurementRow("Frequency", "—")
+                            MeasurementRow("Lowest measurable", Format.frequency(entry.spectrum.lowestMeasurable))
+                        }
                     }
                 }
-                if measured.count == 1, let quality = measured[0].quality {
+                if model.spectra.count == 1, let quality = measured.first?.quality {
                     MeasurementCard(title: "Harmonics") {
                         ForEach(Array(quality.harmonics.prefix(5).enumerated()), id: \.offset) { index, peak in
                             MeasurementRow("H\(index + 2)", Format.voltage(peak.amplitude))

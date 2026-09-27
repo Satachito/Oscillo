@@ -429,8 +429,12 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         var period = screenTime / Double(record)
         if period < floorPeriod {
             period = floorPeriod
-            record = min(max(Int((screenTime / floorPeriod).rounded()), Self.minimumRecord),
-                         capabilities.analogMaxRecord)
+            let fits = screenTime / floorPeriod
+            // The spectrum transforms a power of two and would drop the rest:
+            // 504 samples became 256, and its resolution halved. So it gets the
+            // next power of two, a little more than the sweep, instead.
+            let wanted = mode == .spectrum ? max(1 << Int(ceil(log2(max(fits, 1)))), 64) : Int(fits.rounded())
+            record = min(max(wanted, Self.minimumRecord), capabilities.analogMaxRecord)
         }
 
         let source = min(max(trigger.source, 0), max(channels.count - 1, 0))
