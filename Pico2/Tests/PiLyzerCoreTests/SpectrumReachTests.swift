@@ -37,6 +37,19 @@ struct SpectrumReachTests {
         #expect(abs(measured.fundamental.frequency / 972 - 1) < 0.01)
     }
 
+    /// Harmonics 3 and 5 of a square are a third and a fifth of it: 38.9 % up
+    /// to the fifth, 48.3 % with everything. 288 Hz sits three bins up.
+    @Test("A square near the bottom of the spectrum reads the same distortion as one higher up",
+          arguments: [288.0, 648.0, 1458.0])
+    func squareDistortion(frequency: Double) throws {
+        let samples = (0..<512).map { index -> Double in
+            (Double(index) * period * frequency + 0.1).truncatingRemainder(dividingBy: 1) < 0.5 ? 3.3 : 0
+        }
+        let measured = try #require(quality(samples).1)
+        #expect(abs(measured.thd - 0.389) < 0.01)
+        #expect(abs(measured.thdPlusNoise - 0.483) < 0.01)
+    }
+
     @Test("A tone the record resolves reads within a hundredth", arguments: [432.0, 648.0, 972.0, 1458.0])
     func inReach(frequency: Double) throws {
         let measured = try #require(quality(sine(frequency, count: 512)).1)

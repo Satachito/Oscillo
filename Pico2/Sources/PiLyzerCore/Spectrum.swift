@@ -360,8 +360,11 @@ public enum SpectrumAnalyzer {
             return total
         }
 
-        for index in 0...skirt { claimed.insert(index) }
+        // The fundamental first: near the bottom of the spectrum its own bins
+        // are also the DC skirt's, and claimed the other way round a 288 Hz
+        // tone three bins up lost its own peak to DC and read 94 % THD.
         let fundamentalPower = power(around: strongest, claiming: true)
+        for index in 0...skirt { claimed.insert(index) }
 
         var harmonicList: [SpectrumPeak] = []
         var harmonicPower = 0.0
@@ -369,10 +372,13 @@ public enum SpectrumAnalyzer {
             for order in 2...max(harmonicCount, 2) {
                 let bin = strongest * order
                 guard bin + skirt < spectrum.amplitudes.count else { break }
-                // A harmonic closer than two skirts to the fundamental is not
-                // resolved from it, so it is not measurable — reporting it
-                // would only be reporting the window.
-                guard bin - strongest > 2 * skirt else { continue }
+                // A harmonic whose peak falls inside the fundamental's skirt is
+                // not resolved from it, and reporting it would only be
+                // reporting the window. One just past it is: the bins they
+                // share went to the fundamental already. Skipping everything
+                // within two skirts left a low square's third harmonic to be
+                // counted as noise.
+                guard bin - strongest > skirt else { continue }
                 harmonicPower += power(around: bin, claiming: true)
                 harmonicList.append(spectrum.interpolatedPeak(at: bin))
             }
