@@ -48,6 +48,18 @@ public enum SpectrumWindow: String, CaseIterable, Codable, Sendable {
 
     /// Bins one tone is smeared over, which is what turns a spectrum into a
     /// noise density.
+    /// The lowest tone, in bins, this window reads every time: below it the DC
+    /// skirt can still swallow the tone. Found by sweeping sines and squares
+    /// from one bin to eight at every phase (Rectangular 1.58, Flat top 4.64,
+    /// the others 2.50), and rounded up.
+    public var reachBins: Double {
+        switch self {
+        case .rectangular: return 1.6
+        case .hann, .hamming, .blackmanHarris: return 2.5
+        case .flatTop: return 4.7
+        }
+    }
+
     public var equivalentNoiseBandwidth: Double {
         switch self {
         case .rectangular: return 1.0
@@ -123,9 +135,10 @@ public struct Spectrum: Equatable, Sendable {
     public var frequencies: [Double] { amplitudes.indices.map { Double($0) * binWidth } }
     /// The bins the DC skirt covers. Nothing below them can be told from the mean.
     public var skirtBins: Int { Int(ceil(windowUsed.equivalentNoiseBandwidth)) + 1 }
-    /// The lowest frequency a tone can be measured at: a record shorter than
-    /// about three of its cycles leaves it inside the DC skirt.
-    public var lowestMeasurable: Double { Double(skirtBins) * binWidth }
+    /// The lowest frequency a tone is measured at, every time. Below it none
+    /// is reported, so the card never shows a reading lower than the limit it
+    /// states.
+    public var lowestMeasurable: Double { windowUsed.reachBins * binWidth }
     public var count: Int { amplitudes.count }
     public var nyquist: Double { sampleRate / 2 }
 
@@ -328,6 +341,7 @@ public enum SpectrumAnalyzer {
         guard spectrum.amplitudes[strongest] > spectrum.amplitudes[strongest - 1],
               spectrum.amplitudes[strongest] > skirtPeak else { return nil }
         let fundamental = spectrum.interpolatedPeak(at: strongest)
+        guard fundamental.frequency >= spectrum.lowestMeasurable else { return nil }
 
         var claimed = Set<Int>()
 

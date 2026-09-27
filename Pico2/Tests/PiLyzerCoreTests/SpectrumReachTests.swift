@@ -43,6 +43,24 @@ struct SpectrumReachTests {
         #expect(abs(measured.fundamental.frequency / frequency - 1) < 0.01)
     }
 
+    @Test("No reading is ever below the lowest measurable frequency the card states",
+          arguments: SpectrumWindow.allCases)
+    func neverBelowTheStatedLimit(window: SpectrumWindow) {
+        for frequency in stride(from: 60.0, to: 700, by: 3) {
+            let spectrum = SpectrumAnalyzer.transform(sine(frequency, count: 512), sampleRate: 1 / period, window: window)
+            guard let measured = SpectrumAnalyzer.quality(of: spectrum, harmonics: 5) else { continue }
+            #expect(measured.fundamental.frequency >= spectrum.lowestMeasurable)
+        }
+    }
+
+    @Test("288 Hz on seven inputs at 1 ms/div is measured, above the limit shown")
+    func twoEightyEight() throws {
+        let (spectrum, measured) = quality(sine(288, count: 512))
+        let reading = try #require(measured)
+        #expect(abs(reading.fundamental.frequency - 288) < 3)
+        #expect(spectrum.lowestMeasurable < 288)
+    }
+
     @Test("No frequency is ever negative or beyond half a bin of its peak")
     func withinHalfABin() {
         for frequency in stride(from: 50.0, to: 2000, by: 37) {
