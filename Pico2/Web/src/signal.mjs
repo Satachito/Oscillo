@@ -292,7 +292,7 @@ export function decodeLogic(samples, period, settings) {
 export function csv(frame) {
   if (!frame) return '';
   if (frame.kind === 'logic') {
-    const rows = ['time_s,' + Array.from({ length: 8 }, (_, i) => `D${i}`).join(',')];
+    const rows = ['time_s,' + Array.from({ length: 8 }, (_, i) => frame.names?.[i] ?? `D${i}`).join(',')];
     for (let i = 0; i < frame.samples.length; i++) rows.push([((i - frame.triggerIndex) * frame.period).toPrecision(10), ...Array.from({ length: 8 }, (_, b) => (frame.samples[i] >> b) & 1)].join(','));
     return rows.join('\n') + '\n';
   }

@@ -237,7 +237,7 @@ export class Plot {
     for (const [slot, channel] of active.entries()) {
       const step = box.h / Math.max(active.length, 1), top = box.y + slot * step + step * .25;
       this.trace(c, this.frame.samples, box, v => top + (1 - v) * step * .45, COLORS[channel], v => (v >> channel) & 1);
-      c.fillStyle = COLORS[channel]; c.fillText(`D${channel}`, box.x + 5, top - 4);
+      c.fillStyle = COLORS[channel]; c.fillText(this.frame.names?.[channel] ?? `D${channel}`, box.x + 5, top - 4);
     }
   }
   // Without the shading a slow log looks calm however much the signal moved

@@ -1,7 +1,7 @@
 import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { ARLYZER_PINS, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
+import { ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
 import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, lowestMeasurable, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
@@ -71,6 +71,7 @@ const acquisition = new Acquisition(value => { frame = value; renderFrame(); }, 
   $('status').textContent = message; if (error) showError(message); updateButtons();
 });
 function caps() { return instrument?.caps || demoCaps; }
+const logicName = i => logicNames(instrument?.identity?.board)[i];
 // The pin an analogue channel is read on, for the channel card's note.
 function inputPin(i) { return ARLYZER_PINS[instrument?.identity?.board]?.[i] ?? `GPIO ${26 + i}`; }
 // The instrument's own range list. Offline there is no instrument to ask, so
@@ -321,7 +322,11 @@ function synchronize() {
   options('timebase', allowed.map(v => [v, fmt(v, 's')]), settings.timebase);
   const logic = settings.mode === 'logic', meter = settings.mode === 'meter';
   options('source', active.map(i => [i, `CH${i + 1}`]), settings.source);
-  options('logic-source', Array.from({ length: caps().logicChannels }, (_, i) => [i, `D${i}`]), settings.logicSource);
+  options('logic-source', Array.from({ length: caps().logicChannels }, (_, i) => [i, logicName(i)]), settings.logicSource);
+  // The line checkboxes and the decoder's line choices are made once; their
+  // names follow the board.
+  $('logic-lines').querySelectorAll('label').forEach((label, i) => { label.lastChild.nodeValue = logicName(i); });
+  for (const select of document.querySelectorAll('[data-logic-line]')) [...select.options].forEach((option, i) => { option.text = logicName(i); });
   // The level slider spans what the source channel reads, as on the Mac.
   const levelScale = scaleFor(settings, caps(), frontEnd(), settings.source);
   $('level').min = Math.min(levelScale.low, levelScale.high); $('level').max = Math.max(levelScale.low, levelScale.high);
@@ -416,7 +421,7 @@ function renderFrame() {
     el.append(clip);
     $('legend').append(el);
   }
-  if (settings.mode === 'logic') $('legend').textContent = 'D0–D7 · 3.3 V logic';
+  if (settings.mode === 'logic') $('legend').textContent = `${logicName(0)}–${logicName(7)} · ${ARLYZER_PINS[instrument?.identity?.board] ? '5 V inputs; 3.3 V reads high' : '3.3 V logic'}`;
   // Not "logging every…" — the frame outlives a stop, and that verb next to
   // the Stopped dot on the same line told two different stories about the
   // same log.
@@ -429,7 +434,7 @@ function renderFrame() {
       const el = document.createElement('span'); el.className = 'legend-note'; el.textContent = text; $('legend').append(el);
     }
   }
-  $('trigger-summary').textContent = settings.mode === 'meter' ? 'Logging all inputs · min/mean/max a point' : `Trigger: ${['Free', 'Auto', 'Normal'][settings.mode === 'logic' ? settings.logicTrigger : settings.trigger]}${settings.mode === 'logic' ? ` · D${settings.logicSource}` : ` · CH${settings.source + 1}`}${settings.lpf && settings.mode !== 'logic' ? ` · LPF ${fmt(settings.lpf, 'Hz')}` : ''}`;
+  $('trigger-summary').textContent = settings.mode === 'meter' ? 'Logging all inputs · min/mean/max a point' : `Trigger: ${['Free', 'Auto', 'Normal'][settings.mode === 'logic' ? settings.logicTrigger : settings.trigger]}${settings.mode === 'logic' ? ` · ${logicName(settings.logicSource)}` : ` · CH${settings.source + 1}`}${settings.lpf && settings.mode !== 'logic' ? ` · LPF ${fmt(settings.lpf, 'Hz')}` : ''}`;
   $('timing').textContent = frame?.period ? `${fmt(1 / frame.period, 'Sa/s')} · ${frame.count.toLocaleString()} points${frame.decimation > 1 ? ` · ${frame.decimation}× decimation` : ''}` : frame?.kind === 'meter' ? logSummary(frame) : '— Sa/s · — points';
   if (settings.mode === 'meter') $('log-span').textContent = frame?.kind === 'meter' && frame.history.length ? `${frame.history.length} PT · ${fmt(frame.history.at(-1).time, 's').toUpperCase()}` : 'EMPTY';
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
@@ -496,7 +501,7 @@ function renderFrame() {
     // A card an input, as on the Mac: its rate and duty, or which way it sits idle.
     const activity = logicActivity(frame.samples, frame.period, caps().logicChannels);
     $('measurements').style.setProperty('--cards', 4);
-    for (const a of activity) addCard(`D${a.channel}`, COLORS[a.channel], a.idle
+    for (const a of activity) addCard(frame.names?.[a.channel] ?? `D${a.channel}`, COLORS[a.channel], a.idle
       ? [['State', a.idleHigh ? 'idle high' : 'idle low']]
       : [['Frequency', fmt(a.frequency, 'Hz')], ['Duty', `${Math.round(a.duty * 100)} %`]]);
   } else if (frame?.kind !== 'scope') {

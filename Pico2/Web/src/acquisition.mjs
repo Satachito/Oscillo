@@ -1,4 +1,4 @@
-import { OP, MAX_ANALOG_CHANNELS, activeChannels, analogRequest, logicRequest, plan, status, readRequest, splitAnalog, scaleFor, ranges, view, demoCaps } from './protocol.mjs';
+import { OP, MAX_ANALOG_CHANNELS, activeChannels, analogRequest, logicRequest, plan, status, readRequest, splitAnalog, scaleFor, ranges, view, demoCaps, logicNames } from './protocol.mjs';
 import { measure } from './signal.mjs';
 export const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 // Points kept before the oldest are dropped: at half a second that is nearly
@@ -56,7 +56,7 @@ function demoLogic(settings, caps) {
     else { if (spi * 1e6 % 1 >= .5) value |= 32; if (0xa5 & (1 << (7 - bit))) value |= 64; }
     return value;
   });
-  return { kind: 'logic', samples, period, count, triggerIndex: pretrigger, triggered: settings.logicTrigger !== 0, timestamp: Date.now() };
+  return { kind: 'logic', samples, period, count, triggerIndex: pretrigger, triggered: settings.logicTrigger !== 0, names: logicNames(1), timestamp: Date.now() };
 }
 // Generation tokens cancel polling; transactions remain serialized by the transport.
 export class Acquisition {
@@ -197,7 +197,7 @@ export class Acquisition {
       bytes.set(block, offset * bytesPerSample); offset += block.length / bytesPerSample;
     }
     if (token !== this.token) return null;
-    if (logic) return { kind: 'logic', samples: bytes, period: actual.period, count: actual.count, triggerIndex: result.triggerIndex, triggered: result.triggered, timestamp: Date.now() };
+    if (logic) return { kind: 'logic', samples: bytes, period: actual.period, count: actual.count, triggerIndex: result.triggerIndex, triggered: result.triggered, names: logicNames(instrument.identity?.board), timestamp: Date.now() };
     const request = analogRequest(settings, instrument.caps, instrument.ranges);
     if (actual.mask !== request.mask || actual.channels !== request.active.length) throw new Error('The instrument returned an unexpected channel mask');
     return { columns: splitAnalog(bytes, actual.channels), request, actual, triggered: result.triggered, triggerIndex: result.triggerIndex };

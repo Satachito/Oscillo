@@ -15,6 +15,9 @@ export const ARLYZER_PINS = Object.freeze({
   5: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D4', 'D5'],
   6: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D10'],
 });
+// What the logic lines are called on the board: an ArLyzer's D0–D7 are the
+// Arduino's D2–D9, since D0 and D1 are an UNO's serial port.
+export const logicNames = board => Array.from({ length: 8 }, (_, i) => `D${ARLYZER_PINS[board] ? i + 2 : i}`);
 // Eight is what the wire format holds: a channel mask is one byte.
 export const MAX_ANALOG_CHANNELS = 8;
 export const OP = Object.freeze({ identify: 1, capabilities: 2, range: 4, test: 5, inputRanges: 7, signals: 8, analogConfigure: 0x10, analogArm: 0x11, analogStatus: 0x12, analogRead: 0x13, analogAbort: 0x14, sample: 0x15, logicConfigure: 0x20, logicArm: 0x21, logicStatus: 0x22, logicRead: 0x23, logicAbort: 0x24 });
