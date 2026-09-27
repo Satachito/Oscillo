@@ -104,6 +104,7 @@ struct PiLyzerApp: App {
             CommandMenu("View") {
                 ForEach(WorkMode.allCases, id: \.self) { mode in
                     Button(mode.rawValue) { model.settings.mode = mode }
+                        .disabled(mode == .logic && !model.capabilities.hasLogic)
                 }
                 Divider()
                 Toggle("Cursors", isOn: Binding(get: { model.cursorsEnabled },

@@ -253,7 +253,7 @@ public struct LogicSettings: Codable, Equatable, Sendable {
     }
 
     public func configuration(capabilities: DeviceCapabilities) -> LogicConfiguration {
-        let period = max(1 / max(sampleRate, 1), 1 / Double(capabilities.logicClockHz))
+        let period = max(1 / max(sampleRate, 1), 1 / Double(max(capabilities.logicClockHz, 1)))
         let record = min(max(recordLength, 64), capabilities.logicMaxRecord)
         let pretrigger = min(Int(Double(record) * min(max(triggerPosition, 0), 0.95)),
                              capabilities.logicMaxPretrigger)

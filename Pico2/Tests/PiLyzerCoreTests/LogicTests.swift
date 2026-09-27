@@ -125,4 +125,20 @@ struct LogicTests {
         #expect(activity[1].isIdle)
         #expect(LogicAnalysis.transitions(of: record, channel: 0).count == 99)
     }
+
+    /// An ArLyzer reports no logic inputs and no logic clock. Switching the
+    /// Mac app to Logic with one attached divided by that zero and stopped
+    /// the app converting the period for the wire.
+    @Test("An instrument with no logic clock says so and still encodes a finite request")
+    func noLogicClock() {
+        var capabilities = DeviceCapabilities.unavailable
+        capabilities.logicChannels = 0
+        capabilities.logicClockHz = 0
+        capabilities.logicMaxRecord = 0
+        #expect(!capabilities.hasLogic)
+        let configuration = LogicSettings().configuration(capabilities: capabilities)
+        #expect(configuration.samplePeriod.isFinite)
+        _ = configuration.encoded()
+        #expect(DeviceCapabilities.unavailable.hasLogic)
+    }
 }

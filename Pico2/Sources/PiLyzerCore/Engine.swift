@@ -492,6 +492,9 @@ public final class InstrumentEngine {
 
     private func acquireLogic(_ instrument: Instrument, token: Int) throws -> LogicFrame? {
         guard let connected else { throw InstrumentError.notConnected }
+        // Asked of an instrument with no logic clock, the period was 1/0 and
+        // the app stopped on converting it for the wire.
+        guard connected.capabilities.hasLogic else { throw InstrumentError.logicUnavailable }
         let configuration = settings.logic.configuration(capabilities: connected.capabilities)
         if configuration != appliedLogic {
             logicPlan = try configureLogic(instrument, configuration)

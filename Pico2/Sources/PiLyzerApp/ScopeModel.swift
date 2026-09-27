@@ -272,6 +272,7 @@ final class ScopeModel: ObservableObject {
         case let .connected(instrument):
             settings.ensureAnalogChannels(instrument.capabilities.analogChannels)
             if !instrument.capabilities.hasTriggerLowPass { settings.trigger.lowPassHz = 0 }
+            if !instrument.capabilities.hasLogic && settings.mode == .logic { settings.mode = .scope }
             normalizeAnalogSelection()
             seedTriggerLevel()
             settleTriggerLevel()

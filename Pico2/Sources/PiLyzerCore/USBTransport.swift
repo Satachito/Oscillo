@@ -4,6 +4,7 @@ import Foundation
 public enum InstrumentError: Error, LocalizedError, Equatable {
     case noChannelsEnabled
     case triggerLowPassUnavailable
+    case logicUnavailable
     case notConnected
     case openFailed(Int32)
     case inUse
@@ -22,6 +23,8 @@ public enum InstrumentError: Error, LocalizedError, Equatable {
             return "Enable at least one channel."
         case .triggerLowPassUnavailable:
             return "Trigger LPF requires firmware 1.2 or later. Update the firmware or set Trigger LPF to Off."
+        case .logicUnavailable:
+            return "This instrument has no logic inputs."
         case .notConnected:
             return "No instrument is connected."
         case let .openFailed(code):

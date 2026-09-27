@@ -36,7 +36,8 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
                 .tracking(1.7)
                 .foregroundStyle(Theme.muted)
             Spacer(minLength: 12)
-            ModeTabs(mode: $model.settings.mode)
+            ModeTabs(mode: $model.settings.mode,
+                     unavailable: model.capabilities.hasLogic ? [] : [.logic])
         }
         .padding(.bottom, 16)
     }
@@ -131,6 +132,8 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
 /// system control in the middle of a page that is otherwise entirely our own.
 struct ModeTabs: View {
     @Binding var mode: WorkMode
+    /// Modes this instrument cannot do: Logic on an ArLyzer.
+    var unavailable: Set<WorkMode> = []
 
     var body: some View {
         HStack(spacing: 3) {
@@ -152,6 +155,9 @@ struct ModeTabs: View {
                         }
                 }
                 .buttonStyle(.plain)
+                .disabled(unavailable.contains(candidate))
+                .opacity(unavailable.contains(candidate) ? 0.4 : 1)
+                .help(unavailable.contains(candidate) ? "This instrument has no logic inputs." : "")
                 .accessibilityAddTraits(candidate == mode ? [.isSelected] : [])
             }
         }

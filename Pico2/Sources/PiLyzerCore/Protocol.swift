@@ -191,6 +191,9 @@ public struct DeviceCapabilities: Equatable, Sendable {
     /// The device can put a sine and three noises on four pins of its own.
     public var hasSignalGenerator: Bool { flags & 32 != 0 }
     public var hasTriggerLowPass: Bool { flags & 8 != 0 }
+    /// An ArLyzer has no logic inputs: it reports none, and no clock to time
+    /// them with.
+    public var hasLogic: Bool { logicChannels > 0 && logicClockHz > 0 }
     /// The device describes its own front end, so the host does not have to
     /// keep a table keyed on the board id.
     public var reportsInputRanges: Bool { flags & 16 != 0 }
