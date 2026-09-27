@@ -163,7 +163,14 @@ export function analogRequest(settings, caps, frontEnd) {
   const floor = caps.minCycles / caps.clock * active.length;
   const duration = settings.timebase * 10;
   let count = Math.min(settings.record, caps.maxRecord), period = duration / count;
-  if (period < floor) { period = floor; count = Math.min(caps.maxRecord, Math.max(50, Math.round(duration / period))); }
+  if (period < floor) {
+    period = floor;
+    const fits = duration / period;
+    // The spectrum transforms a power of two and would drop the rest: 504
+    // samples became 256, and its resolution halved. So it gets the next
+    // power of two, a little more than the sweep, rather than half as much.
+    count = Math.min(caps.maxRecord, settings.mode === 'spectrum' ? Math.max(64, 2 ** Math.ceil(Math.log2(fits))) : Math.max(50, Math.round(fits)));
+  }
   const source = active.includes(settings.source) ? settings.source : active[0];
   const trigger = scaleFor(settings, caps, frontEnd, source);
   const pretrigger = Math.min(Math.floor(count * settings.position), caps.maxPretrigger, count - 1);

@@ -4,7 +4,7 @@ import { resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpect
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport, SerialTransport } from '../src/instrument.mjs';
 import { HttpTransport, available } from '../src/net.mjs';
-import { measure, spectrum, spectrumCsv, csv, decodeLogic, logicActivity, WINDOWS, averageSpectra, spectrumQuality, levelOf } from '../src/signal.mjs';
+import { measure, spectrum, spectrumCsv, csv, decodeLogic, logicActivity, WINDOWS, averageSpectra, spectrumQuality, lowestMeasurable, levelOf } from '../src/signal.mjs';
 const caps = demoCaps;
 const afe = ranges(1), bare = ranges(0);
 for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, scale and 97-cycle rate floor`, () => {
@@ -582,6 +582,43 @@ test('a tone low in the spectrum does not report its own skirt as distortion', (
 });
 test('a clean tone reports no distortion worth speaking of', () => {
   assert.ok(spectrumQuality(spectrum(tone(1, 200), 1 / toneRate, 'Hann'), 5).thd < .001);
+});
+// An UNO R4 WiFi sampling seven inputs at 1 ms/div: 19.83 µs apart. Its
+// channels carried 128 Hz up to 1458 Hz, each half as high again.
+const r4Period = 19.83e-6, sine = (f, n) => Float64Array.from({ length: n }, (_, i) => 1.65 + 1.2 * Math.sin(2 * Math.PI * f * i * r4Period));
+test('a tone below what the record resolves gets no frequency, rather than a wrong one', () => {
+  for (const f of [128, 192]) {
+    const s = spectrum(sine(f, 512), r4Period, 'Hann');
+    assert.equal(spectrumQuality(s, 5), null, `${f} Hz`);
+    assert.ok(lowestMeasurable(s) > f);
+  }
+});
+test('a square whose fundamental is out of reach is not read at its third harmonic', () => {
+  const square = (f, n) => Float64Array.from({ length: n }, (_, i) => (i * r4Period * f) % 1 < .5 ? 3.3 : 0);
+  assert.equal(spectrumQuality(spectrum(square(288, 256), r4Period, 'Hann'), 5), null);
+  const q = spectrumQuality(spectrum(square(972, 512), r4Period, 'Hann'), 5);
+  assert.ok(Math.abs(q.fundamental.frequency / 972 - 1) < .01, `read ${q.fundamental.frequency}`);
+});
+test('a tone the record resolves reads within a hundredth', () => {
+  for (const f of [432, 648, 972, 1458]) {
+    const q = spectrumQuality(spectrum(sine(f, 512), r4Period, 'Hann'), 5);
+    assert.ok(Math.abs(q.fundamental.frequency / f - 1) < .01, `${f} Hz read ${q.fundamental.frequency}`);
+  }
+});
+test('no frequency is ever negative or beyond half a bin of its peak', () => {
+  for (let f = 50; f < 2000; f += 37) {
+    const s = spectrum(sine(f, 512), r4Period, 'Hann'), q = spectrumQuality(s, 5);
+    if (q) assert.ok(Math.abs(q.fundamental.frequency - q.fundamental.bin * s.resolution) <= s.resolution / 2 + 1e-9, `${f} Hz`);
+  }
+});
+test('the spectrum is given a power of two when the converter pins the rate', () => {
+  const settings = makeSettings(); settings.mode = 'spectrum'; settings.timebase = 1e-3; settings.record = 2048;
+  settings.channels.forEach((c, i) => c.enabled = i < 7);
+  const seven = { ...caps, channels: 8, minCycles: 136, clock: 48000000, maxRecord: 1024 };
+  const req = analogRequest(settings, seven, ranges(0));
+  assert.equal(req.count, 512);
+  settings.mode = 'scope';
+  assert.equal(analogRequest(settings, seven, ranges(0)).count, 504);
 });
 test('dBV is referenced to one volt RMS', () => {
   assert.ok(Math.abs(levelOf(Math.SQRT2, 'dBV', 1)) < 1e-9);

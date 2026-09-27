@@ -111,7 +111,10 @@ function interpolatedPeak(amplitudes, i, resolution) {
   if (i < 1 || i + 1 >= amplitudes.length) return { frequency: i * resolution, amplitude: amplitudes[i] ?? 0, bin: i };
   const left = Math.log(Math.max(amplitudes[i - 1], 1e-18)), centre = Math.log(Math.max(amplitudes[i], 1e-18)), right = Math.log(Math.max(amplitudes[i + 1], 1e-18));
   const denominator = left - 2 * centre + right;
-  const shift = Math.abs(denominator) < 1e-15 ? 0 : .5 * (left - right) / denominator;
+  // Half a bin either way at most: off a true maximum the parabola opens the
+  // wrong way and its vertex can land anywhere, a negative frequency included.
+  const raw = Math.abs(denominator) < 1e-15 ? 0 : .5 * (left - right) / denominator;
+  const shift = Math.max(-.5, Math.min(.5, raw));
   return { frequency: (i + shift) * resolution, amplitude: Math.exp(centre - .25 * (left - right) * shift), bin: i };
 }
 // Local maxima, strongest first, as the macOS app finds them. A tone between
@@ -143,12 +146,24 @@ export function averageSpectra(spectra) {
 // Each bin belongs to exactly one thing — the DC skirt, the fundamental, a
 // harmonic, or the noise — or the band around a low harmonic re-counts the
 // fundamental's own skirt and a clean tone reports distortion it does not have.
+// The bins the DC skirt covers. Nothing below them can be told from the mean.
+const skirtOf = s => Math.ceil((WINDOWS[s.window] || WINDOWS.Hann).enbw) + 1;
+// The lowest frequency a tone can be measured at in this spectrum: a record
+// shorter than about three of its cycles leaves it inside the DC skirt.
+export const lowestMeasurable = s => skirtOf(s) * s.resolution;
 export function spectrumQuality(s, harmonicCount) {
   const a = s.amplitudes; if (!a || a.length <= 8) return null;
-  const skirt = Math.ceil((WINDOWS[s.window] || WINDOWS.Hann).enbw) + 1;
+  const skirt = skirtOf(s);
   let strongest = skirt;
   for (let i = skirt; i < a.length; i++) if (a[i] > a[strongest]) strongest = i;
   if (!(a[strongest] > 0)) return null;
+  // A tone below what the record resolves stays inside the DC skirt. Then the
+  // strongest bin past it is either the skirt's own slope, whose "frequency"
+  // is anything, negative included, or a harmonic: a 288 Hz square read as
+  // 845 Hz, its third. Either way there is no fundamental to report.
+  let skirtPeak = 0;
+  for (let i = 1; i < skirt; i++) skirtPeak = Math.max(skirtPeak, a[i]);
+  if (a[strongest] <= a[strongest - 1] || skirtPeak >= a[strongest]) return null;
   const claimed = new Set(), power = (bin, claim) => {
     let total = 0;
     for (let i = Math.max(bin - skirt, 0); i <= Math.min(bin + skirt, a.length - 1); i++) if (!claimed.has(i)) { total += a[i] * a[i]; if (claim) claimed.add(i); }

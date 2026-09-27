@@ -2,7 +2,7 @@ import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
 import { ARLYZER_PINS, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
-import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
+import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, lowestMeasurable, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
 const NUMERIC_CONTROLS = { 'spi-clock': 'spiClock', 'spi-data': 'spiData', 'spi-select': 'spiSelect', 'i2c-clock': 'i2cClock', 'i2c-data': 'i2cData', 'spectrum-averaging': 'spectrumAveraging', 'spectrum-harmonics': 'spectrumHarmonics', 'logic-trigger': 'logicTrigger', 'logic-source': 'logicSource', 'logic-slope': 'logicSlope', 'logic-position': 'logicPosition', averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
@@ -445,15 +445,18 @@ function renderFrame() {
   if (frame?.kind === 'scope' && settings.mode === 'spectrum') {
     // Distortion and noise from the spectrum on screen, as the Mac shows them:
     // a card a channel, and the harmonics beside it when there is only one.
-    const measured = (plot.spectra || []).filter(entry => entry.quality);
+    const shown = plot.spectra || [], measured = shown.filter(entry => entry.quality);
     const percent = v => `${(v * 100).toFixed(2)} %`, decibels = v => Number.isFinite(v) ? `${v.toFixed(1)} dB` : '—';
-    for (const entry of measured) addCard(`Channel ${entry.index + 1}`, COLORS[entry.index], [
+    for (const entry of shown) addCard(`Channel ${entry.index + 1}`, COLORS[entry.index], entry.quality ? [
       ['Frequency', fmt(entry.quality.fundamental.frequency, 'Hz')], ['Level', fmt(entry.quality.fundamental.amplitude, 'V')],
       ['THD', percent(entry.quality.thd)], ['THD+N', percent(entry.quality.thdPlusNoise)],
-      ['SNR', decibels(entry.quality.snr)], ['SINAD', decibels(entry.quality.sinad)], ['ENOB', `${entry.quality.enob.toFixed(1)} bits`]]);
-    if (measured.length === 1) addCard('Harmonics', '', measured[0].quality.harmonics.slice(0, 5).map((peak, i) => [`H${i + 2}`, fmt(peak.amplitude, 'V')]));
-    $('measurements').style.setProperty('--cards', columns(measured.length + (measured.length === 1 ? 1 : 0)));
-    if (!measured.length) { const el = document.createElement('div'); el.className = 'measurement-placeholder'; el.textContent = 'A tone has to be on screen before its distortion can be measured.'; $('measurements').append(el); }
+      ['SNR', decibels(entry.quality.snr)], ['SINAD', decibels(entry.quality.sinad)], ['ENOB', `${entry.quality.enob.toFixed(1)} bits`]]
+      // No tone the record resolves: say how low it can reach, which is what
+      // a slower time base changes.
+      : [['Frequency', '—'], ['Lowest measurable', fmt(lowestMeasurable(entry), 'Hz')]]);
+    if (measured.length === 1 && shown.length === 1) addCard('Harmonics', '', measured[0].quality.harmonics.slice(0, 5).map((peak, i) => [`H${i + 2}`, fmt(peak.amplitude, 'V')]));
+    $('measurements').style.setProperty('--cards', columns(shown.length + (measured.length === 1 && shown.length === 1 ? 1 : 0)));
+    if (!shown.length) { const el = document.createElement('div'); el.className = 'measurement-placeholder'; el.textContent = 'A tone has to be on screen before its distortion can be measured.'; $('measurements').append(el); }
   }
   else if (frame?.kind === 'scope') {
   for (const trace of frame.traces) {
