@@ -4,14 +4,20 @@
 # build/esp32-original.bin before anything is written, so Arduino's own
 # firmware can be put back exactly (see README.md).
 #
-#   ./flash.sh
+#   ./flash.sh                 # what build.sh built
+#   ./flash.sh path/to/images  # or the images from a release, unzipped
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 work=$here/build
-out=$work/out
+out=${1:-$work/out}
+[ -f "$out/UNOR4USBBridge.ino.bin" ] || { echo "No images in $out: run ./build.sh first, or name the folder a release unzipped to." >&2; exit 1; }
+mkdir -p "$work"
+# The esptool that came with build.sh's toolchain, else one on PATH
+# (pip install esptool).
 esptool=$work/uno-r4-wifi-usb-bridge/hardware/esp32-patched/esp32/tools/esptool/esptool
-[ -f "$out/UNOR4USBBridge.ino.bin" ] || { echo "Run ./build.sh first." >&2; exit 1; }
+[ -x "$esptool" ] || esptool=$(command -v esptool || command -v esptool.py || true)
+[ -n "$esptool" ] || { echo "No esptool: pip install esptool" >&2; exit 1; }
 
 xcrun clang -framework IOKit -framework CoreFoundation "$here/esp-download-mode.c" -o "$work/esp-download-mode"
 

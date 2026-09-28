@@ -37,8 +37,8 @@ one — such a build carries the password, so it is not for handing out.
 `ARLYZER_HOSTNAME` changes the default name from `arlyzer`.
 The first run fetches Arduino's bridge at the commit `build.sh` names, its
 submodules and its ESP32 toolchain into `build/` — about 1 GB — and later runs
-reuse them. The network goes into `build/.../arlyzer_config.h`, never into the
-repository. The browser application is built from `../../Pico2/Web` and baked
+reuse them. A built-in network goes into `build/.../arlyzer_config.h`, never
+into the repository. The browser application is built from `../../Pico2/Web` and baked
 in with the Pico's own `bake-web.py`; `http_request.c`, which reads the
 requests, is the Pico's too, with its host tests.
 
@@ -47,6 +47,10 @@ requests, is the Pico's too, with its host tests.
 ```sh
 ./flash.sh
 ```
+
+or, with the images from a release unzipped somewhere, `./flash.sh
+that/folder` — no build needed, only esptool (`pip install esptool`, which
+brings pyserial) and Xcode's command-line tools.
 
 No jumper: it asks the bridge to restart into the ROM's download mode and
 writes with the esptool that came with the toolchain. The board comes back in
