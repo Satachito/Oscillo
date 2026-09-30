@@ -157,4 +157,16 @@ struct LogicTests {
         #expect(Export.csv(logic: frame, names: names).hasPrefix("time_s,D2,D3,D4,D5,D6,D7,D8,D9\n"))
         #expect(Export.csv(logicTransitions: frame, names: names).contains(",D2,1"))
     }
+
+    @Test("An ArLyzer's rate menu shows the 167 kSa/s it really runs at, not a blank")
+    func arlyzerLogicRate() {
+        var capabilities = DeviceCapabilities.unavailable
+        capabilities.logicChannels = 8
+        capabilities.logicClockHz = 166_667
+        let rates = LogicSettings.availableRates(capabilities: capabilities)
+        #expect(rates.last == 166_667)
+        // The default asks for 10 MSa/s; the board runs at its fastest.
+        #expect(LogicSettings.shownRate(10_000_000, in: rates) == 166_667)
+        #expect(LogicSettings.shownRate(100_000, in: rates) == 100_000)
+    }
 }

@@ -270,7 +270,9 @@ struct ControlPanelView: View {
 
     private var logicSection: some View {
         Section("Logic") {
-            Choice("Rate", selection: $model.settings.logic.sampleRate) {
+            Choice("Rate", selection: Binding(
+                get: { LogicSettings.shownRate(model.settings.logic.sampleRate, in: model.logicRates) },
+                set: { model.settings.logic.sampleRate = $0 })) {
                 ForEach(model.logicRates, id: \.self) { rate in
                     Text(Format.sampleRate(rate)).tag(rate)
                 }

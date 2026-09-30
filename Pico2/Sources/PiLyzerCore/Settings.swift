@@ -277,6 +277,13 @@ public struct LogicSettings: Codable, Equatable, Sendable {
         if rates.last != top { rates.append(top) }
         return rates
     }
+
+    /// What the rate menu shows for `rate`: the rate the board really samples
+    /// at, which is that one or its fastest, whichever is lower. The setting
+    /// itself stays as asked, for the next board that can reach it.
+    public static func shownRate(_ rate: Double, in rates: [Double]) -> Double {
+        rates.last(where: { $0 <= rate }) ?? rates.first ?? rate
+    }
 }
 
 public struct ScopeSettings: Codable, Equatable, Sendable {
