@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { logicNames, encodeNetworkConfig, networkStatus, networkProblem, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, displayedTop, fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view } from '../src/protocol.mjs';
+import { logicNames, encodeNetworkConfig, networkStatus, networkProblem, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, displayedTop, fitScale, midRailVolts, referenceBias, analogRequest, activeChannels, demoCaps, identity, capabilities, plan, readRequest, splitAnalog, scaleFor, ranges, inputRanges, OP, request, responseHeader, view, logicRates, shownLogicRate } from '../src/protocol.mjs';
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport, SerialTransport } from '../src/instrument.mjs';
 import { HttpTransport, available } from '../src/net.mjs';
@@ -724,4 +724,16 @@ test('the meter log exports the channels switched on, and only those', () => {
   const [header, row] = csv(frame).trim().split('\n');
   assert.equal(header, 'time_s,timestamp,CH1_min_V,CH1_mean_V,CH1_max_V,CH3_min_V,CH3_mean_V,CH3_max_V');
   assert.deepEqual(row.split(',').slice(2).map(Number), [1, 1.1, 1.2, 3, 3.1, 3.2]);
+});
+
+test('an ArLyzer is offered its own fastest logic rate, and the menu shows the rate it really runs at', () => {
+  const page = [100000, 1000000, 10000000, 50000000, 150000000];
+  const arlyzer = logicRates(page, 166667);
+  assert.deepEqual(arlyzer, [100000, 166667]);
+  assert.equal(shownLogicRate(1000000, arlyzer), 166667);   // asked faster than it goes: its fastest
+  assert.equal(shownLogicRate(100000, arlyzer), 100000);
+  const pico = logicRates(page, 150000000);
+  assert.deepEqual(pico, page);                              // nothing added when the fastest is listed
+  assert.equal(shownLogicRate(1000000, pico), 1000000);      // the rate asked for survives for the next board
+  assert.equal(shownLogicRate(50, pico), 100000);
 });

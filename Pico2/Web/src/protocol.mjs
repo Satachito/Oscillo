@@ -241,6 +241,18 @@ export function setSpectrumResolution(settings, timebase, caps, channels) {
   if (record) settings.record = record;
 }
 // The axis ends at the span, unless the record in hand does not reach it.
+// The logic rates the menu offers a board: the page's own that it reaches,
+// and its fastest when that is not already one of them — an ArLyzer's
+// 167 kSa/s is none of the page's.
+export function logicRates(listed, clock) {
+  const rates = listed.filter(rate => rate <= clock);
+  if (clock > 0 && !rates.includes(clock)) rates.push(clock);
+  return rates.sort((a, b) => a - b);
+}
+// What the menu shows for a rate asked for: the one the board really samples
+// at, which is that rate or the board's fastest, whichever is lower. The rate
+// asked for stays as it was, for the next board that can reach it.
+export const shownLogicRate = (rate, rates) => rates.filter(r => r <= rate).at(-1) ?? rates[0];
 export const displayedTop = (span, nyquist) => span > 0 ? Math.min(span, nyquist) : nyquist;
 
 // A Pico 2 W's or an UNO R4 WiFi's network, set over USB (capability bit 6).

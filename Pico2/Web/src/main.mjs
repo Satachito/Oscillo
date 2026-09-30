@@ -1,10 +1,13 @@
 import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { OP as WIRE, encodeNetworkConfig, networkStatus as readNetworkStatus, networkProblem, ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution } from './protocol.mjs';
+import { OP as WIRE, encodeNetworkConfig, networkStatus as readNetworkStatus, networkProblem, ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, logicRates, shownLogicRate } from './protocol.mjs';
 import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, lowestMeasurable, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
+// The page's own logic rates, as index.html lists them; a board is offered
+// those it reaches (logicRates).
+const LOGIC_RATES = [...document.getElementById('logic-rate').options].map(option => Number(option.value));
 const NUMERIC_CONTROLS = { 'spi-clock': 'spiClock', 'spi-data': 'spiData', 'spi-select': 'spiSelect', 'i2c-clock': 'i2cClock', 'i2c-data': 'i2cData', 'spectrum-averaging': 'spectrumAveraging', 'spectrum-harmonics': 'spectrumHarmonics', 'logic-trigger': 'logicTrigger', 'logic-source': 'logicSource', 'logic-slope': 'logicSlope', 'logic-position': 'logicPosition', averaging: 'averaging', 'xy-x': 'xyX', 'xy-y': 'xyY', 'signal-sine': 'signalSineHz', timebase: 'timebase', record: 'record', 'log-interval': 'logInterval', trigger: 'trigger', slope: 'slope', level: 'level', position: 'position', hysteresis: 'hysteresis', 'test-frequency': 'testFrequency', 'logic-rate': 'logicRate', 'logic-record': 'logicRecord', 'uart-line': 'uartLine', 'uart-baud': 'uartBaud' };
 // Sliders show their value beside the label, as the Mac's LabeledSlider does.
 const SLIDER_READOUTS = {
@@ -381,7 +384,8 @@ function synchronize() {
   options('xy-y', active.map(i => [i, `CH${i + 1}`]), settings.xyY);
   showLowPass();
   for (const op of $('record').options) op.disabled = Number(op.value) > caps().maxRecord;
-  for (const op of $('logic-rate').options) op.disabled = Number(op.value) > caps().logicClock;
+  const rates = logicRates(LOGIC_RATES, caps().logicClock);
+  options('logic-rate', rates.map(rate => [rate, fmt(rate, 'Sa/s')]), shownLogicRate(settings.logicRate, rates));
   for (const op of $('logic-record').options) op.disabled = Number(op.value) > caps().logicMaxRecord;
   $('test-pin').textContent = instrument?.demo ? 'Demo is generated in this browser. Test output controls apply to a USB instrument.' : `GPIO${CALIBRATION_PIN} · 0–3.3 V square wave. Wire the output to an input to measure it.`;
   $('signal-pins').textContent = `GPIO${SIGNAL_BASE_PIN} sine, GPIO${SIGNAL_BASE_PIN + 1} white, GPIO${SIGNAL_BASE_PIN + 2} pink, GPIO${SIGNAL_BASE_PIN + 3} brown — PWM at 586 kHz, so each pin wants an RC (1 kΩ and 10 nF) to come out as a voltage.`;
