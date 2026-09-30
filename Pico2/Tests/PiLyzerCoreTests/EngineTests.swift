@@ -149,6 +149,26 @@ struct EngineTests {
         engine.disconnect()
     }
 
+    @Test("An overrun says so, in the web application's words")
+    func overrunSaysSo() throws {
+        let device = SimulatedInstrument()
+        device.overruns = true
+        let engine = InstrumentEngine(makeInstrument: { _ in device })
+        engine.callbackQueue = DispatchQueue(label: "test.overrun")
+        let ready = DispatchSemaphore(value: 0)
+        engine.onStateChange = { if $0.isConnected { ready.signal() } }
+        engine.connect(to: .simulator, settings: ScopeSettings())
+        defer { engine.disconnect() }
+        try #require(ready.wait(timeout: .now() + 5) == .success)
+
+        var message: String?
+        let failed = DispatchSemaphore(value: 0)
+        engine.onError = { message = $0; failed.signal() }
+        engine.single()
+        try #require(failed.wait(timeout: .now() + 5) == .success)
+        #expect(message == "Capture overrun. Use fewer channels or a slower timebase.")
+    }
+
     @Test("A reading says how far it moved, so a calibration can refuse a signal")
     func steadyReadings() throws {
         // Channel one holds still at a volt; channel two is a sine. Both

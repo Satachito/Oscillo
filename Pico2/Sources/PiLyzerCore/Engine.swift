@@ -510,7 +510,7 @@ public final class InstrumentEngine {
 
         guard status.state == .complete else {
             try? instrument.abortAnalog()
-            if status.state == .overrun { throw InstrumentError.rejected(.analogStatus, .internalError) }
+            if status.state == .overrun { throw InstrumentError.overrun }
             return nil
         }
         let columns = try instrument.readAnalogRecord(plan: analogPlan)
@@ -539,7 +539,11 @@ public final class InstrumentEngine {
                                                  poll: { try instrument.logicStatus() },
                                                  abort: { try? instrument.abortLogic() })
         else { return nil }
-        guard status.state == .complete else { try? instrument.abortLogic(); return nil }
+        guard status.state == .complete else {
+            try? instrument.abortLogic()
+            if status.state == .overrun { throw InstrumentError.overrun }
+            return nil
+        }
 
         let samples = try instrument.readLogicRecord(plan: logicPlan)
         return LogicFrame(samples: samples, samplePeriod: logicPlan.samplePeriod,

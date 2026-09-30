@@ -5,6 +5,7 @@ public enum InstrumentError: Error, LocalizedError, Equatable {
     case noChannelsEnabled
     case triggerLowPassUnavailable
     case logicUnavailable
+    case overrun
     case notConnected
     case openFailed(Int32)
     case inUse
@@ -25,6 +26,8 @@ public enum InstrumentError: Error, LocalizedError, Equatable {
             return "Trigger LPF requires firmware 1.2 or later. Update the firmware or set Trigger LPF to Off."
         case .logicUnavailable:
             return "This instrument has no logic inputs."
+        case .overrun:
+            return "Capture overrun. Use fewer channels or a slower timebase."
         case .notConnected:
             return "No instrument is connected."
         case let .openFailed(code):

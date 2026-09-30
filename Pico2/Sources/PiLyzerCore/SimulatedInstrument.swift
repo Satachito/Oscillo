@@ -35,6 +35,9 @@ public final class SimulatedInstrument: Instrument {
     public var noise = 0.0015
     /// When false, nothing ever crosses the trigger level in normal mode.
     public var signalPresent = true
+    /// When true, every analogue record ends in an overrun, as a board's does
+    /// when its timer interrupt falls behind.
+    public var overruns = false
 
     public let identity = DeviceIdentity(protocolVersion: Wire.version,
                                          firmwareVersion: 0x0105,
@@ -188,6 +191,9 @@ public final class SimulatedInstrument: Instrument {
     public func analogStatus() throws -> AcquisitionStatus {
         guard analogArmed else {
             return AcquisitionStatus(state: .idle, triggered: false, samplesAvailable: 0, triggerIndex: 0)
+        }
+        if overruns {
+            return AcquisitionStatus(state: .overrun, triggered: false, samplesAvailable: 0, triggerIndex: 0)
         }
         if Date() < analogReadyAt {
             return AcquisitionStatus(state: analogTriggered ? .postTrigger : .waiting,
