@@ -424,7 +424,12 @@ final class ScopeModel: ObservableObject {
                 guard let self, watch == self.networkWatch else { return }
                 if case let .success(status) = result {
                     self.networkStatus = status
-                    if status.state == .joined || status.state == .notSet { self.networkMessage = nil; return }
+                    // "Saved. Joining …" holds only while it is joining: a
+                    // network it cannot join says so in the status line, and
+                    // the two must not disagree. It keeps asking, as it
+                    // tries again.
+                    if status.state != .joining { self.networkMessage = nil }
+                    if status.state == .joined || status.state == .notSet { return }
                 }
                 if Date() < deadline { DispatchQueue.main.asyncAfter(deadline: .now() + 2) { tick() } }
             }
