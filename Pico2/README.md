@@ -35,6 +35,13 @@ one-range build for a bench that wants no switch — and a picoLABO
 [PL2407AFE](hardware/pl2407afe). None of them needs its own release of either
 application: the board describes its own front end from firmware 1.7.
 
+Both applications also drive an Arduino Nano R4, UNO R4 Minima or UNO R4 WiFi
+running [ArLyzer](../ArLyzer/), a sketch that speaks this same protocol: up to
+eight analogue inputs at 0–5 V and a logic analyser on D2–D9, slower than the
+Pico 2 but with more inputs. It connects over USB serial — **Serial** in PiLyzer
+Web, the instrument list in the macOS application — and the UNO R4 WiFi also
+serves PiLyzer Web itself at `http://arlyzer.local`.
+
 All commands below run from the `Pico2` directory.
 
 ## What it is
@@ -125,6 +132,10 @@ labelled with.
 
 This is the reason the time axis can be trusted: it is a hardware register
 divided down, not a number the application hoped for.
+
+It is also why the same applications drive [ArLyzer](../ArLyzer/) on an
+Arduino R4 with no code of its own beyond naming the pins: the board answers
+the same questions with its own figures.
 
 ### Fast sweeps show fewer points, not invented ones
 
