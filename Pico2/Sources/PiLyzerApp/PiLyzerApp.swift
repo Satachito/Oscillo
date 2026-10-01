@@ -132,7 +132,7 @@ struct PiLyzerApp: App {
     }
 }
 
-/// The menu bar's reading: a sine wave, then the voltage to two decimals in
+/// The menu bar's reading: PiLyzer's mark, then the voltage to two decimals in
 /// a monospaced face, so the item keeps its width as the figure moves
 /// (between −9.99 and 99.99 V; past them it grows by a character). Drawn
 /// as a template image because a menu bar label takes no font of its own;
@@ -150,12 +150,14 @@ enum MenuBarLabel {
         let wave = NSSize(width: 16, height: 18), gap: CGFloat = 4
         let size = NSSize(width: wave.width + gap + ceil(textSize.width), height: 18)
         let image = NSImage(size: size, flipped: false) { _ in
+            // PiLyzer's mark, the trace in Web/favicon.svg ("M8 32h9l6-17 10 34
+            // 9-25 6 8h8" on a 64-unit square), fitted to the icon's box.
+            let mark: [(CGFloat, CGFloat)] = [(8, 32), (17, 32), (23, 15), (33, 49), (42, 24), (48, 32), (56, 32)]
             let path = NSBezierPath()
-            let mid = size.height / 2, amplitude: CGFloat = 4.5
-            for step in 0...32 {
-                let x = CGFloat(step) / 32
-                let point = NSPoint(x: 1 + x * (wave.width - 2), y: mid + amplitude * sin(x * 2 * .pi))
-                step == 0 ? path.move(to: point) : path.line(to: point)
+            let mid = size.height / 2, xScale = (wave.width - 2) / 48, yScale: CGFloat = 13 / 34
+            for (index, (x, y)) in mark.enumerated() {
+                let point = NSPoint(x: 1 + (x - 8) * xScale, y: mid + (32 - y) * yScale)
+                index == 0 ? path.move(to: point) : path.line(to: point)
             }
             path.lineWidth = 1.6
             path.lineCapStyle = .round
