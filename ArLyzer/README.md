@@ -31,9 +31,13 @@ arduino-cli compile --fqbn arduino:renesas_uno:nanor4 arlyzer        # or :minim
 arduino-cli upload  --fqbn arduino:renesas_uno:nanor4 -p <port> arlyzer
 ```
 
-The [release](https://github.com/Satachito/Oscillo/releases/latest) carries the
-UNO R4 WiFi's build as `ArLyzer-R4WiFi.bin`
-(`arduino-cli upload --fqbn arduino:renesas_uno:unor4wifi -p <port> --input-file ArLyzer-R4WiFi.bin`).
+The [release](https://github.com/Satachito/Oscillo/releases/latest) carries a
+build for each board — `ArLyzer-NanoR4.bin`, `ArLyzer-Minima.bin` and
+`ArLyzer-R4WiFi.bin` — to load without building:
+
+```sh
+arduino-cli upload --fqbn arduino:renesas_uno:nanor4 -p <port> --input-file ArLyzer-NanoR4.bin   # :minima, :unor4wifi
+```
 
 ## Use it
 
