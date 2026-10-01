@@ -317,6 +317,22 @@ export function csv(frame) {
   for (let i = 0; i < frame.count; i++) rows.push([((i - frame.triggerIndex) * frame.period).toPrecision(10), ...frame.traces.map(t => t.samples[i].toPrecision(9))].join(','));
   return [...notes, ...rows].join('\n') + '\n';
 }
+// One input's voltage for the watch (the tab title and the pop-out): the
+// meter's reading on the Meter screen, a record's level on Scope and
+// Spectrum — its mean, with any mean the display took out put back, so it is
+// the voltage on the input. Null when the frame has nothing for the channel.
+export function channelLevel(frame, channel) {
+  if (!frame || !(channel >= 0)) return null;
+  if (frame.kind === 'meter') return Number.isFinite(frame.values?.[channel]) ? frame.values[channel] : null;
+  if (frame.kind !== 'scope') return null;
+  const trace = frame.traces?.find(t => t.index === channel);
+  if (!trace || !trace.samples.length) return null;
+  let sum = 0;
+  for (const v of trace.samples) sum += v;
+  return sum / trace.samples.length + (trace.removedMean || 0);
+}
+// Two decimals, as the Mac's menu bar shows it.
+export const watchText = volts => Number.isFinite(volts) ? `${volts.toFixed(2)} V` : '-.-- V';
 export function fmt(value, unit = '', digits = 3) {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—';
   const prefixes = [[1e9, 'G'], [1e6, 'M'], [1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'µ'], [1e-9, 'n']];

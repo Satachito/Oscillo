@@ -2,7 +2,7 @@ import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
 import { OP as WIRE, encodeNetworkConfig, networkStatus as readNetworkStatus, networkProblem, ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, logicRates, shownLogicRate } from './protocol.mjs';
-import { fmt, csv, decodeLogic, logicActivity, spectrumCsv, lowestMeasurable, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
+import { channelLevel, watchText, fmt, csv, decodeLogic, logicActivity, spectrumCsv, lowestMeasurable, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 const $ = id => document.getElementById(id);
 // The page's own logic rates, as index.html lists them; a board is offered
@@ -101,6 +101,7 @@ function needsAnalog() {
   return settings.mode !== 'logic';
 }
 function updateButtons() {
+  updateWatch();
   const nothingOn = needsAnalog() && !activeChannels(settings, caps()).length;
   $('run').disabled = !instrument || connecting || nothingOn; $('run').textContent = acquisition.running ? '■ Stop' : '▶ Run';
   $('single').disabled = !instrument || acquisition.running || connecting || nothingOn;
@@ -382,6 +383,9 @@ function synchronize() {
   if (!active.includes(settings.xyY) || settings.xyY === settings.xyX) settings.xyY = active.find(i => i !== settings.xyX) ?? settings.xyX;
   options('xy-x', active.map(i => [i, `CH${i + 1}`]), settings.xyX);
   options('xy-y', active.map(i => [i, `CH${i + 1}`]), settings.xyY);
+  // A watch on an input this board does not have shows as Off; the choice
+  // stays for the next board that has it.
+  options('watch-channel', [[-1, 'Off'], ...Array.from({ length: caps().channels }, (_, i) => [i, `CH${i + 1}`])], settings.watchChannel < caps().channels ? settings.watchChannel : -1);
   showLowPass();
   for (const op of $('record').options) op.disabled = Number(op.value) > caps().maxRecord;
   const rates = logicRates(LOGIC_RATES, caps().logicClock);
@@ -408,6 +412,7 @@ function calibrationButtons() {
 const chipText = Object.assign(document.createElement('canvas').getContext('2d'), { font: '10px ui-monospace, SFMono-Regular, Menlo, monospace' });
 function renderFrame() {
   calibrationButtons();
+  updateWatch();
   plot.update(frame, settings, caps(), frontEnd());
   $('legend').replaceChildren();
   const traces = frame?.traces || activeChannels(settings, caps()).map(index => ({ index }));
@@ -656,6 +661,35 @@ for (const [id, key] of Object.entries(NUMERIC_CONTROLS)) {
 // A slider only reaches the instrument when it is let go, so the drag has
 // nothing to redraw — but the reading beside it follows the thumb.
 for (const [id, format] of Object.entries(SLIDER_READOUTS)) $(id).addEventListener('input', () => { $(`${id}-label`).value = format(Number($(id).value)); });
+// One input's voltage where it can be seen with the page out of the way: in
+// the tab's title, and in a small window that stays above other windows
+// (Document Picture-in-Picture, Chrome and Edge). It reads what the
+// instrument is already doing, so choosing it changes nothing in the sweep.
+const PAGE_TITLE = document.title;
+let watchWindow = null;
+function updateWatch() {
+  const on = settings.watchChannel >= 0;
+  const text = watchText(on && instrument ? channelLevel(frame, settings.watchChannel) : null);
+  document.title = on ? `${text} — PiLyzer` : PAGE_TITLE;
+  $('watch-popout').disabled = !on;
+  if (watchWindow) watchWindow.document.getElementById('watch-value').textContent = on ? text : '-.-- V';
+}
+async function popOutWatch() {
+  if (watchWindow) { watchWindow.focus(); return; }
+  try { watchWindow = await documentPictureInPicture.requestWindow({ width: 230, height: 64 }); }
+  catch (e) { showError(`Could not open the window: ${e.message}`); return; }
+  const doc = watchWindow.document;
+  doc.title = 'PiLyzer';
+  const style = doc.createElement('style');
+  style.textContent = 'html,body{height:100%;margin:0}body{display:flex;align-items:center;justify-content:center;gap:12px;background:#101816;color:#e3eae5;font:600 28px ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}svg{width:30px;height:30px;flex:none}';
+  doc.head.append(style);
+  doc.body.innerHTML = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 32h9l6-17 10 34 9-25 6 8h8" fill="none" stroke="#b8ee83" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="watch-value"></span>';
+  watchWindow.addEventListener('pagehide', () => { watchWindow = null; });
+  updateWatch();
+}
+$('watch-channel').onchange = () => { settings.watchChannel = Number($('watch-channel').value); saveSettings(); updateWatch(); };
+$('watch-popout').hidden = !('documentPictureInPicture' in window);
+$('watch-popout').onclick = popOutWatch;
 $('source').onchange = () => { settings.source = Number($('source').value); synchronize(); changed(); };
 for (const [id, key] of CHECK_CONTROLS) $(id).onchange = () => { settings[key] = $(id).checked; synchronize(); changed(); };
 for (const [id, key] of STRING_CONTROLS) $(id).onchange = () => { settings[key] = $(id).value; synchronize(); changed(); };

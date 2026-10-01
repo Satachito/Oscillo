@@ -4,7 +4,7 @@ import { logicNames, encodeNetworkConfig, networkStatus, networkProblem, resolut
 import { makeSettings, Acquisition, DemoInstrument, LOG_CAPACITY } from '../src/acquisition.mjs';
 import { BulkTransport, SerialTransport } from '../src/instrument.mjs';
 import { HttpTransport, available } from '../src/net.mjs';
-import { measure, spectrum, spectrumCsv, csv, decodeLogic, logicActivity, WINDOWS, averageSpectra, spectrumQuality, lowestMeasurable, levelOf } from '../src/signal.mjs';
+import { measure, spectrum, spectrumCsv, csv, decodeLogic, logicActivity, WINDOWS, averageSpectra, spectrumQuality, lowestMeasurable, levelOf, channelLevel, watchText } from '../src/signal.mjs';
 const caps = demoCaps;
 const afe = ranges(1), bare = ranges(0);
 for (let mask = 1; mask < 8; mask++) test(`mask ${mask}: correct channel slots, scale and 97-cycle rate floor`, () => {
@@ -736,4 +736,18 @@ test('an ArLyzer is offered its own fastest logic rate, and the menu shows the r
   assert.deepEqual(pico, page);                              // nothing added when the fastest is listed
   assert.equal(shownLogicRate(1000000, pico), 1000000);      // the rate asked for survives for the next board
   assert.equal(shownLogicRate(50, pico), 100000);
+});
+
+test('the watch reads the meter on the Meter screen and a record\'s level elsewhere', () => {
+  assert.equal(channelLevel({ kind: 'meter', values: [1.234, 2.5] }, 1), 2.5);
+  const scope = { kind: 'scope', traces: [{ index: 0, samples: [1, 2, 3] }, { index: 2, samples: [-0.5, 0.5], removedMean: 1.5 }] };
+  assert.equal(channelLevel(scope, 0), 2);
+  assert.equal(channelLevel(scope, 2), 1.5);          // the mean the display took out is put back
+  assert.equal(channelLevel(scope, 1), null);         // not in the record
+  assert.equal(channelLevel({ kind: 'logic', samples: [] }, 0), null);
+  assert.equal(channelLevel(null, 0), null);
+  assert.equal(channelLevel(scope, -1), null);         // the watch is off
+  assert.equal(watchText(3.3125), '3.31 V');
+  assert.equal(watchText(-0.524), '-0.52 V');
+  assert.equal(watchText(null), '-.-- V');
 });

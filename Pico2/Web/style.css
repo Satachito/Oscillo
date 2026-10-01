@@ -59,3 +59,4 @@
 .ask .field input{width:110px;text-align:right}
 .ask-actions{display:flex;justify-content:flex-end;gap:8px}
 #network-section input[type=text],#network-section input[type=password]{background:var(--sunken);border:1px solid var(--border);border-radius:5px;color:var(--ink-strong);padding:7px 8px;font-size:11px;width:150px;min-width:0}.network-status{color:var(--ink-strong);margin:0 0 6px}
+.field-pair>.button{align-self:end;padding:7px 10px}
