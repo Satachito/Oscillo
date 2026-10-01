@@ -127,13 +127,47 @@ struct PiLyzerApp: App {
                                          set: { if !$0 { menuBarChannel = -1 } })) {
             MenuBarContent(model: model, channel: $menuBarChannel)
         } label: {
-            Text(menuBarLabel).monospacedDigit()
+            Image(nsImage: MenuBarLabel.image(MenuBarLabel.volts(model.level(of: max(menuBarChannel, 0)))))
         }
     }
+}
 
-    private var menuBarLabel: String {
-        let channel = max(menuBarChannel, 0)
-        return "CH\(channel + 1) " + (model.level(of: channel).map(Format.voltage) ?? "—")
+/// The menu bar's reading: a sine wave, then the voltage to two decimals in
+/// a monospaced face, so the item keeps its width as the figure moves
+/// (between −9.99 and 99.99 V; past them it grows by a character). Drawn
+/// as a template image because a menu bar label takes no font of its own;
+/// as a template it follows the menu bar between light and dark.
+enum MenuBarLabel {
+    static func volts(_ value: Double?) -> String {
+        guard let value else { return " -.-- V" }
+        return String(format: "%5.2f V", value)
+    }
+
+    static func image(_ text: String) -> NSImage {
+        let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
+        let textSize = (text as NSString).size(withAttributes: attributes)
+        let wave = NSSize(width: 16, height: 18), gap: CGFloat = 4
+        let size = NSSize(width: wave.width + gap + ceil(textSize.width), height: 18)
+        let image = NSImage(size: size, flipped: false) { _ in
+            let path = NSBezierPath()
+            let mid = size.height / 2, amplitude: CGFloat = 4.5
+            for step in 0...32 {
+                let x = CGFloat(step) / 32
+                let point = NSPoint(x: 1 + x * (wave.width - 2), y: mid + amplitude * sin(x * 2 * .pi))
+                step == 0 ? path.move(to: point) : path.line(to: point)
+            }
+            path.lineWidth = 1.6
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            NSColor.black.setStroke()
+            path.stroke()
+            (text as NSString).draw(at: NSPoint(x: wave.width + gap, y: (size.height - textSize.height) / 2),
+                                    withAttributes: attributes)
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 }
 
@@ -149,7 +183,8 @@ private struct MenuBarContent: View {
             Button {
                 channel = index
             } label: {
-                Text("\(index == channel ? "✓ " : "   ")CH\(index + 1)   \(model.level(of: index).map(Format.voltage) ?? "—")")
+                Text("\(index == channel ? "✓ " : "   ")CH\(index + 1)  \(MenuBarLabel.volts(model.level(of: index)))")
+                    .font(.system(.body, design: .monospaced))
             }
         }
         Divider()
