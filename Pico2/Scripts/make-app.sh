@@ -4,7 +4,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 BUNDLE="build/PiLyzer.app"
-VERSION="${VERSION:-3.3.4}"
+# One version for a release: the web application's package.json carries it.
+VERSION="${VERSION:-$(python3 -c 'import json; print(json.load(open("Web/package.json"))["version"])')}"
 BUILD_ARGS=(-c release --product PiLyzer)
 if [[ "${UNIVERSAL:-0}" == 1 ]]; then BUILD_ARGS+=(--arch arm64 --arch x86_64); fi
 

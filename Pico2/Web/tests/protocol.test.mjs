@@ -751,3 +751,10 @@ test('the watch reads the meter on the Meter screen and a record\'s level elsewh
   assert.equal(watchText(-0.524), '-0.52 V');
   assert.equal(watchText(null), '-.-- V');
 });
+
+test('the page names the version package.json carries', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  const page = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(page, new RegExp(`PiLyzer Web <span>v${version.replaceAll('.', '\\.')}</span>`));
+});
