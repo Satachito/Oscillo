@@ -688,7 +688,13 @@ async function popOutWatch() {
   updateWatch();
 }
 $('watch-channel').onchange = () => { settings.watchChannel = Number($('watch-channel').value); saveSettings(); updateWatch(); };
+// Only Chrome and Edge have the window, and only on a secure page — not on
+// the http:// one a Pico 2 W or an UNO R4 WiFi serves — so the hint says so
+// where the button cannot be offered.
 $('watch-popout').hidden = !('documentPictureInPicture' in window);
+if ($('watch-popout').hidden) $('watch-hint').textContent = window.isSecureContext
+  ? "One input's voltage in the tab title. In Chrome or Edge, Pop out also puts it in a small window that stays on top."
+  : "One input's voltage in the tab title. Pop out, a small window that stays on top, needs the page over https: satachito.github.io/Oscillo in Chrome or Edge.";
 $('watch-popout').onclick = popOutWatch;
 $('source').onchange = () => { settings.source = Number($('source').value); synchronize(); changed(); };
 for (const [id, key] of CHECK_CONTROLS) $(id).onchange = () => { settings[key] = $(id).checked; synchronize(); changed(); };
