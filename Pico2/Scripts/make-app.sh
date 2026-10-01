@@ -4,7 +4,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 BUNDLE="build/PiLyzer.app"
-VERSION="${VERSION:-3.3.2}"
+VERSION="${VERSION:-3.3.3}"
 BUILD_ARGS=(-c release --product PiLyzer)
 if [[ "${UNIVERSAL:-0}" == 1 ]]; then BUILD_ARGS+=(--arch arm64 --arch x86_64); fi
 
