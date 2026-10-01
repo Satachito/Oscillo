@@ -17,6 +17,8 @@ final class IconDelegate: NSObject, NSApplicationDelegate {
 struct PiLyzerApp: App {
     @NSApplicationDelegateAdaptor(IconDelegate.self) private var delegate
     @StateObject private var model = ScopeModel()
+    /// The channel whose voltage sits in the menu bar, or -1 for none.
+    @AppStorage("menuBarChannel") private var menuBarChannel = -1
 
     init() {
         // A diagnostic that does not need the window: it says what is on the
@@ -102,6 +104,11 @@ struct PiLyzerApp: App {
             }
 
             CommandMenu("View") {
+                Picker("Show in Menu Bar", selection: $menuBarChannel) {
+                    Text("Nothing").tag(-1)
+                    ForEach(0..<model.capabilities.analogChannels, id: \.self) { Text("CH\($0 + 1)").tag($0) }
+                }
+                Divider()
                 ForEach(WorkMode.allCases, id: \.self) { mode in
                     Button(mode.rawValue) { model.settings.mode = mode }
                         .disabled(mode == .logic && !model.capabilities.hasLogic)
@@ -111,5 +118,49 @@ struct PiLyzerApp: App {
                                                 set: { model.cursorsEnabled = $0 }))
             }
         }
+
+        // One channel's voltage in the menu bar, to keep an eye on while the
+        // window is behind something else. It reads what the instrument is
+        // already doing — the meter on the Meter screen, the record's level on
+        // Scope and Spectrum — so it changes nothing about the sweep.
+        MenuBarExtra(isInserted: Binding(get: { menuBarChannel >= 0 },
+                                         set: { if !$0 { menuBarChannel = -1 } })) {
+            MenuBarContent(model: model, channel: $menuBarChannel)
+        } label: {
+            Text(menuBarLabel).monospacedDigit()
+        }
+    }
+
+    private var menuBarLabel: String {
+        let channel = max(menuBarChannel, 0)
+        return "CH\(channel + 1) " + (model.level(of: channel).map(Format.voltage) ?? "—")
+    }
+}
+
+/// The menu under the reading: every channel's level, which one to show, and
+/// the way back to the window.
+private struct MenuBarContent: View {
+    @ObservedObject var model: ScopeModel
+    @Binding var channel: Int
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        ForEach(0..<model.capabilities.analogChannels, id: \.self) { index in
+            Button {
+                channel = index
+            } label: {
+                Text("\(index == channel ? "✓ " : "   ")CH\(index + 1)   \(model.level(of: index).map(Format.voltage) ?? "—")")
+            }
+        }
+        Divider()
+        Text(model.isConnected ? (model.isRunning ? "Reading · \(model.settings.mode.rawValue)" : "Stopped — press Run in PiLyzer")
+                               : "Not connected")
+        Button(model.isRunning ? "Stop" : "Run") { model.toggleRun() }
+            .disabled(!model.isConnected || model.hasNothingToCapture)
+        Button("Open PiLyzer") {
+            openWindow(id: "main")
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
+        Button("Hide from Menu Bar") { channel = -1 }
     }
 }

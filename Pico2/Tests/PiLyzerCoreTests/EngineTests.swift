@@ -149,6 +149,18 @@ struct EngineTests {
         engine.disconnect()
     }
 
+    @Test("A channel's level is the voltage on its input, mean removed or not")
+    func channelLevel() {
+        let frame = ScopeFrame(traces: [
+            ChannelTrace(index: 0, samples: [1.0, 2.0, 3.0]),
+            ChannelTrace(index: 2, samples: [-0.5, 0.5], removedMean: 1.5),
+        ], samplePeriod: 1e-5)
+        #expect(frame.level(of: 0) == 2.0)
+        #expect(frame.level(of: 2) == 1.5)   // the display took 1.5 V out; the input is at 1.5 V
+        #expect(frame.level(of: 1) == nil)   // not in the record
+        #expect(ScopeFrame().level(of: 0) == nil)
+    }
+
     @Test("An overrun says so, in the web application's words")
     func overrunSaysSo() throws {
         let device = SimulatedInstrument()

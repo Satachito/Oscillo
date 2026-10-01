@@ -440,6 +440,23 @@ final class ScopeModel: ObservableObject {
     /// What the board calls logic line `line`: D2–D9 on an ArLyzer.
     func logicName(_ line: Int) -> String { instrument?.identity.logicName(line) ?? "D\(line)" }
 
+    /// One channel's voltage, for the menu bar: the meter's reading on the
+    /// Meter screen, the record's level on Scope and Spectrum. Nil when there
+    /// is nothing to show — not connected, the Logic screen, or a channel the
+    /// sweep did not take.
+    func level(of channel: Int) -> Double? {
+        guard isConnected else { return nil }
+        switch settings.mode {
+        case .meter:
+            guard let meter, channel < meter.volts.count else { return nil }
+            return meter.volts[channel]
+        case .scope, .spectrum:
+            return frame.level(of: channel)
+        case .logic:
+            return nil
+        }
+    }
+
     func measurements(for channel: Int) -> Measurements? {
         guard let trace = frame.trace(channel), !trace.samples.isEmpty else { return nil }
         return Measurements.of(trace.samples, samplePeriod: frame.samplePeriod)

@@ -46,6 +46,14 @@ public struct ScopeFrame: Equatable, Sendable {
 
     public func trace(_ index: Int) -> ChannelTrace? { traces.first { $0.index == index } }
 
+    /// A channel's level over the record: its mean, with any mean the display
+    /// took out put back, so it is the voltage on the input whatever the
+    /// trace shows. Nil when the channel is not in the record.
+    public func level(of index: Int) -> Double? {
+        guard let trace = trace(index), !trace.samples.isEmpty else { return nil }
+        return trace.samples.reduce(0, +) / Double(trace.samples.count) + trace.removedMean
+    }
+
     /// Time of a sample relative to the trigger, which is where the time axis
     /// has its zero.
     public func time(at sample: Int) -> Double {
