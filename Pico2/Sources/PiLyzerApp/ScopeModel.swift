@@ -271,6 +271,7 @@ final class ScopeModel: ObservableObject {
         case .connecting: statusText = "Connecting…"
         case let .connected(instrument):
             settings.ensureAnalogChannels(instrument.capabilities.analogChannels)
+            settings.fitRanges(instrument.ranges.count)
             if !instrument.capabilities.hasTriggerLowPass { settings.trigger.lowPassHz = 0 }
             if !instrument.capabilities.hasLogic && settings.mode == .logic { settings.mode = .scope }
             networkStatus = nil

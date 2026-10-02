@@ -386,6 +386,16 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         return mask == 0 ? 0b01 : mask
     }
 
+    /// A range kept from a board with more of them — the third of a
+    /// PL2407AFE's, say — is not one this board has: such a channel starts on
+    /// the board's first range, as the web application does. Left alone, the
+    /// Range menu would show nothing selected.
+    public mutating func fitRanges(_ count: Int) {
+        for index in channels.indices where !(0..<max(count, 1)).contains(channels[index].rangeIndex) {
+            channels[index].rangeIndex = 0
+        }
+    }
+
     /// Keep saved calibration for hidden channels when connecting an older device.
     public mutating func ensureAnalogChannels(_ count: Int) {
         while channels.count < min(max(count, 0), 8) {

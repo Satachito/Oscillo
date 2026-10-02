@@ -34,7 +34,7 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
     <key>ITSAppUsesNonExemptEncryption</key><false/>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSHumanReadableCopyright</key><string>MIT licensed.</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 Satoru Ogura. MIT licensed.</string>
 </dict>
 </plist>
 PLIST

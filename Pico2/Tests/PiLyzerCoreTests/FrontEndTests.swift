@@ -151,4 +151,18 @@ struct FrontEndTests {
         #expect(older.biasVolts == 0)
         #expect(older.measuredBiasVolts == nil)
     }
+
+    @Test("A range another board left behind falls back to this board's first")
+    func rangesFitTheBoard() {
+        var settings = ScopeSettings()
+        settings.ensureAnalogChannels(3)
+        settings.channels[0].rangeIndex = 2      // a PL2407AFE's third range
+        settings.channels[1].rangeIndex = 1
+        settings.channels[2].rangeIndex = -1
+        settings.fitRanges(FrontEnd.revA.count)  // two ranges, as the demo has
+        #expect(settings.channels.map(\.rangeIndex) == [0, 1, 0])
+        settings.channels[1].rangeIndex = 1
+        settings.fitRanges(FrontEnd.bareBoard.count)
+        #expect(settings.channels[1].rangeIndex == 0)
+    }
 }

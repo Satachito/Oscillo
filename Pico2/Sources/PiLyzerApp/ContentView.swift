@@ -12,6 +12,7 @@ struct ContentView: View {
             ControlPanelView(model: model)
         }
         .background(Theme.page)
+        .background(NoInitialFocus())
         .frame(minWidth: 1040, minHeight: 640)
         .toolbar { toolbar }
         .alert("Instrument", isPresented: Binding(
@@ -20,6 +21,23 @@ struct ContentView: View {
             Button("OK", role: .cancel) { model.errorText = nil }
         } message: {
             Text(model.errorText ?? "")
+        }
+    }
+
+    /// The window opens with the keyboard on the first text field it finds —
+    /// Channel 1's Bias — so a key pressed straight after launch would edit
+    /// it. It opens with nothing focused instead; a click puts focus where it
+    /// is wanted.
+    private struct NoInitialFocus: NSViewRepresentable {
+        func makeNSView(context: Context) -> NSView { Probe() }
+        func updateNSView(_ nsView: NSView, context: Context) {}
+
+        final class Probe: NSView {
+            override func viewDidMoveToWindow() {
+                super.viewDidMoveToWindow()
+                guard let window else { return }
+                DispatchQueue.main.async { window.makeFirstResponder(nil) }
+            }
         }
     }
 

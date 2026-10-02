@@ -100,7 +100,12 @@ struct PiLyzerApp: App {
 
             CommandGroup(replacing: .help) {
                 Button("PiLyzer on GitHub") { open("https://github.com/Satachito/Oscillo") }
-                Button("Sponsor this project") { open("https://github.com/sponsors/Satachito") }
+                // The Mac App Store does not let an app point to payment outside
+                // it, and its copy is the sandboxed one: only the GitHub build
+                // offers this.
+                if ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] == nil {
+                    Button("Sponsor this project") { open("https://github.com/sponsors/Satachito") }
+                }
             }
 
             CommandMenu("View") {
