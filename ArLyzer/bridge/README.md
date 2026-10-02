@@ -87,3 +87,13 @@ too. Pico2/docs/protocol.md has the exchange.
 A record comes across at the UART's 22 kB/s: about 0.1 s for one input's 1024
 samples, 0.65 s for all seven. The page itself comes from the ESP32-S3 at the
 radio's own speed.
+
+A join usually takes a few seconds. Once on the network the bridge waits for
+an address as long as it takes, as a Pico 2 W does, and tries again only when
+getting onto the network fails. **`http://arlyzer.local/wifi-log`** says what
+the radio did since it started: each attempt, the DHCP client's state, and how
+many frames came in — broadcast ones apart — and how many DHCP messages went
+each way. A Buffalo router on the bench sometimes held back everything
+broadcast on 2.4 GHz, DHCP replies included, for a minute or more after the
+board came back (mostly after `flash.sh`, which drops the board off the
+network without a word); the log then shows `in 0` until it lets go.
