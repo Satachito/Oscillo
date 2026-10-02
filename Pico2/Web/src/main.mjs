@@ -583,7 +583,7 @@ async function refreshNetwork(fillFields = false) {
       'not set': 'No network set: the board is on USB only.',
       joining: `Joining ${s.ssid}…`,
       joined: `On ${s.ssid}${where}`,
-      failing: `Cannot join ${s.ssid}: check its name and password, and that it is 2.4 GHz. Trying again every 40 s.`,
+      failing: `Cannot join ${s.ssid}: check its name and password, and that it is 2.4 GHz. Still trying.`,
     }[s.state];
     if (fillFields) { $('network-ssid').value = s.ssid; $('network-name').value = s.hostname === defaultName() ? '' : s.hostname; $('network-password').value = ''; }
     return s;
