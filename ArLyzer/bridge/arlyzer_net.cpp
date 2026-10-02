@@ -41,6 +41,10 @@ enum : uint8_t { kSourceNone = 0, kSourceStored = 1, kSourceBuilt = 2 };
 // router that now and then holds back everything broadcast on 2.4 GHz for tens
 // of seconds - DHCP replies included, as the bench's /wifi-log showed - a board
 // went through several such restarts and took 80 s to seven minutes to join.
+// The other way it went: broadcasts arriving again, yet nothing offered to a
+// DISCOVER for over a minute, and joining afresh got an address in 3 s. A
+// DHCP offer normally comes within 2 s of the broadcasts, so kUnansweredMs
+// after they start without one the attempt goes too.
 // A refused password, a network out of range or a 5 GHz-only one end in a
 // failure, tried again after a pause that grows to kMaxRetryMs; an attempt
 // that has got nowhere by kAttemptMs, or onto the network but no address by
@@ -49,6 +53,7 @@ constexpr uint32_t kFirstRetryMs = 1000;
 constexpr uint32_t kMaxRetryMs = 16000;
 constexpr uint32_t kAttemptMs = 15000;
 constexpr uint32_t kAddressMs = 120000;
+constexpr uint32_t kUnansweredMs = 10000;
 constexpr uint32_t kIdleMs = 30000;
 // Longer than this off the network is said to be failing, whatever the radio
 // says: the driver reports a refused password only after the first try.
@@ -105,6 +110,7 @@ portMUX_TYPE logLock = portMUX_INITIALIZER_UNLOCKED;
 // Frames through the station interface, counted on their way between the
 // radio driver and lwIP.
 volatile uint32_t framesIn = 0, broadcastsIn = 0, dhcpIn = 0, dhcpOut = 0;
+volatile uint32_t broadcastsFrom = 0;  // when the attempt's first broadcast came in, or 0
 netif_input_fn passIn = nullptr;
 netif_linkoutput_fn passOut = nullptr;
 
@@ -121,7 +127,10 @@ bool udpPorts(const pbuf *p, uint16_t &source, uint16_t &destination) {
 
 err_t countIn(pbuf *p, netif *n) {
   framesIn = framesIn + 1;
-  if (static_cast<const uint8_t *>(p->payload)[0] & 1) broadcastsIn = broadcastsIn + 1;
+  if (static_cast<const uint8_t *>(p->payload)[0] & 1) {
+    broadcastsIn = broadcastsIn + 1;
+    if (!broadcastsFrom) broadcastsFrom = millis() | 1;
+  }
   uint16_t from, to;
   if (udpPorts(p, from, to) && from == 67) dhcpIn = dhcpIn + 1;
   return passIn(p, n);
@@ -285,7 +294,7 @@ uint32_t writeLog() {
     switch (e.kind) {
       case kLogAttempt: snprintf(what, sizeof what, "attempt"); break;
       case kLogAssociated: snprintf(what, sizeof what, "on the network, channel %u", e.detail); break;
-      case kLogGaveUp: snprintf(what, sizeof what, "given up"); break;
+      case kLogGaveUp: snprintf(what, sizeof what, e.detail ? "nothing offered, given up" : "given up"); break;
       case kLogDhcp: snprintf(what, sizeof what, "dhcp state %u, tries %u", e.detail, e.extra); break;
       case kLogJoined: snprintf(what, sizeof what, "joined, %d dBm", e.rssi); break;
       case kLogFailed:
@@ -445,6 +454,7 @@ void attempt() {
   retrying = false;
   seenFailures = failures;
   framesIn = broadcastsIn = dhcpIn = dhcpOut = 0;
+  broadcastsFrom = 0;
   if (!network[0]) return;
   note(kLogAttempt);
   WiFi.begin(network, passphrase[0] ? passphrase : nullptr);
@@ -632,6 +642,11 @@ void run(void *) {
           retrying = true;
           retryAt = now + backoff;
           backoff = backoff * 2 < kMaxRetryMs ? backoff * 2 : kMaxRetryMs;
+        } else if (!retrying && associated && dhcpSeen >> 8 == DHCP_STATE_SELECTING && broadcastsFrom &&
+                   now - broadcastsFrom > kUnansweredMs) {
+          note(kLogGaveUp, 1);
+          retrying = true;
+          retryAt = now;
         } else if (!retrying && now - attempted > (associated ? kAddressMs : kAttemptMs)) {
           note(kLogGaveUp);
           retrying = true;
