@@ -899,7 +899,7 @@ struct NetworkSection: View {
         case .joining: return "Joining \(status.ssid)…"
         case .joined: return "On \(status.ssid) · \(status.url ?? "") (\(status.address ?? ""))"
         case .failing: return "Cannot join \(status.ssid): check its name and password, and that it is 2.4 GHz. "
-            + "Trying again every 40 s."
+            + "Still trying."
         }
     }
 }
