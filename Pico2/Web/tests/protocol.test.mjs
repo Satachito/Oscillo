@@ -758,3 +758,20 @@ test('the page names the version package.json carries', async () => {
   const page = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(page, new RegExp(`PiLyzer Web <span>v${version.replaceAll('.', '\\.')}</span>`));
 });
+
+test('analytics loads on the GitHub Pages copy only', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const vm = await import('node:vm');
+  const page = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const script = page.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const run = (hostname) => {
+    const added = [];
+    // As in a browser, window is the global object.
+    const context = { location: { hostname }, document: { createElement: () => ({}), head: { appendChild: (el) => added.push(el.src) } } };
+    context.window = context;
+    vm.runInNewContext(script, context);
+    return added;
+  };
+  assert.deepEqual(run('satachito.github.io'), ['https://www.googletagmanager.com/gtag/js?id=G-6CTW3WJWJL']);
+  for (const host of ['pilyzer.local', 'arlyzer.local', '192.168.4.1', 'localhost', 'someone.github.io']) assert.deepEqual(run(host), [], host);
+});

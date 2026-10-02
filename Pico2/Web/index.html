@@ -9,6 +9,22 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <link rel="stylesheet" href="./style.css" />
   <title>PiLyzer · Web Oscilloscope</title>
+  <!-- Page views, on the GitHub Pages copy only: the same page is baked into a
+       Pico 2 W and an UNO R4 WiFi, and served there and on localhost it loads
+       nothing. No samples, readings or device details are sent. -->
+  <script>
+    if (location.hostname === 'satachito.github.io') {
+      const id = 'G-6CTW3WJWJL';
+      const tag = document.createElement('script');
+      tag.async = true;
+      tag.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
+      document.head.appendChild(tag);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { dataLayer.push(arguments); };
+      gtag('js', new Date());
+      gtag('config', id);
+    }
+  </script>
 </head>
 <body>
   <header class="topbar">

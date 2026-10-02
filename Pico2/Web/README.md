@@ -4,8 +4,11 @@
 
 A static browser application for the Pico 2 PiLyzer instrument. USB packets use
 exactly the same [protocol](../docs/protocol.md) as the macOS application. No
-server, account, telemetry, external font or runtime dependency is involved.
-Samples stay in browser memory until exported locally as CSV.
+server, account, external font or runtime dependency is involved. The copy on
+GitHub Pages counts page views with Google Analytics; the copy a Pico 2 W or an
+UNO R4 WiFi serves, and one run locally, load nothing of the kind. Samples,
+readings and device details are never sent anywhere: they stay in browser
+memory until exported locally as CSV.
 
 ## Connecting
 
