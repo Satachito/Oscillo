@@ -42,8 +42,15 @@ echo "==> Drawing icon"
 # Dock when it is run straight out of .build cannot drift apart.
 "$BUNDLE/Contents/MacOS/PiLyzer" --write-icon "$BUNDLE/Contents/Resources/AppIcon.icns"
 
-echo "==> Signing (ad-hoc)"
-codesign --force --sign - "$BUNDLE"
+# SANDBOX=1 signs it into the App Sandbox with Scripts/PiLyzer.entitlements,
+# as the Mac App Store build will be, to try it before it goes there.
+if [[ "${SANDBOX:-0}" == 1 ]]; then
+    echo "==> Signing (ad-hoc, sandboxed)"
+    codesign --force --sign - --entitlements Scripts/PiLyzer.entitlements "$BUNDLE"
+else
+    echo "==> Signing (ad-hoc)"
+    codesign --force --sign - "$BUNDLE"
+fi
 
 # Finder and the Dock draw the icon Launch Services has on file, not the one in
 # the bundle. A record left behind by an older build — at a path this project
