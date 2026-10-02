@@ -34,3 +34,7 @@ A Pico 2 W or an UNO R4 WiFi serves it itself over Wi-Fi, at
 `http://pilyzer.local` or `http://arlyzer.local`, so a phone or a tablet needs
 no USB at all. Demo mode also works without an instrument.
 Captured samples remain in the browser; CSV export saves them locally.
+From 3.3.6, the copy on GitHub Pages counts page views, and which way an
+instrument was connected (USB, serial or the demo), with Google Analytics. The
+copy a board serves, and one run locally, load nothing of the kind, and no
+samples, readings or device details are sent.
