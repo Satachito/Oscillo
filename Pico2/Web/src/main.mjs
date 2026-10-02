@@ -4,6 +4,7 @@ import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
 import { OP as WIRE, encodeNetworkConfig, networkStatus as readNetworkStatus, networkProblem, ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, logicRates, shownLogicRate } from './protocol.mjs';
 import { channelLevel, watchText, fmt, csv, decodeLogic, logicActivity, spectrumCsv, lowestMeasurable, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
+import { CONNECTIONS, track } from './analytics.mjs';
 const $ = id => document.getElementById(id);
 // The page's own logic rates, as index.html lists them; a board is offered
 // those it reaches (logicRates).
@@ -552,6 +553,7 @@ async function connect(demo, serial = false) {
   connecting = true; showError(); updateButtons();
   try {
     instrument = demo ? new DemoInstrument() : overNetwork ? await connectOverNetwork() : serial ? await Instrument.connectSerial() : await Instrument.connect(); acquisition.attach(instrument); frame = null;
+    track(CONNECTIONS[demo ? 'demo' : overNetwork ? 'wifi' : serial ? 'serial' : 'usb']);
     if (demo) settings.channels.forEach(ch => { ch.range = 1; ch.scale = 1; });
     settings.channels.forEach(ch => { if (ch.range >= frontEnd().length) ch.range = 0; });
     // The zero and the gain describe the wiring, so connecting does not clear

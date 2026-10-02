@@ -775,3 +775,17 @@ test('analytics loads on the GitHub Pages copy only', async () => {
   assert.deepEqual(run('satachito.github.io'), ['https://www.googletagmanager.com/gtag/js?id=G-6CTW3WJWJL']);
   for (const host of ['pilyzer.local', 'arlyzer.local', '192.168.4.1', 'localhost', 'someone.github.io']) assert.deepEqual(run(host), [], host);
 });
+
+test('a connection is counted by its kind alone', async () => {
+  const { CONNECTIONS, track } = await import('../src/analytics.mjs');
+  const calls = [];
+  globalThis.gtag = (...args) => calls.push(args);
+  track(CONNECTIONS.serial);
+  assert.deepEqual(calls, [['event', 'connect_serial']]);
+  delete globalThis.gtag;
+  assert.doesNotThrow(() => track(CONNECTIONS.usb));   // no gtag off GitHub Pages
+  globalThis.gtag = () => { throw new Error('blocked'); };
+  assert.doesNotThrow(() => track(CONNECTIONS.demo));  // nor when it fails
+  delete globalThis.gtag;
+});
+
