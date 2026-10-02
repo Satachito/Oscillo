@@ -24,6 +24,9 @@ every reading a different colour from the one you learned.
 [open PiLyzer Web](https://satachito.github.io/Oscillo/).
 The WebUSB app lives in [Web/](Web/) and needs Chrome or Edge for USB — on a
 computer, or on Android through USB On-The-Go.
+The same release carries the firmware as UF2 files — for a Pico 2, a Pico 2 W
+and a Pico 2 on the PL2407AFE; see
+[firmware/pilyzer](firmware/pilyzer/README.md#without-building).
 
 The macOS download is ad-hoc signed, not Apple-notarized. Unzip it and move
 PiLyzer.app to Applications. macOS may require approving its first launch in

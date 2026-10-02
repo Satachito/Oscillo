@@ -21,6 +21,8 @@ ScoppyのAndroidアプリやファームウェアのコピーではありませ�
 
 出力: `Pico2/hardware/pl2407afe/build/PiLyzer-PL2407AFE-Pico2.uf2`
 
+ビルドしなくても、[リリース](https://github.com/Satachito/Oscillo/releases/latest)に同じ構成の`PiLyzer-PL2407AFE-Pico2.uf2`があります。
+
 Pico 2をBOOTSELで接続し、このUF2をコピーします。元のScoppyファームウェアは置き換わります。Scoppy Androidアプリへ戻す場合はScoppy用UF2を書き戻します。
 このビルドはRP2350のPico 2用です。初代Pico/RP2040用ではありません。
 

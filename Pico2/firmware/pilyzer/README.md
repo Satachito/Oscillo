@@ -198,6 +198,21 @@ pink and brown noise in [`tools/pico2-noise`](../../tools/pico2-noise). Both use
 GPIO0 upwards, which are unused on the instrument — but they are whole programs,
 so a board runs one of them or PiLyzer, never two. The carrier has no J8.
 
+## Without building
+
+The [release](https://github.com/Satachito/Oscillo/releases/latest) carries a
+UF2 for each board that needs no build options of its own:
+
+| File | For |
+| --- | --- |
+| `PiLyzer-Pico2.uf2` | a Pico 2, bare or behind the mini AFE: board 0, one 0 – 3.3 V range |
+| `PiLyzer-Pico2W.uf2` | a Pico 2 W, its network set from the application |
+| `PiLyzer-PL2407AFE-Pico2.uf2` | a Pico 2 on picoLABO's PL2407AFE: board 3 |
+
+Hold BOOTSEL while plugging the board in and copy the file onto the drive that
+appears. None of them carries a network name or password. The PiLyzer AFE
+(board 1) is built from source, below.
+
 ## Building
 
 Needs the Pico SDK 2.x and an `arm-none-eabi` toolchain that includes newlib —
