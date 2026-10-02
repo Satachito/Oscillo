@@ -11,7 +11,8 @@ analyser and meter — on a Raspberry Pi Pico 2 (PiLyzer) or an Arduino R4
 | [PCBScope](PCBScope/) | PCBScope / DPScope SE | Native macOS HID application restored from the original project |
 
 **[Open PiLyzer Web](https://satachito.github.io/Oscillo/)** ·
-**[Download macOS releases](https://github.com/Satachito/Oscillo/releases)**
+**[Download macOS releases](https://github.com/Satachito/Oscillo/releases)** ·
+**[Watch the introduction](https://youtu.be/e5NLnyxRusI)** (6 min, Japanese with English subtitles)
 
 PiLyzer's firmware, KiCad schematics, documentation and native app now live
 under `Pico2/`; ArLyzer's sketch and the UNO R4 WiFi's Wi-Fi bridge under
