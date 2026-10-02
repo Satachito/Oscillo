@@ -2,10 +2,11 @@
 # Builds the Mac App Store package: PiLyzer.app, Universal, in the App Sandbox,
 # signed for the store and wrapped in an installer package for Transporter.
 #
-#   PROFILE=~/Downloads/PiLyzer_Mac_App_Store.provisionprofile ./Scripts/make-appstore.sh
+#   ./Scripts/make-appstore.sh
 #
 # PROFILE is the Mac App Store provisioning profile for tokyo.828.pilyzer,
-# downloaded from developer.apple.com. The two certificates are looked up in
+# downloaded from developer.apple.com. It is looked for in _appstore/ at the
+# top of the repository, which git ignores: the profile is not committed. The two certificates are looked up in
 # the keychain — "Apple Distribution" for the app, "3rd Party Mac Developer
 # Installer" (shown as Mac Installer Distribution) for the package — or named
 # with APP_IDENTITY and INSTALLER_IDENTITY. BUILD is the build number App Store
@@ -13,7 +14,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-: "${PROFILE:?Set PROFILE to the Mac App Store provisioning profile for tokyo.828.pilyzer}"
+PROFILE="${PROFILE:-../_appstore/PiLyzer_Mac_App_Store.provisionprofile}"
 [ -f "$PROFILE" ] || { echo "No profile at $PROFILE" >&2; exit 1; }
 BUILD="${BUILD:-$(date +%Y%m%d%H%M)}"
 
