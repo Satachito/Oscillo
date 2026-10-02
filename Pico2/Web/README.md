@@ -10,6 +10,8 @@ instrument was connected (USB, serial or demo); the copy a Pico 2 W or an
 UNO R4 WiFi serves, and one run locally, load nothing of the kind. Samples,
 readings and device details are never sent anywhere: they stay in browser
 memory until exported locally as CSV.
+The [privacy policy](https://satachito.github.io/Oscillo/privacy.html) says
+the same for the Mac app, the web app and the firmware.
 
 ## Connecting
 

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="What PiLyzer and ArLyzer collect: the Mac app nothing, PiLyzer Web on GitHub Pages page views and connection kinds." />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <title>PiLyzer Privacy Policy</title>
+  <!-- Published on GitHub Pages only: the workflow copies it in after the
+       build, so it is not baked into a Pico 2 W or an UNO R4 WiFi. -->
+  <style>
+    :root{color-scheme:light dark;--page:#f2f3ed;--panel:#fafbf6;--line:#dfe3d9;--ink:#253329;--ink-strong:#34492f;--muted:#778074;--green:#284a32;--tint:#f1f5e9;--tint-line:#dce4d3;--tint-ink:#4e673c;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;font-synthesis:none}
+    @media(prefers-color-scheme:dark){:root{--page:#171c1a;--panel:#1e2522;--line:#2f3833;--ink:#e2e8df;--ink-strong:#eef3ea;--muted:#8d9789;--green:#a9d18c;--tint:#1d251f;--tint-line:#303a32;--tint-ink:#a9d18c}}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--page);color:var(--ink);line-height:1.75;font-size:16px;padding-inline:16px}
+    .wrap{max-width:720px;margin:0 auto;padding-block:40px 72px;display:grid;gap:40px}
+    header{display:grid;gap:10px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:20px;letter-spacing:-.4px;color:var(--ink-strong);text-decoration:none}
+    .brand img{width:32px;height:32px}
+    h1{font-size:clamp(28px,6vw,36px);line-height:1.2;letter-spacing:-.8px;font-weight:600;margin:12px 0 0;color:var(--ink-strong);text-wrap:balance}
+    .dated{color:var(--muted);font-size:14px;margin:0}
+    nav.lang{display:flex;gap:16px;font-size:14px}
+    nav.lang a{color:var(--green)}
+    section{display:grid;gap:14px}
+    h2{font-size:22px;letter-spacing:-.3px;margin:0;color:var(--ink-strong);text-wrap:balance}
+    h3{font-size:17px;margin:10px 0 0;color:var(--ink-strong)}
+    p,ul{margin:0}
+    ul{padding-left:1.2em;display:grid;gap:6px}
+    a{color:var(--green)}
+    .summary{background:var(--tint);border:1px solid var(--tint-line);border-radius:10px;padding:16px 18px;color:var(--tint-ink)}
+    .summary strong{color:var(--ink-strong)}
+    hr{border:0;border-top:1px solid var(--line);margin:0}
+    code{font:14px ui-monospace,SFMono-Regular,Menlo,monospace}
+    a:focus-visible{outline:3px solid var(--green);outline-offset:3px;border-radius:2px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./"><img src="./favicon.svg" alt="" />PiLyzer</a>
+    <h1>Privacy Policy</h1>
+    <p class="dated">PiLyzer for Mac, PiLyzer Web and the PiLyzer and ArLyzer firmware · Effective October 2, 2026</p>
+    <nav class="lang" aria-label="Language"><a href="#en">English</a><a href="#ja" lang="ja">日本語</a></nav>
+  </header>
+
+  <section id="en">
+    <p class="summary"><strong>PiLyzer for Mac collects nothing.</strong> It makes no network connections and talks only to the instrument plugged into your Mac. The one place anything is counted is PiLyzer Web as served from GitHub Pages, which records page views and which kind of connection was used. What you measure never leaves your computer.</p>
+
+    <h2>PiLyzer for Mac</h2>
+    <ul>
+      <li>The app collects no personal data, has no analytics or advertising, and makes no network connections of its own.</li>
+      <li>It talks only to the instrument you connect: a Raspberry Pi Pico 2 over USB, or an Arduino running ArLyzer over its USB serial port.</li>
+      <li>Your settings, such as channel calibration and the last instrument used, are kept on your Mac.</li>
+      <li>Measurements stay on your Mac. A CSV file is written only when you export one, to the place you choose.</li>
+      <li>When you set a Wi-Fi network for a Pico 2 W or an UNO R4 WiFi, the network name and password are sent over USB to that board and stored on it. They are not stored by the app or sent anywhere else, and the board never sends the password back.</li>
+    </ul>
+
+    <h2>PiLyzer Web</h2>
+    <h3>On GitHub Pages (satachito.github.io/Oscillo)</h3>
+    <ul>
+      <li>The page uses Google Analytics to count page views and which way an instrument was connected: USB, serial or the demo. The event carries only that kind. No samples, readings, settings or details of your instrument are sent.</li>
+      <li>Google Analytics sets cookies and receives information your browser normally sends, such as your IP address, browser type and the page address. Google processes it under the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>. You can block it with your browser's privacy settings, a content blocker, or Google's <a href="https://tools.google.com/dlpage/gaoptout">opt-out add-on</a>; the app works the same without it.</li>
+      <li>The site is hosted by GitHub, which may log requests to serve the page. See the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub Privacy Statement</a>.</li>
+      <li>Your settings are kept in your browser's local storage, and measurements stay in the browser until you export them as CSV.</li>
+    </ul>
+    <h3>Served by a board, or run locally</h3>
+    <ul>
+      <li>The copy a Pico 2 W or an UNO R4 WiFi serves on your network (<code>pilyzer.local</code>, <code>arlyzer.local</code>), and a copy run on your own computer, load no analytics and send nothing beyond the board itself.</li>
+    </ul>
+
+    <h2>The firmware</h2>
+    <ul>
+      <li>The PiLyzer and ArLyzer firmware sends nothing to the internet. A board with Wi-Fi keeps the network you set in its own flash memory and answers only on your local network.</li>
+    </ul>
+
+    <h2>Children</h2>
+    <p>None of these collect personal information from anyone, children included.</p>
+
+    <h2>Changes and contact</h2>
+    <p>Changes to this policy are published on this page with a new effective date, and in the project's history on GitHub. Questions can be raised as an issue at <a href="https://github.com/Satachito/Oscillo/issues">github.com/Satachito/Oscillo/issues</a>.</p>
+  </section>
+
+  <hr />
+
+  <section id="ja" lang="ja">
+    <p class="summary"><strong>PiLyzer for Mac は、何も収集しません。</strong>ネットワークにも接続せず、Mac につないだ測定器とだけ通信します。何かを数えているのは GitHub Pages で配っている PiLyzer Web だけで、ページの閲覧数と接続の種類を記録しています。測ったデータが、お使いのコンピュータの外に出ることはありません。</p>
+
+    <h2>PiLyzer for Mac</h2>
+    <ul>
+      <li>個人情報を収集せず、アクセス解析も広告もなく、アプリ自身がネットワークに接続することもありません。</li>
+      <li>通信するのは、つないだ測定器だけです。Raspberry Pi Pico 2 とは USB で、ArLyzer を動かしている Arduino とは USB シリアルで通信します。</li>
+      <li>チャンネルの校正や最後に使った測定器などの設定は、お使いの Mac に保存されます。</li>
+      <li>測ったデータは Mac の中にとどまります。CSV ファイルは、書き出しを選んだときに、選んだ場所にだけ保存されます。</li>
+      <li>Pico 2 W や UNO R4 WiFi に Wi-Fi のネットワークを設定すると、ネットワーク名とパスワードは USB でそのボードに送られ、ボードに保存されます。アプリが保存したり、ほかに送ったりすることはなく、ボードがパスワードを返すこともありません。</li>
+    </ul>
+
+    <h2>PiLyzer Web</h2>
+    <h3>GitHub Pages 版（satachito.github.io/Oscillo）</h3>
+    <ul>
+      <li>Google Analytics で、ページの閲覧数と、測定器をどの方法でつないだか（USB・シリアル・デモ）を数えています。送るのはその種類だけで、波形・測った値・設定・測定器の情報は送りません。</li>
+      <li>Google Analytics は Cookie を使い、IP アドレス、ブラウザの種類、ページのアドレスなど、ブラウザが通常送る情報を受け取ります。これらは <a href="https://policies.google.com/privacy?hl=ja">Google のプライバシーポリシー</a>に従って扱われます。ブラウザのプライバシー設定、コンテンツブロッカー、Google の<a href="https://tools.google.com/dlpage/gaoptout?hl=ja">オプトアウト アドオン</a>で止めることができ、止めてもアプリは同じように使えます。</li>
+      <li>サイトは GitHub が配信しており、配信のためにアクセスを記録することがあります。<a href="https://docs.github.com/ja/site-policy/privacy-policies/github-general-privacy-statement">GitHub のプライバシーに関する声明</a>をご覧ください。</li>
+      <li>設定はブラウザのローカルストレージに保存され、測ったデータは CSV で書き出すまでブラウザの中にとどまります。</li>
+    </ul>
+    <h3>ボードが配るページ、手元で動かすページ</h3>
+    <ul>
+      <li>Pico 2 W や UNO R4 WiFi がネットワーク上で配るページ（<code>pilyzer.local</code>、<code>arlyzer.local</code>）と、ご自分のコンピュータで動かしたページは、アクセス解析を読み込まず、ボード以外には何も送りません。</li>
+    </ul>
+
+    <h2>ファームウェア</h2>
+    <ul>
+      <li>PiLyzer と ArLyzer のファームウェアは、インターネットに何も送りません。Wi-Fi のあるボードは、設定されたネットワークを自分のフラッシュメモリに保存し、ローカルネットワークの中でだけ応答します。</li>
+    </ul>
+
+    <h2>お子さまについて</h2>
+    <p>どれも、お子さまを含め、どなたの個人情報も収集しません。</p>
+
+    <h2>変更とお問い合わせ</h2>
+    <p>このポリシーを変更したときは、新しい施行日とともにこのページと GitHub の履歴で公開します。ご質問は <a href="https://github.com/Satachito/Oscillo/issues">github.com/Satachito/Oscillo/issues</a> に issue としてお寄せください。</p>
+  </section>
+</div>
+</body>
+</html>

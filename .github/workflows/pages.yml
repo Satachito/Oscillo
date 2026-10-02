@@ -28,6 +28,9 @@ jobs:
           npm ci
           npm test
           npm run build
+          # The privacy policy is for the GitHub Pages copy and the App Store
+          # listing; dist/ itself is baked into the boards, so it goes in here.
+          cp privacy.html dist/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
