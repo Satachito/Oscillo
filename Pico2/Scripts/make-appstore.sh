@@ -45,6 +45,11 @@ ditto build/PiLyzer.app "$APP"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$APP/Contents/Info.plist"
 cp "$PROFILE" "$APP/Contents/embedded.provisionprofile"
 
+# No extended attributes inside: a downloaded profile carries
+# com.apple.quarantine, and App Store Connect refuses a package with any
+# file that has it (error 91109).
+xattr -cr "$APP"
+
 # The sandbox entitlements, plus the identity the store checks against the profile.
 cp Scripts/PiLyzer.entitlements "$WORK/entitlements.plist"
 plutil -insert com\\.apple\\.application-identifier -string "$APP_ID" "$WORK/entitlements.plist"
