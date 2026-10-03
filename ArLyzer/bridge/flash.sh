@@ -21,10 +21,15 @@ esptool=$work/uno-r4-wifi-usb-bridge/hardware/esp32-patched/esp32/tools/esptool/
 
 xcrun clang -framework IOKit -framework CoreFoundation "$here/esp-download-mode.c" -o "$work/esp-download-mode"
 
+# A Python with pyserial: the first python3 on PATH may be Homebrew's, without
+# it, while the one Xcode brings has it from an earlier pip install.
+python=$(for p in python3 /usr/bin/python3; do "$p" -c 'import serial' 2>/dev/null && { echo "$p"; break; }; done)
+[ -n "$python" ] || { echo "No pyserial: pip install pyserial (or esptool, which brings it)" >&2; exit 1; }
+
 # The ROM's own USB serial port (Espressif's 303a:1001), which is what appears
 # once the bridge has let go of the board.
 rom_port() {
-  python3 -c "from serial.tools import list_ports; print(next((p.device for p in list_ports.comports() if p.vid == 0x303a), ''))"
+  "$python" -c "from serial.tools import list_ports; print(next((p.device for p in list_ports.comports() if p.vid == 0x303a), ''))"
 }
 
 port=$(rom_port)
