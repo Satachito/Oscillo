@@ -36,18 +36,22 @@ struct ScopeDisplayView: View {
     /// Laid out along the strip rather than stacked on the trace, as the
     /// browser application's legend is. Eight channels do not fit that strip
     /// with everything said, so it says less until they do: the scale and the
-    /// notes first, then the scale altogether. CLIP always stays.
+    /// notes first, then the scale altogether, and last CLIP's own room — the
+    /// name itself turns CLIP's colour instead. Eight names each with that room
+    /// still overflowed a window of ordinary width, and the strip cut "CH1"
+    /// down to "C…".
     private var legend: some View {
         ViewThatFits(in: .horizontal) {
             legendLine(.full)
             legendLine(.scale)
             legendLine(.names)
+            legendLine(.bare)
         }
         .font(Theme.monoSmall)
         .lineLimit(1)
     }
 
-    private enum LegendDetail { case full, scale, names }
+    private enum LegendDetail { case full, scale, names, bare }
 
     private func legendLine(_ detail: LegendDetail) -> some View {
         HStack(spacing: detail == .full ? 18 : 12) {
@@ -57,9 +61,11 @@ struct ScopeDisplayView: View {
                     RoundedRectangle(cornerRadius: 2)
                         .fill(Theme.channelColor(channel))
                         .frame(width: 6, height: 6)
+                    let clipped = trace?.clipped == true
                     Text("CH\(channel + 1)")
-                        .foregroundStyle(Theme.channelColor(channel))
-                    if detail != .names {
+                        .foregroundStyle(detail == .bare && clipped ? Theme.clip : Theme.channelColor(channel))
+                        .accessibilityLabel(detail == .bare && clipped ? "CH\(channel + 1), clipped" : "CH\(channel + 1)")
+                    if detail != .names && detail != .bare {
                         Text(Format.voltage(voltsPerDivision(channel)) + (detail == .full ? "/div" : ""))
                             .foregroundStyle(Theme.readout)
                     }
@@ -79,11 +85,13 @@ struct ScopeDisplayView: View {
                     // always there and only its ink changes: a label that grew
                     // shoved the channels after it sideways every time a peak
                     // touched a rail.
-                    Text(detail == .full ? "· CLIP" : "CLIP")
-                        .foregroundStyle(Theme.clip)
-                        .bold()
-                        .opacity(trace?.clipped == true ? 1 : 0)
-                        .accessibilityHidden(trace?.clipped != true)
+                    if detail != .bare {
+                        Text(detail == .full ? "· CLIP" : "CLIP")
+                            .foregroundStyle(Theme.clip)
+                            .bold()
+                            .opacity(clipped ? 1 : 0)
+                            .accessibilityHidden(!clipped)
+                    }
                 }
             }
         }
