@@ -354,8 +354,11 @@ function synchronize() {
   // The Mac shows trigger controls with the scope only; logic has its own.
   $('trigger-controls').hidden = settings.mode !== 'scope';
   $('analog-acquisition').hidden = settings.mode !== 'scope' && !spectrumMode; $('record-row').hidden = settings.mode !== 'scope';
-  $('lpf-hint').hidden = !settings.lpf;
-  $('lpf-hint').textContent = instrument && !(caps().flags & 8) ? 'Trigger LPF requires firmware 1.2 or later.' : 'LPF affects trigger timing; the trace is unchanged.';
+  // Said whenever the switch cannot be turned on, not only once it is: a
+  // greyed-out switch with nothing beside it gave no reason at all.
+  const noLowPass = !!instrument && !(caps().flags & 8);
+  $('lpf-hint').hidden = !settings.lpf && !noLowPass;
+  $('lpf-hint').textContent = noLowPass ? `Trigger LPF needs ${onArLyzer() ? 'ArLyzer firmware 0.8' : 'firmware 1.2'} or later.` : 'LPF affects trigger timing; the trace is unchanged.';
   $('normal-hint').hidden = settings.trigger !== 2;
   $('logger-controls').hidden = !meter;
   $('channel-controls').hidden = logic; $('logic-controls').hidden = !logic;
