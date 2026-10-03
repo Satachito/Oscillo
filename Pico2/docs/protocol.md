@@ -156,7 +156,7 @@ as authoritative rather than computing it from the converter's datasheet.
 
 Flags: bit 0 the input ranges are switched under software control, bit 1 the
 board has a calibration output, bit 2 the logic inputs are buffered, bit 3
-the analogue trigger supports a low-pass filter (firmware 1.2 and later),
+the analogue trigger supports a low-pass filter (firmware 1.2 and later; ArLyzer 0.8),
 bit 4 the device answers `inputRanges` (firmware 1.7 and later), bit 5 the
 device has a signal generator — a sine and white, pink and brown noise on four
 consecutive pins of its own (firmware 1.9 and later). They are GPIO16–19, the

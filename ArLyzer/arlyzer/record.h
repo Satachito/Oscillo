@@ -21,6 +21,10 @@ constexpr uint8_t kChannels = 8;
 // front of the trigger and the record itself.
 constexpr uint32_t kMaxRecord = 1024;
 constexpr uint32_t kBufferConversions = kMaxRecord * kChannels;
+// The trigger's low-pass, as on the Pico (trigger_filter.h): one pole on the
+// trigger input alone, the record untouched.
+constexpr uint32_t kLowPassMinHz = 100;
+constexpr uint32_t kLowPassMaxHz = 100000;
 
 class Recorder {
  public:
@@ -76,6 +80,14 @@ class Recorder {
   uint32_t writeSlot_ = 0, ticks_ = 0, armedAt_ = 0;
   bool edgeArmed_ = false;
   uint32_t sums_[kChannels] = {};
+
+  // The trigger's low-pass: its weight for a new sample in 1/65536ths (zero
+  // when off), how many samples it takes to settle from the first, and its
+  // state, the filtered sample with 8 bits below the code. Integer, as it
+  // runs in the timer interrupt.
+  uint32_t lowPassWeight_ = 0, lowPassSettling_ = 0, lowPassRemaining_ = 0;
+  int32_t lowPassState_ = 0;
+  bool lowPassStarted_ = false;
 };
 
 }  // namespace record

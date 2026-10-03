@@ -59,6 +59,7 @@ enum AcquisitionState : uint8_t {
 
 enum TriggerMode : uint8_t { TRIGGER_FREE_RUN = 0, TRIGGER_AUTO = 1, TRIGGER_NORMAL = 2 };
 
+constexpr uint32_t CAP_TRIGGER_LOWPASS = 1u << 3;
 constexpr uint32_t CAP_REPORTS_RANGES = 1u << 4;
 constexpr uint32_t CAP_NETWORK = 1u << 6;
 

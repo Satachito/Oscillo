@@ -1,5 +1,7 @@
 #include "record.h"
 
+#include <math.h>
+
 namespace record {
 
 namespace {
@@ -13,8 +15,8 @@ uint8_t Recorder::configure(const wire::AnalogConfig &config, uint32_t clockHz, 
   if (running()) return wire::ST_BUSY;
   if (config.channelMask == 0 || config.triggerMode > wire::TRIGGER_NORMAL || config.triggerSlope > 1)
     return wire::ST_BAD_ARGUMENT;
-  // No trigger filter is claimed in the capabilities, so none can be asked for.
-  if (config.lowPassHz != 0) return wire::ST_BAD_ARGUMENT;
+  if (config.lowPassHz != 0 && (config.lowPassHz < kLowPassMinHz || config.lowPassHz > kLowPassMaxHz))
+    return wire::ST_BAD_ARGUMENT;
 
   mask_ = config.channelMask & ((1u << kChannels) - 1);
   if (mask_ == 0) return wire::ST_BAD_ARGUMENT;
@@ -48,6 +50,19 @@ uint8_t Recorder::configure(const wire::AnalogConfig &config, uint32_t clockHz, 
   if (counts * slots_ > tickLimit) counts = tickLimit / slots_;
   tickCounts_ = counts * slots_;
 
+  // The filter's weight from the sample period actually planned. It settles
+  // in five time constants, and no edge is looked for until it has: the
+  // first sample starts it at that sample, not at zero, but a step in the
+  // history in front of the trigger would still be a ramp through the level.
+  lowPassWeight_ = lowPassSettling_ = 0;
+  if (config.lowPassHz != 0) {
+    const double period = static_cast<double>(tickCounts_) * decimation_ / clockHz;
+    const double exponent = 6.283185307179586 * config.lowPassHz * period;
+    const double weight = -expm1(-exponent) * 65536.0;
+    lowPassWeight_ = weight < 1 ? 1 : weight > 65536 ? 65536 : static_cast<uint32_t>(weight + 0.5);
+    lowPassSettling_ = static_cast<uint32_t>(ceil(5.0 / exponent));
+  }
+
   plan.clockHz = clockHz;
   plan.divisorQ8 = counts * 256u;
   plan.decimation = decimation_;
@@ -69,6 +84,8 @@ void Recorder::arm(uint32_t nowMs) {
   ticks_ = 0;
   triggered_ = false;
   edgeArmed_ = false;
+  lowPassStarted_ = false;
+  lowPassRemaining_ = lowPassSettling_;
   armedAt_ = nowMs;
   state_ = wire::ACQ_FILLING;
 }
@@ -92,7 +109,18 @@ void Recorder::commit() {
     frame[s] = value > 0xFFFF ? 0xFFFF : static_cast<uint16_t>(value);
     sums_[s] = 0;
   }
-  const int32_t sample = frame[triggerSlot_];
+  int32_t sample = frame[triggerSlot_];
+  if (lowPassWeight_ && mode_ != wire::TRIGGER_FREE_RUN && state_ != wire::ACQ_POST_TRIGGER) {
+    const int32_t target = sample << 8;
+    if (!lowPassStarted_) {
+      lowPassState_ = target;
+      lowPassStarted_ = true;
+    } else {
+      lowPassState_ += static_cast<int32_t>((static_cast<int64_t>(target - lowPassState_) * lowPassWeight_) >> 16);
+    }
+    sample = (lowPassState_ + 128) >> 8;
+    if (lowPassRemaining_) lowPassRemaining_--;
+  }
   const uint32_t index = written_;
   written_ = index + 1;
   if (++writeSlot_ == framesInRing_) writeSlot_ = 0;
@@ -113,6 +141,7 @@ void Recorder::commit() {
       state_ = wire::ACQ_WAITING;
       [[fallthrough]];
     case wire::ACQ_WAITING: {
+      if (lowPassRemaining_) return;
       // Hysteresis: the signal has to be on the far side of the level by the
       // hysteresis before a crossing counts, so noise fires it once.
       const int32_t level = level_, margin = hysteresis_;

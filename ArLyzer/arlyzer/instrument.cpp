@@ -11,7 +11,7 @@ using namespace wire;
 namespace instrument {
 namespace {
 
-constexpr uint16_t kFirmwareVersion = 0x0007;  // 0.7: an UNO R4 WiFi's network set from a host
+constexpr uint16_t kFirmwareVersion = 0x0008;  // 0.8: the trigger's low-pass filter
 constexpr uint8_t kChannels = acquisition::kChannels;
 constexpr uint8_t kBits = 14;
 
@@ -73,7 +73,7 @@ void dispatch(Write write, bool bridge, const Header &req, const uint8_t *data, 
       caps.logicClockHz = acquisition::logicClockHz();
       caps.logicMaxRecord = acquisition::logicMaxRecord();
       caps.logicMaxPretrigger = acquisition::logicMaxRecord() - 1;
-      caps.flags = CAP_REPORTS_RANGES | (network::bridged() ? CAP_NETWORK : 0);
+      caps.flags = CAP_TRIGGER_LOWPASS | CAP_REPORTS_RANGES | (network::bridged() ? CAP_NETWORK : 0);
       respond(write, req, ST_OK, &caps, sizeof caps);
       return;
     }

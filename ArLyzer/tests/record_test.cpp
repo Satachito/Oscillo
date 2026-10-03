@@ -98,8 +98,12 @@ static void badConfigurationsAreRefused() {
   AcquisitionPlan p;
   CHECK(r.configure(config(0x00, 1e-3, 100, 0), kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
   AnalogConfig filtered = config(0x01, 1e-3, 100, 0);
-  filtered.lowPassHz = 1000;
+  filtered.lowPassHz = 50;  // below the filter's range, as on the Pico
   CHECK(r.configure(filtered, kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
+  filtered.lowPassHz = 200000;
+  CHECK(r.configure(filtered, kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
+  filtered.lowPassHz = 1000;
+  CHECK(r.configure(filtered, kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_OK);
   CHECK(r.configure(config(0x01, 1e-3, 100, 0, 3), kClock, 0, kSlot, 0xFFFFFFF0u, p) == ST_BAD_ARGUMENT);
 }
 
@@ -197,6 +201,71 @@ static void aFallingEdgeFires() {
   CHECK(samples[4] == 12000 * 4 && samples[5] == 2000 * 4);
 }
 
+// One input at 10 µs a sample: a 1 kHz low-pass has a time constant of 16
+// samples and settles in 80.
+static AnalogConfig filteredEdge(uint32_t lowPassHz) {
+  AnalogConfig c = config(0x01, 10e-6, 100, 20, TRIGGER_NORMAL);
+  c.triggerLevel = 8000 * 4;
+  c.triggerHysteresis = 100;
+  c.lowPassHz = lowPassHz;
+  return c;
+}
+
+// Feeds `low` with a `width`-sample pulse to `high` at `at`, until the record
+// completes or `limit` samples have gone in. True if it triggered.
+static bool feedPulse(record::Recorder &r, uint16_t low, uint16_t high, uint32_t at, uint32_t width,
+                      uint32_t limit) {
+  for (uint32_t i = 0; i < limit && r.running(); i++) {
+    const uint16_t code = i >= at && i < at + width ? high : low;
+    r.scan(&code);
+  }
+  AcquisitionStatus s;
+  r.status(s);
+  return s.triggered;
+}
+
+static void theLowPassIgnoresAGlitch() {
+  static record::Recorder r;
+  AcquisitionPlan p;
+  // Unfiltered, a two-sample spike through the level fires.
+  r.configure(filteredEdge(0), kClock, 0, kSlot, 0xFFFFFFF0u, p);
+  r.arm(0);
+  CHECK(feedPulse(r, 2000, 14000, 200, 2, 1000));
+  // Through a 1 kHz low-pass it comes out at about an eighth of the step,
+  // well short of the level.
+  r.configure(filteredEdge(1000), kClock, 0, kSlot, 0xFFFFFFF0u, p);
+  r.arm(0);
+  CHECK(!feedPulse(r, 2000, 14000, 200, 2, 1000));
+  CHECK(r.running());
+}
+
+static void theLowPassFiresLaterAndLeavesTheRecordAlone() {
+  static record::Recorder r;
+  AcquisitionPlan p;
+  r.configure(filteredEdge(1000), kClock, 0, kSlot, 0xFFFFFFF0u, p);
+  r.arm(0);
+  CHECK(feedPulse(r, 2000, 14000, 200, 10000, 10000));
+  const auto samples = readBack(r, 100);
+  // The filtered step reaches the halfway level a little over half a time
+  // constant late (ln 2 of 16 samples is 11), so the raw step sits that far
+  // in front of the trigger index; the record itself is the raw signal.
+  uint32_t step = 0;
+  while (step < 100 && samples[step] != 14000 * 4) step++;
+  CHECK(step < 20 && 20 - step >= 9 && 20 - step <= 13);
+  CHECK(samples[0] == 2000 * 4 && samples[99] == 14000 * 4);
+}
+
+static void theLowPassWaitsToSettle() {
+  static record::Recorder r;
+  AcquisitionPlan p;
+  // A step 30 samples in is inside the 80 a 1 kHz filter takes to settle, so
+  // it does not count; the next one does.
+  r.configure(filteredEdge(1000), kClock, 0, kSlot, 0xFFFFFFF0u, p);
+  r.arm(0);
+  CHECK(!feedPulse(r, 2000, 14000, 30, 60, 200));
+  CHECK(feedPulse(r, 2000, 14000, 100, 10000, 10000));
+}
+
 static void autoHandsBackTheNewestRecordWhenNothingCrosses() {
   static record::Recorder r;
   AcquisitionPlan p;
@@ -255,6 +324,9 @@ int main() {
   aRisingEdgeLandsAtThePretriggerIndex();
   hysteresisIgnoresNoiseAtTheLevel();
   aFallingEdgeFires();
+  theLowPassIgnoresAGlitch();
+  theLowPassFiresLaterAndLeavesTheRecordAlone();
+  theLowPassWaitsToSettle();
   autoHandsBackTheNewestRecordWhenNothingCrosses();
   normalModeWaitsForever();
   readsAreChecked();
