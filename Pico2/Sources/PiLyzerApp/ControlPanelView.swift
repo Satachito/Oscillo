@@ -154,10 +154,13 @@ struct ControlPanelView: View {
             TriggerLowPassControl(cutoffHz: $model.settings.trigger.lowPassHz)
                 .disabled(model.isConnected && !model.capabilities.hasTriggerLowPass)
                 .help("Filters the trigger input only. The waveform stays unfiltered; the trigger marker follows the filtered crossing.")
-            if model.settings.trigger.lowPassHz > 0 {
-                Text(model.capabilities.hasTriggerLowPass
-                     ? "LPF affects trigger timing; the trace is unchanged."
-                     : "Trigger LPF requires firmware 1.2 or later.")
+            // Said whenever the switch cannot be turned on, not only once it
+            // is: a greyed-out switch with nothing beside it gave no reason.
+            let noLowPass = model.isConnected && !model.capabilities.hasTriggerLowPass
+            if model.settings.trigger.lowPassHz > 0 || noLowPass {
+                Text(noLowPass
+                     ? "Trigger LPF needs \(model.instrument?.identity.isArLyzer == true ? "ArLyzer firmware 0.8" : "firmware 1.2") or later."
+                     : "LPF affects trigger timing; the trace is unchanged.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             if model.settings.trigger.mode == .normal {
