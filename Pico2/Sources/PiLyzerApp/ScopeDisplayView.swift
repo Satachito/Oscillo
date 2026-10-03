@@ -36,62 +36,59 @@ struct ScopeDisplayView: View {
     /// Laid out along the strip rather than stacked on the trace, as the
     /// browser application's legend is. Eight channels do not fit that strip
     /// with everything said, so it says less until they do: the scale and the
-    /// notes first, then the scale altogether, and last CLIP's own room — the
-    /// name itself turns CLIP's colour instead. Eight names each with that room
-    /// still overflowed a window of ordinary width, and the strip cut "CH1"
-    /// down to "C…".
+    /// notes first, then the scale altogether.
     private var legend: some View {
         ViewThatFits(in: .horizontal) {
             legendLine(.full)
             legendLine(.scale)
             legendLine(.names)
-            legendLine(.bare)
         }
         .font(Theme.monoSmall)
         .lineLimit(1)
     }
 
-    private enum LegendDetail { case full, scale, names, bare }
+    private enum LegendDetail { case full, scale, names }
 
     private func legendLine(_ detail: LegendDetail) -> some View {
         HStack(spacing: detail == .full ? 18 : 12) {
             ForEach(model.enabledAnalogChannels, id: \.self) { channel in
-                let trace = model.frame.trace(channel)
+                let clipped = model.frame.trace(channel)?.clipped == true
+                let colour = Theme.channelColor(channel)
                 HStack(spacing: 7) {
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(Theme.channelColor(channel))
+                        .fill(colour)
                         .frame(width: 6, height: 6)
-                    let clipped = trace?.clipped == true
-                    Text("CH\(channel + 1)")
-                        .foregroundStyle(detail == .bare && clipped ? Theme.clip : Theme.channelColor(channel))
-                        .accessibilityLabel(detail == .bare && clipped ? "CH\(channel + 1), clipped" : "CH\(channel + 1)")
-                    if detail != .names && detail != .bare {
-                        Text(Format.voltage(voltsPerDivision(channel)) + (detail == .full ? "/div" : ""))
-                            .foregroundStyle(Theme.readout)
-                    }
-                    if detail == .full {
-                        // A moved trace says so, or the only sign is a trace
-                        // drawn somewhere its readings say it is not.
-                        let position = model.settings.channels[channel].positionDivisions
-                        if abs(position) >= 0.05 {
-                            Text("· " + (position > 0 ? "+" : "−") + String(format: "%.1f div", abs(position)))
-                                .foregroundStyle(Theme.readout)
+                    // A channel at the converter's ends is drawn inverted, its
+                    // own colour behind dark ink, as the browser does: no word
+                    // to make room for, so nothing after it moves when a peak
+                    // touches a rail, and eight channels still fit. The ground
+                    // reaches past the text without taking up room.
+                    HStack(spacing: 7) {
+                        Text("CH\(channel + 1)")
+                            .foregroundStyle(clipped ? Theme.screen : colour)
+                        if detail != .names {
+                            Text(Format.voltage(voltsPerDivision(channel)) + (detail == .full ? "/div" : ""))
+                                .foregroundStyle(clipped ? Theme.screen : Theme.readout)
                         }
-                        if model.settings.channels[channel].removesMean {
-                            Text("· AC").foregroundStyle(Theme.readout)
+                        if detail == .full {
+                            // A moved trace says so, or the only sign is a trace
+                            // drawn somewhere its readings say it is not.
+                            let position = model.settings.channels[channel].positionDivisions
+                            if abs(position) >= 0.05 {
+                                Text("· " + (position > 0 ? "+" : "−") + String(format: "%.1f div", abs(position)))
+                                    .foregroundStyle(clipped ? Theme.screen : Theme.readout)
+                            }
+                            if model.settings.channels[channel].removesMean {
+                                Text("· AC").foregroundStyle(clipped ? Theme.screen : Theme.readout)
+                            }
                         }
                     }
-                    // CLIP comes and goes with the signal, so its room is
-                    // always there and only its ink changes: a label that grew
-                    // shoved the channels after it sideways every time a peak
-                    // touched a rail.
-                    if detail != .bare {
-                        Text(detail == .full ? "· CLIP" : "CLIP")
-                            .foregroundStyle(Theme.clip)
-                            .bold()
-                            .opacity(clipped ? 1 : 0)
-                            .accessibilityHidden(!clipped)
-                    }
+                    .background(RoundedRectangle(cornerRadius: 2)
+                        .fill(colour)
+                        .padding(-3)
+                        .opacity(clipped ? 1 : 0))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityValue(clipped ? "clipped" : "")
                 }
             }
         }
