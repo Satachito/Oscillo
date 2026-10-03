@@ -147,14 +147,17 @@ struct SpectrumView: View {
 
     /// Marked in each channel's own colour. With more than one channel on
     /// screen only the strongest two apiece are labelled, or the labels bury
-    /// the traces they describe.
+    /// the traces they describe. None below the lowest frequency the spectrum
+    /// measures, which the cards state: down there a "peak" is the DC skirt's
+    /// slope, or a tone read off too few bins to trust.
     private func drawPeaks(_ context: inout GraphicsContext, size: CGSize) {
         let limit = model.spectra.count > 1 ? 2 : 5
         for entry in model.spectra {
             let colour = model.spectra.count > 1 ? Theme.channelColor(entry.channel) : Theme.trigger
             // The strongest of what is on screen, not of the whole record.
             for peak in entry.spectrum.peaks(limit: entry.spectrum.count)
-                .filter({ $0.frequency <= top }).prefix(limit) {
+                .filter({ $0.frequency <= top && $0.frequency >= entry.spectrum.lowestMeasurable })
+                .prefix(limit) {
                 let position = CGPoint(x: x(peak.frequency, width: size.width),
                                        y: y(Spectrum.convert(amplitude: peak.amplitude,
                                                              scale: settings.scale,
