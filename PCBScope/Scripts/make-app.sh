@@ -6,13 +6,16 @@ cd "$(dirname "$0")/.."
 BUNDLE="build/DPScope.app"
 VERSION="2.0"
 
+# Through xcrun, so the Swift that builds matches the SDK it builds against:
+# a Command Line Tools swift earlier on PATH than Xcode's met Xcode 27's SDK
+# and failed with nothing but "error: ExitCode(rawValue: 1)".
 echo "==> Building release binary"
-swift build -c release --product DPScope
+xcrun swift build -c release --product DPScope
 
 echo "==> Assembling $BUNDLE"
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
-cp "$(swift build -c release --product DPScope --show-bin-path)/DPScope" "$BUNDLE/Contents/MacOS/DPScope"
+cp "$(xcrun swift build -c release --product DPScope --show-bin-path)/DPScope" "$BUNDLE/Contents/MacOS/DPScope"
 
 cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -35,7 +38,7 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 PLIST
 
 echo "==> Drawing icon"
-swift Scripts/MakeIcon.swift "$BUNDLE/Contents/Resources/AppIcon.icns"
+xcrun swift Scripts/MakeIcon.swift "$BUNDLE/Contents/Resources/AppIcon.icns"
 
 echo "==> Signing (ad-hoc)"
 codesign --force --sign - "$BUNDLE"

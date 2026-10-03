@@ -9,13 +9,16 @@ VERSION="${VERSION:-$(python3 -c 'import json; print(json.load(open("Web/package
 BUILD_ARGS=(-c release --product PiLyzer)
 if [[ "${UNIVERSAL:-0}" == 1 ]]; then BUILD_ARGS+=(--arch arm64 --arch x86_64); fi
 
+# Through xcrun, so the Swift that builds matches the SDK it builds against:
+# a Command Line Tools swift earlier on PATH than Xcode's met Xcode 27's SDK
+# and failed with nothing but "error: ExitCode(rawValue: 1)".
 echo "==> Building release binary"
-swift build "${BUILD_ARGS[@]}"
+xcrun swift build "${BUILD_ARGS[@]}"
 
 echo "==> Assembling $BUNDLE"
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
-cp "$(swift build "${BUILD_ARGS[@]}" --show-bin-path)/PiLyzer" "$BUNDLE/Contents/MacOS/PiLyzer"
+cp "$(xcrun swift build "${BUILD_ARGS[@]}" --show-bin-path)/PiLyzer" "$BUNDLE/Contents/MacOS/PiLyzer"
 
 cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
