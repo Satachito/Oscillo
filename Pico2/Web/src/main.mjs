@@ -418,20 +418,21 @@ function renderFrame() {
   $('legend').replaceChildren();
   const traces = frame?.traces || activeChannels(settings, caps()).map(index => ({ index }));
   for (const trace of traces) {
-    const el = document.createElement('span'); el.className = 'trace-label'; el.style.color = COLORS[trace.index];
+    const el = document.createElement('span'); el.className = 'trace-label'; el.style.color = COLORS[trace.index]; el.style.setProperty('--trace', COLORS[trace.index]);
     const scale = scaleFor(settings, caps(), frontEnd(), trace.index), ch = settings.channels[trace.index];
     // A moved trace says so: the position is a slider in the channel card,
     // easily nudged by a thumb scrolling past on a phone, and otherwise the
     // only sign is a trace drawn somewhere its readings say it is not.
     const moved = Math.abs(ch.offset) >= 0.05 ? ` · ${ch.offset > 0 ? '+' : '−'}${Math.abs(ch.offset).toFixed(1)} div` : '';
-    el.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || fitScale(scale), 'V')}/div${moved}${ch.ac ? ' · AC' : ''}`;
-    // CLIP comes and goes with the signal, so its room is always there and
-    // only its ink changes: a label that grew would shove the channels after
-    // it sideways every time a peak touched a rail.
-    const clip = document.createElement('span');
-    clip.className = 'clip-slot'; clip.textContent = ' · CLIP';
-    clip.classList.toggle('on', trace.clipped === true);
-    el.append(clip);
+    // A channel at the converter's ends is drawn inverted, its own colour
+    // behind dark ink: no word to make room for, so nothing after it moves
+    // when a peak touches a rail, and eight channels still fit.
+    const text = document.createElement('span');
+    text.className = 'trace-text'; text.textContent = `CH${trace.index + 1}  ${fmt(ch.scale || fitScale(scale), 'V')}/div${moved}${ch.ac ? ' · AC' : ''}`;
+    const clipped = trace.clipped === true;
+    text.classList.toggle('clipped', clipped);
+    el.append(text);
+    if (clipped) { const said = document.createElement('span'); said.className = 'visually-hidden'; said.textContent = ', clipped'; el.append(said); }
     $('legend').append(el);
   }
   if (settings.mode === 'logic') $('legend').textContent = `${logicName(0)}–${logicName(7)} · ${ARLYZER_PINS[instrument?.identity?.board] ? '5 V logic: 3.3 V may not read high' : '3.3 V logic'}`;

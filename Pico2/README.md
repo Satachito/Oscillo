@@ -226,8 +226,9 @@ clients on one bulk endpoint would read each other's answers.
 * **The logic inputs are 3.3 V only.** There is no buffer and no level shifter.
 * **The analogue and logic sides trigger independently**, so their records
   cannot be lined up against each other.
-* A channel that reaches the ends of the converter is marked **CLIP**: the trace
-  is a flattened copy of the real signal and no calibration recovers it.
+* A channel that reaches the ends of the converter has its legend label shown
+  inverted: the trace is a flattened copy of the real signal and no
+  calibration recovers it.
 
 ## Where this came from
 

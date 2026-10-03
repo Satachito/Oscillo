@@ -46,10 +46,10 @@
 .workspace-head .eyebrow{margin:0}
 .channel-heading .disclose{background:none;border:0;color:var(--faint);font-size:11px;line-height:1;padding:4px 2px;margin-left:8px}
 .channel-heading .disclose:hover{color:var(--ink-strong)}
-/* CLIP keeps its room whether or not it is showing, so the channels after it
-   do not move when a peak touches a rail. */
-.clip-slot{visibility:hidden}
-.clip-slot.on{visibility:visible;color:#e69b7f;font-weight:600}
+/* A clipped channel's label inverted. The shadow, not padding, widens the
+   ground, so the labels after it do not move when a peak touches a rail. */
+.trace-text.clipped{background:var(--trace);color:var(--chart);box-shadow:0 0 0 3px var(--trace);border-radius:2px}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* The Calibrate dialog: the voltage belongs to the measurement, so it is
    asked for when it is needed rather than kept in a field. */
 .ask{border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--ink);padding:22px;min-width:320px}
