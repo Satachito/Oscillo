@@ -1,5 +1,5 @@
 import { scaleFor, fitScale, displayedTop } from './protocol.mjs';
-import { fmt, spectrum, averageSpectra, spectrumQuality, levelOf } from './signal.mjs';
+import { fmt, spectrum, averageSpectra, spectrumQuality, levelOf, lowestMeasurable } from './signal.mjs';
 export const CURSOR_COLOR = '#e58b72';
 export const COLORS = ['#e9c96b', '#79cdd8', '#c0a1ef', '#9ed190', '#d8ad7f', '#a6bcec', '#d592b9', '#afbf7a'];
 export class Plot {
@@ -191,6 +191,9 @@ export class Plot {
   // to the highest bin; frequency to the span, logarithmic by default; the
   // strongest five peaks of one channel, or two apiece in each channel's
   // colour when there are more, or the labels bury the traces they describe.
+  // None below the lowest frequency the spectrum measures, which the cards
+  // state: down there a "peak" is the DC skirt's slope, or a tone read off
+  // too few bins to trust.
   fft(c, box) {
     const spectra = (this.spectra || []).filter(entry => entry.amplitudes.length); if (!spectra.length) return;
     const settings = this.settings, scale = settings.spectrumScale, resolution = spectra[0].resolution;
@@ -224,7 +227,7 @@ export class Plot {
     if (!settings.spectrumPeaks) return;
     const limit = spectra.length > 1 ? 2 : 5;
     c.save(); c.textAlign = 'center'; c.lineWidth = 1;
-    for (const entry of spectra) for (const peak of (entry.peaks || []).filter(p => p.frequency <= top && x(p.frequency) > box.x + 1).slice(0, limit)) {
+    for (const entry of spectra) for (const peak of (entry.peaks || []).filter(p => p.frequency <= top && p.frequency >= lowestMeasurable(entry) && x(p.frequency) > box.x + 1).slice(0, limit)) {
       const px = x(peak.frequency), py = y(levelOf(peak.amplitude, scale, entry.fullScale));
       c.strokeStyle = c.fillStyle = spectra.length > 1 ? COLORS[entry.index] : '#d5e6bf';
       c.beginPath(); c.arc(px, py, 3, 0, 2 * Math.PI); c.stroke();
