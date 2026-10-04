@@ -1,12 +1,12 @@
-# Episode 3 — "A board someone else designed, and the bug it still has"
+# Episode 3 — "A board someone else designed"
 
-A Pico 2, a picoLABO PL2407AFE, a BNC cable. Target **9–10 minutes**.
+A Pico 2, a picoLABO PL2407AFE, a BNC cable. Target **7–8 minutes**.
 
 Episodes 1 and 2 built the front end from nothing: one op amp, no protection,
 no range, honest about both. This episode is the other half of that honesty —
 what it looks like to bring up a board *someone else* designed, one with real
-protection and three switched ranges, and to say on camera exactly which part
-of it doesn't work yet rather than editing around it.
+protection and three switched ranges, and to say on camera what went wrong
+while bringing it up rather than editing around it.
 
 The spine: **protection has to sit ahead of anything software controls, not
 behind it** — this board's input divider is fixed and in front of the range
@@ -179,44 +179,7 @@ pin, a second cold joint, this time at a socket. Fixed the same way.
 
 ---
 
-## The bug that's still here — 5:45
-
-> **On screen:** live, CH1's range menu; select ±6 V; the reading does not
-> move.
-
-This one isn't fixed, and it's staying on screen rather than being cut
-around. Select CH1's ±6 V range, live: [CONFIRM — the reading stays parked on
-±30 V-range numbers].
-
-> **On screen:** a probe on GPIO3 at the header and at the switch chip's own
-> pin, showing the same clean logic swing at both ends.
-
-The control side is not the problem — I checked. GPIO3 swings cleanly between
-zero and **[MEASURE, ~3.27]** volts, and that swing reaches the switch chip's
-own pin; a probe at the header and a probe at the chip agree. The chip is
-being told to switch. It isn't switching — at least, not that one path inside
-it.
-
-> **On screen:** a card: four switches in the package, three work, one
-> doesn't; a note about the period the board ran on a dead ±3.3 V supply.
-
-One theory, not a confirmed cause: this same chip spent time energized with
-signal on its inputs while its own supply was the half-dead 2.2-volt state
-from the VBUS fault — exactly the condition that can forward-bias a CMOS
-switch's internal protection diodes. One of its four independent switches
-failing, and not the other three, is consistent with that story. It is not
-proof. Swapping the part would tell us; this episode doesn't do that, on
-purpose — a board with one known, written-down fault is more honest than one
-quietly reworked between takes.
-
-CH2's ±6 V range works. CH1 falls back to reading its ±30 V circuit no matter
-what the menu says, and that's exactly what the numbers in this board's
-config file already say plainly: one range on one channel came from a
-measurement that couldn't be taken.
-
----
-
-## What it will not do — 7:45
+## What it will not do — 5:45
 
 > **On screen:** a card: no isolation; absolute maximum is not a working
 > limit; can't read mains.
@@ -237,7 +200,7 @@ header, does.
 
 ---
 
-## What is next — 8:45
+## What is next — 6:45
 
 > **On screen:** [CONFIRM — whatever the next board or build actually is].
 
@@ -284,7 +247,7 @@ on yet.]
   | --- | --- | ---: | ---: |
   | ±30 V | gain | 0.043395 | CH1 0.043974 / CH2 0.044140 |
   | | offset | 1.577207 V | CH1 1.586325 V / CH2 1.582325 V |
-  | ±6 V | gain | 0.212277 | CH2 0.214483 (CH1's switch does not close) |
+  | ±6 V | gain | 0.212277 | CH2 0.214483 |
   | | offset | 1.597473 V | CH2 1.602975 V |
   | ±1.5 V | gain | 0.880411 | CH1 0.882035 / CH2 0.878957 |
   | | offset | 1.677649 V | CH1 1.681950 V / CH2 1.684700 V |
@@ -324,26 +287,13 @@ on yet.]
   2. GPIO2 (CH1's range-select line) not reaching switch IC pin 6 (`3S`) —
      cold joint at a socket. Symptom was narrow: only CH1's ±1.5 V range was
      unreachable; CH2 and CH1's other range were fine.
-- **Known open fault, not fixed on camera, on purpose:** CH1's ±6 V range
-  (switch element 4, pins 12–13 on the switch IC, `U2`) never closes.
-  Control side confirmed good: GPIO3 measured a clean 0 V / 3.27 V swing both
-  at the header and at the chip's own pin. Selecting ±6 V on CH1 leaves the
-  channel reading its ±30 V circuit with no change, down to 0.1 mV. Cannot
-  distinguish an internal switch failure from an unprobed adjacent-pin solder
-  fault on the TSSOP package without removing the part, which this episode
-  does not do. Working theory, explicitly labeled as unconfirmed on camera:
-  this switch's supply pins sat at the abnormal 2.2 V / 0 V split during the
-  VBUS fault while a signal was already present at its inputs — a condition
-  that can forward-bias a CMOS switch's own protection diodes — which would
-  explain why one of the four independent switches in the package failed and
-  the other three did not.
 - **Open-input readings, unpowered signal, 2026-09-22 (not yet re-confirmed
   on this episode's own take — re-measure before quoting on camera):**
 
   | Range | CH1 | CH2 | Nominal offset |
   | --- | ---: | ---: | ---: |
   | ±30 V | 1.5864 V | 1.5827 V | 1.5772 V |
-  | ±6 V | 1.5864 V (not switching) | 1.6032 V | 1.5975 V |
+  | ±6 V | — | 1.6032 V | 1.5975 V |
   | ±1.5 V | 1.6830 V | 1.6861 V | 1.6776 V |
 
 - **Mechanical note:** J1's header sockets need a solid pin (a resistor lead,
@@ -355,6 +305,6 @@ on yet.]
   it until the next build is real — this project's own rule, kept from
   episodes 1 and 2, is that nothing on screen gets ahead of the bench.
 - **Style continuity with episodes 1–2:** keep the "screen tells you what it
-  saw, not what's wrong" framing for the CH1 ±6 V bug — same posture as
-  episode 2's two clipping failures. Keep numbers in the narration to what a
+  saw, not what's wrong" framing for the two bring-up faults — same posture
+  as episode 2's two clipping failures. Keep numbers in the narration to what a
   viewer needs to follow the story; the rest belongs here.

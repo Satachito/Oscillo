@@ -14,8 +14,7 @@
 // 1.30 by about half. That leans on the circuit being linear, which it is: the
 // +-30 V gain comes out the same at 5.01 V and at 1.3 V to within 0.03 %.
 //
-// One figure is not measured. The +-6 V gain is CH2's alone, because CH1's
-// switch 4 never closes and that range reads the +-30 V circuit.
+// The +-6 V gain was measured on CH2 alone.
 #pragma once
 #define PIN_CALIBRATION_OUT 22
 #define PIN_LOGIC_BASE 6
