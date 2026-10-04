@@ -14,7 +14,14 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0112   // 1.18: a Pico 2 W takes its network from the host and keeps it in flash
+#define PILYZER_FIRMWARE_VERSION 0x0113   // 1.19: builds for the original Pico (RP2040) as well
+
+// What it calls itself, to the host and over USB.
+#if PICO_RP2040
+#define PILYZER_PRODUCT_NAME "PiLyzer Pico"
+#else
+#define PILYZER_PRODUCT_NAME "PiLyzer Pico 2"
+#endif
 
 // --- Pins ---------------------------------------------------------------
 #if PILYZER_BOARD_ID == 3
@@ -105,12 +112,21 @@
 
 // The decimated record buffer, in conversions. Three channels retain 32768
 // samples each, leaving space for trigger history plus a full 16384-point record.
+// The original Pico has 264 KB of RAM to the Pico 2's 520 KB, and these two
+// buffers are most of it: at half each it links with 91 KB to spare, where
+// halving the analogue one alone left 25 KB. The host reads the record
+// lengths these give from the device.
+#if PICO_RP2040
+#define ANALOG_BUFFER_CONVERSIONS 49152
+#define LOGIC_BUFFER_BYTES 65536
+#else
 #define ANALOG_BUFFER_CONVERSIONS 98304
+#define LOGIC_BUFFER_BYTES 131072
+#endif
 // A record may take at most half the buffer, so there is always room left to
 // look for a trigger and then fill the tail.
 #define ANALOG_MAX_RECORD (ANALOG_BUFFER_CONVERSIONS / (2 * ANALOG_CHANNELS))
 
-#define LOGIC_BUFFER_BYTES 131072
 #define LOGIC_MAX_RECORD   (LOGIC_BUFFER_BYTES / 2)
 
 // --- USB ----------------------------------------------------------------

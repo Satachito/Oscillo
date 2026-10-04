@@ -4,12 +4,27 @@ cmake_minimum_required(VERSION 3.13)
 # only way onto an iPhone: Safari has no WebUSB anywhere. Everything else is
 # identical, and the pin map already avoids the pins the radio takes.
 option(PILYZER_WIFI "Serve the browser application over Wi-Fi (needs a Pico 2 W)" OFF)
-if(PILYZER_WIFI)
-    set(PICO_BOARD pico2_w)
+# The chip: rp2350 for a Pico 2, rp2040 for the original Pico. The original has
+# half the RAM, so board_config.h gives it half the record buffers, and its
+# converter has the RP2040's uneven codes (see README.md); everything else is
+# the same source.
+set(PILYZER_CHIP rp2350 CACHE STRING "rp2350 (Pico 2) or rp2040 (the original Pico)")
+if(PILYZER_CHIP STREQUAL "rp2040")
+    if(PILYZER_WIFI)
+        message(FATAL_ERROR "Wi-Fi is for a Pico 2 W; the original Pico has no build of it")
+    endif()
+    set(PICO_BOARD pico)
+    set(PICO_PLATFORM rp2040)
+elseif(PILYZER_CHIP STREQUAL "rp2350")
+    if(PILYZER_WIFI)
+        set(PICO_BOARD pico2_w)
+    else()
+        set(PICO_BOARD pico2)
+    endif()
+    set(PICO_PLATFORM rp2350)
 else()
-    set(PICO_BOARD pico2)
+    message(FATAL_ERROR "PILYZER_CHIP is rp2350 or rp2040, not ${PILYZER_CHIP}")
 endif()
-set(PICO_PLATFORM rp2350)
 include(pico_sdk_import.cmake)
 
 project(pilyzer C CXX ASM)

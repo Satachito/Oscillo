@@ -8,7 +8,7 @@
 
 enum {
     SIGNAL_COUNT = 4,     // sine, white, pink, brown — in that order
-    SIGNAL_TOP = 255,     // 8-bit duty: an 8-bit carrier is 586 kHz at 150 MHz
+    SIGNAL_TOP = 255,     // 8-bit duty: an 8-bit carrier is 586 kHz at 150 MHz (488 at an RP2040's 125)
 };
 
 typedef struct {

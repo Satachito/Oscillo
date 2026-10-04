@@ -145,7 +145,7 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
 static char const *const strings[] = {
     NULL,
     "PiLyzer project",
-    "PiLyzer Pico 2",
+    PILYZER_PRODUCT_NAME,
     NULL,                 // filled in from the chip's unique id
     "PiLyzer instrument",
 };

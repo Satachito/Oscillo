@@ -44,7 +44,9 @@ sample even though nothing running on the processor could have seen it live.
 | Code | about 32 KB |
 
 Change these in `board_config.h`; the host reads the limits out of
-`OP_CAPABILITIES` and follows.
+`OP_CAPABILITIES` and follows. The original Pico has half the RAM, so its build
+has half of each record: 49 152 conversions and 65 536 logic samples, which
+is 12 288 points on two channels and 8 192 on three.
 
 ## Pins
 
@@ -254,6 +256,26 @@ flags the SDK's own toolchain file puts there, and the SDK stops compiling.
 The board id is what tells the application which input ranges exist, so a bare
 Pico 2 offers one range of 0–3.3 V and a rev A board offers ±25 V and ±5 V.
 
+### On the original Pico (firmware 1.19)
+
+The same source builds for the original Raspberry Pi Pico (RP2040):
+
+```bash
+CHIP=rp2040 BOARD_ID=3 ./build.sh   # a PL2407AFE with an original Pico on it
+```
+
+`CHIP=rp2040` (CMake: `-DPILYZER_CHIP=rp2040`) picks the board and platform,
+builds into `build-rp2040/`, and makes a UF2 for the RP2040's bootloader (its
+drive is called RPI-RP2). It calls itself **PiLyzer Pico**. What differs is
+what the chip has: half the record depth (above), a 125 MHz clock so the
+logic analyser tops out at 125 MSa/s, and the sine generator's carrier at 488
+kHz. There is no Wi-Fi build for it.
+
+The RP2040's converter has uneven codes around 512, 1536, 2560 and 3584,
+which the RP2350 fixed. Waveforms, frequencies and logic are as good as on a
+Pico 2; a voltage reading near those codes, and the ENOB the spectrum
+reports, are not.
+
 ## Bringing a board up
 
 The acquisition boundary regressions also run on the host, without the Pico
@@ -278,7 +300,14 @@ application; old hosts keep it off via the zero reserved field.
 swift run PiLyzer --list       # is it on the bus, and is it an instrument?
 swift run PiLyzer --selftest   # walk the whole command set and report
 swift run PiLyzer --bootsel    # restart in the bootloader, ready for new firmware
+swift run PiLyzer --rangecheck # every channel on every range, reading the test square
 ```
+
+With more than one instrument plugged in, `--at 0x01100000` picks one by the
+location `--list` prints. `--rangecheck` is for a front end just built: wire
+the test square wave (GPIO22, or another PiLyzer's with the grounds joined)
+to every input, and each range should read 0 V to 3.3 V at the same
+frequency, cut off at its own limits where the square goes past them.
 
 `--selftest` is the thing to run on a new board. It reads the identity and the
 capabilities, takes an immediate sample, captures an analogue record, arms a

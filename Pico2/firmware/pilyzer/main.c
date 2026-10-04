@@ -190,7 +190,7 @@ static void fill_identity(pilyzer_identity_t *identity)
     identity->protocol_version = PILYZER_PROTOCOL_VERSION;
     identity->firmware_version = PILYZER_FIRMWARE_VERSION;
     identity->board_id = PILYZER_BOARD_ID;
-    memcpy(identity->name, "PiLyzer Pico 2", 14);
+    memcpy(identity->name, PILYZER_PRODUCT_NAME, sizeof PILYZER_PRODUCT_NAME - 1);
 }
 
 static void fill_capabilities(pilyzer_capabilities_t *capabilities)

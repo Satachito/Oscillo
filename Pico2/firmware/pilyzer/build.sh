@@ -14,7 +14,8 @@ cd "$(dirname "$0")"
 
 : "${PICO_SDK_PATH:=$HOME/pico-sdk}"
 : "${PICO_TOOLCHAIN_PATH:=$HOME/arm-none-eabi}"
-: "${BOARD_ID:=0}"          # 0 = bare Pico 2, 1 = PiLyzer analogue front end
+: "${BOARD_ID:=0}"          # 0 = bare Pico 2, 1 = PiLyzer analogue front end, 3 = PL2407AFE
+: "${CHIP:=rp2350}"         # rp2350 = Pico 2, rp2040 = the original Pico
 export PICO_SDK_PATH
 
 if [ ! -f "$PICO_SDK_PATH/pico_sdk_init.cmake" ]; then
@@ -26,14 +27,19 @@ fi
 echo "==> SDK       $PICO_SDK_PATH"
 echo "==> toolchain $PICO_TOOLCHAIN_PATH"
 echo "==> board id  $BOARD_ID"
+echo "==> chip      $CHIP"
 
-cmake -S . -B build -G Ninja \
+# One build directory a chip: the SDK's platform cannot change in place.
+dir=build
+[ "$CHIP" = rp2350 ] || dir=build-$CHIP
+cmake -S . -B "$dir" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DPICO_TOOLCHAIN_PATH="$PICO_TOOLCHAIN_PATH" \
-    -DPILYZER_BOARD_ID="$BOARD_ID" >/dev/null
+    -DPILYZER_BOARD_ID="$BOARD_ID" \
+    -DPILYZER_CHIP="$CHIP" >/dev/null
 
-cmake --build build
+cmake --build "$dir"
 
 echo
-echo "==> build/pilyzer.uf2 — copy it onto the Pico 2 in BOOTSEL"
-"$PICO_TOOLCHAIN_PATH/bin/arm-none-eabi-size" build/pilyzer.elf
+echo "==> $dir/pilyzer.uf2 — copy it onto the Pico in BOOTSEL"
+"$PICO_TOOLCHAIN_PATH/bin/arm-none-eabi-size" "$dir/pilyzer.elf"
