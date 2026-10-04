@@ -143,6 +143,80 @@ public enum Diagnostics {
         return lines.joined(separator: "\n")
     }
 
+    /// Every channel on every range, reading the calibration square wave: the
+    /// check for a front end just built. With the calibration output wired to
+    /// all the inputs, each range should read the same 0 V to 3.3 V square at
+    /// the same frequency, cut off at its own limits where the square goes
+    /// past them. A range that reads another range's numbers is a switch that
+    /// does not close.
+    public static func rangeCheck(frequency: Int = 1000, locationID: UInt32 = 0) -> String {
+        do {
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
+            let capabilities = instrument.capabilities
+            guard capabilities.hasCalibrationOutput else {
+                return "This instrument has no calibration output to measure with."
+            }
+            let ranges = capabilities.reportsInputRanges ? try instrument.inputRanges()
+                : FrontEnd.ranges(forBoard: instrument.identity.boardID)
+            let produced = try instrument.setCalibrationOutput(enabled: true, frequency: frequency)
+            var lines = ["calibration output \(Format.frequency(Double(produced))), 0 V to 3.3 V — "
+                         + "wire it to every input",
+                         "",
+                         "channel  range     low        high       peak to peak  frequency"]
+            // Twenty cycles in 2048 points, and no faster than the floor.
+            let floor = capabilities.minimumSamplePeriod(channels: 1)
+            let period = max(20.0 / Double(produced) / 2048, floor)
+            for channel in 0..<capabilities.analogChannels {
+                for (index, range) in ranges.enumerated() {
+                    try instrument.setRange(channel: channel, range: index)
+                    Thread.sleep(forTimeInterval: 0.02)
+                    let plan = try instrument.configureAnalog(AnalogConfiguration(
+                        channelMask: UInt8(1 << channel), triggerMode: .freeRun, samplePeriod: period,
+                        recordSamples: 2048, pretriggerSamples: 0, autoTimeout: 0.1))
+                    try instrument.armAnalog()
+                    guard let status = try waitForRecord({ try instrument.analogStatus() },
+                                                         timeout: plan.duration + 2),
+                          status.state == .complete,
+                          let codes = try instrument.readAnalogRecord(plan: plan).first,
+                          !codes.isEmpty else {
+                        lines.append("CH\(channel + 1)      \(range.name)  FAILED: no record")
+                        continue
+                    }
+                    let scale = VoltageScale(reference: capabilities.referenceVolts,
+                                             fullScale: capabilities.analogFullScale, range: range)
+                    let volts = codes.map { scale.volts($0) }.sorted()
+                    // The 2nd and 98th percentiles: the levels, not a spike.
+                    let low = volts[volts.count / 50], high = volts[volts.count * 49 / 50]
+                    let middle = (low + high) / 2, margin = (high - low) / 10
+                    var rising = [Int](), armed = false
+                    for (i, code) in codes.enumerated() {
+                        let v = scale.volts(code)
+                        if v < middle - margin { armed = true }
+                        else if armed && v > middle + margin { rising.append(i); armed = false }
+                    }
+                    // A frequency only for something that swings: an open
+                    // input's noise crosses its own middle at random.
+                    let measured = rising.count > 2 && high - low > 0.5
+                        ? Format.frequency(Double(rising.count - 1)
+                                           / (Double(rising.last! - rising.first!) * plan.samplePeriod))
+                        : "—"
+                    func column(_ text: String, _ width: Int) -> String {
+                        text.padding(toLength: max(width, text.count), withPad: " ", startingAt: 0)
+                    }
+                    lines.append(column("CH\(channel + 1)", 9) + column(range.name, 10)
+                                 + column(Format.voltage(low), 11) + column(Format.voltage(high), 11)
+                                 + column(Format.voltage(high - low), 14) + measured)
+                }
+                try instrument.setRange(channel: channel, range: 0)
+            }
+            _ = try instrument.setCalibrationOutput(enabled: false, frequency: frequency)
+            return lines.joined(separator: "\n")
+        } catch {
+            return "range check FAILED: \((error as? LocalizedError)?.errorDescription ?? "\(error)")"
+        }
+    }
+
     /// Restarts the instrument in its bootloader, so new firmware can be
     /// loaded without reaching for the BOOTSEL button.
     public static func rebootToBootloader(locationID: UInt32 = 0) -> String {

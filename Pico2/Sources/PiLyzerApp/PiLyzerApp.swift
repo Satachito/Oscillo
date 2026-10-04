@@ -27,8 +27,15 @@ struct PiLyzerApp: App {
             print(Diagnostics.describe())
             exit(0)
         }
+        // `--at 0x01100000`: which instrument, by the location --list prints,
+        // when more than one is plugged in. The first one otherwise.
+        let at: UInt32 = CommandLine.arguments.firstIndex(of: "--at").flatMap { index in
+            index + 1 < CommandLine.arguments.count
+                ? UInt32(CommandLine.arguments[index + 1].replacingOccurrences(of: "0x", with: ""), radix: 16)
+                : nil
+        } ?? 0
         if CommandLine.arguments.contains("--selftest") {
-            print(Diagnostics.selfTest())
+            print(Diagnostics.selfTest(locationID: at))
             exit(0)
         }
         if let index = CommandLine.arguments.firstIndex(of: "--timing") {
@@ -39,7 +46,7 @@ struct PiLyzerApp: App {
         }
         if let index = CommandLine.arguments.firstIndex(of: "--testout") {
             let argument = index + 1 < CommandLine.arguments.count ? CommandLine.arguments[index + 1] : "1000"
-            print(Diagnostics.setTestOutput(argument == "off" ? 0 : Int(argument) ?? 1000))
+            print(Diagnostics.setTestOutput(argument == "off" ? 0 : Int(argument) ?? 1000, locationID: at))
             exit(0)
         }
         if let index = CommandLine.arguments.firstIndex(of: "--write-icon"),
@@ -60,6 +67,11 @@ struct PiLyzerApp: App {
         if let index = CommandLine.arguments.firstIndex(of: "--signalcheck") {
             let argument = index + 1 < CommandLine.arguments.count ? CommandLine.arguments[index + 1] : "440"
             print(Diagnostics.signalCheck(sineHz: Int(argument) ?? 440))
+            exit(0)
+        }
+        if let index = CommandLine.arguments.firstIndex(of: "--rangecheck") {
+            let argument = index + 1 < CommandLine.arguments.count ? CommandLine.arguments[index + 1] : "1000"
+            print(Diagnostics.rangeCheck(frequency: Int(argument) ?? 1000, locationID: at))
             exit(0)
         }
         if CommandLine.arguments.contains("--bootsel") {
