@@ -79,7 +79,7 @@ struct PiLyzerApp: App {
             exit(0)
         }
         if CommandLine.arguments.contains("--bootsel") {
-            print(Diagnostics.rebootToBootloader())
+            print(Diagnostics.rebootToBootloader(locationID: at))
             exit(0)
         }
     }
