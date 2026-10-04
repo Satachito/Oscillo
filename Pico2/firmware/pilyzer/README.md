@@ -301,6 +301,7 @@ swift run PiLyzer --list       # is it on the bus, and is it an instrument?
 swift run PiLyzer --selftest   # walk the whole command set and report
 swift run PiLyzer --bootsel    # restart in the bootloader, ready for new firmware
 swift run PiLyzer --rangecheck # every channel on every range, reading the test square
+swift run PiLyzer --network    # a Pico 2 W's network: set or not, joined or not, its address
 ```
 
 With more than one instrument plugged in, `--at 0x01100000` picks one by the

@@ -74,6 +74,10 @@ struct PiLyzerApp: App {
             print(Diagnostics.rangeCheck(frequency: Int(argument) ?? 1000, locationID: at))
             exit(0)
         }
+        if CommandLine.arguments.contains("--network") {
+            print(Diagnostics.networkCheck(locationID: at))
+            exit(0)
+        }
         if CommandLine.arguments.contains("--bootsel") {
             print(Diagnostics.rebootToBootloader())
             exit(0)

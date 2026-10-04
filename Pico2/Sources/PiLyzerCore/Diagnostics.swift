@@ -217,6 +217,23 @@ public enum Diagnostics {
         }
     }
 
+    /// What a Pico 2 W or an UNO R4 WiFi says about its network: whether one
+    /// is set, whether it has joined it, and where it is. Never the password,
+    /// which the instrument does not give back.
+    public static func networkCheck(locationID: UInt32 = 0) -> String {
+        do {
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
+            let status = try instrument.networkStatus()
+            let source = ["none", "set from an app", "built in"][Int(status.source.rawValue)]
+            return "network       \(status.state), \(status.ssid.isEmpty ? "no network" : status.ssid) "
+                + "(\(source)), name \(status.hostname).local"
+                + (status.address.map { ", at \($0)" } ?? "")
+        } catch {
+            return "network       FAILED: \((error as? LocalizedError)?.errorDescription ?? "\(error)")"
+        }
+    }
+
     /// Restarts the instrument in its bootloader, so new firmware can be
     /// loaded without reaching for the BOOTSEL button.
     public static func rebootToBootloader(locationID: UInt32 = 0) -> String {
