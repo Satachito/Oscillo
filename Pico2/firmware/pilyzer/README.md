@@ -210,10 +210,14 @@ UF2 for each board that needs no build options of its own:
 | `PiLyzer-Pico2.uf2` | a Pico 2, bare or behind the mini AFE: board 0, one 0 – 3.3 V range |
 | `PiLyzer-Pico2W.uf2` | a Pico 2 W, its network set from the application |
 | `PiLyzer-PL2407AFE-Pico2.uf2` | a Pico 2 on picoLABO's PL2407AFE: board 3 |
+| `PiLyzer-Pico.uf2` | an original Pico (RP2040), bare: board 0, one 0 – 3.3 V range |
+| `PiLyzer-PL2407AFE-Pico.uf2` | an original Pico on picoLABO's PL2407AFE: board 3 |
 
 Hold BOOTSEL while plugging the board in and copy the file onto the drive that
-appears. None of them carries a network name or password. The PiLyzer AFE
-(board 1) is built from source, below.
+appears: RP2350 for a Pico 2, RPI-RP2 for an original Pico. None of them
+carries a network name or password. What an original Pico does differently is
+under [On the original Pico](#on-the-original-pico-firmware-119). The PiLyzer
+AFE (board 1) is built from source, below.
 
 ## Building
 

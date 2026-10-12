@@ -25,6 +25,7 @@ ScoppyのAndroidアプリやファームウェアのコピーではありませ�
 
 Pico 2をBOOTSELで接続し、このUF2をコピーします。元のScoppyファームウェアは置き換わります。Scoppy Androidアプリへ戻す場合はScoppy用UF2を書き戻します。
 このビルドはRP2350のPico 2用です。初代Pico/RP2040用ではありません。
+初代Picoを載せたPL2407AFEには、リリースの`PiLyzer-PL2407AFE-Pico.uf2`を使います（ファームウェア1.19以降）。BOOTSELで出てくるドライブはRPI-RP2です。記録の長さなどPico 2との違いは[ファームウェアのREADME](../../firmware/pilyzer/README.md#on-the-original-pico-firmware-119)にあります。
 
 ## 配線・制御
 
