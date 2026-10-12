@@ -275,6 +275,13 @@ what the chip has: half the record depth (above), a 125 MHz clock so the
 logic analyser tops out at 125 MSa/s, and the sine generator's carrier at 488
 kHz. There is no Wi-Fi build for it.
 
+The analogue rates are the Pico 2's, and that is measured, not assumed from
+the shared converter settings: a bare original Pico running the released
+`PiLyzer-Pico.uf2`, with GPIO22 wired to GPIO26, read its own 1 kHz test square
+back as 1000 Hz at each channel count's fastest — 2.02, 4.04 and 6.06 µs a
+sample with one, two and three channels, which is 495, 247 and 165 kSa/s a
+channel — within 0.02% over four runs of `PiLyzer --timing`.
+
 The RP2040's converter has uneven codes around 512, 1536, 2560 and 3584,
 which the RP2350 fixed. Waveforms, frequencies and logic are as good as on a
 Pico 2; a voltage reading near those codes, and the ENOB the spectrum
