@@ -44,7 +44,8 @@ The same firmware and both applications serve a bare Pico 2, [the rev A front
 end](hardware/pilyzer-afe) — three channels, two switched ranges, and a
 one-range build for a bench that wants no switch — and a picoLABO
 [PL2407AFE](hardware/pl2407afe). None of them needs its own release of either
-application: the board describes its own front end from firmware 1.7.
+application: the board describes its own front end from firmware 1.7. An
+original Pico runs the same firmware from 1.19, bare or on a PL2407AFE.
 
 Both applications also drive an Arduino Nano R4, UNO R4 Minima or UNO R4 WiFi
 running [ArLyzer](../ArLyzer/), a sketch that speaks this same protocol: up to
@@ -57,14 +58,19 @@ All commands below run from the `Pico2` directory.
 
 ## What it is
 
-| | |
-| --- | --- |
-| Analogue | 3 channels, 12 bits, 40 kHz; 495 / 247 / 165 kSa/s per channel with 1 / 2 / 3 enabled |
-| Vertical | ±25 V and ±5 V, switched from the application |
-| Record | up to 16 384 points a channel, with pre-trigger |
-| Spectrum | windowed FFT of every enabled channel, with averaging, THD, THD+N, SNR, SINAD and ENOB for each |
-| Logic | 8 channels, up to 150 MSa/s, 65 536 points, UART / SPI / I²C decoding |
-| Trigger | edge, with hysteresis, on any analogue channel or any logic input |
+| | Pico 2 | Original Pico (firmware 1.19) |
+| --- | --- | --- |
+| Analogue | 3 channels, 12 bits, 40 kHz; 495 / 247 / 165 kSa/s per channel with 1 / 2 / 3 enabled | the same rates; the RP2040's converter has uneven codes around 512, 1536, 2560 and 3584, so a voltage read near them is less exact |
+| Vertical | ±25 V and ±5 V, switched from the application | 0 – 3.3 V bare, or the three ranges of a PL2407AFE: the two builds there are |
+| Record | up to 16 384 points a channel, with pre-trigger | up to 8 192 points a channel; 12 288 on the PL2407AFE's two |
+| Spectrum | windowed FFT of every enabled channel, with averaging, THD, THD+N, SNR, SINAD and ENOB for each | the same, with a lower ENOB |
+| Logic | 8 channels, up to 150 MSa/s, 65 536 points, UART / SPI / I²C decoding | 8 channels, up to 125 MSa/s, 32 768 points |
+| Trigger | edge, with hysteresis, on any analogue channel or any logic input | the same |
+| Wi-Fi | a Pico 2 W serves PiLyzer Web at `http://pilyzer.local` | no Wi-Fi build |
+
+The original Pico has half the Pico 2's memory, which is where its shorter
+records come from; see
+[firmware/pilyzer](firmware/pilyzer/README.md#on-the-original-pico-firmware-119).
 
 There is a built-in signal generator, so the whole application works with
 nothing plugged in. Press **Start a demo** on the empty screen, or start it

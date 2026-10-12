@@ -6,7 +6,7 @@ analyser and meter — on a Raspberry Pi Pico 2 (PiLyzer) or an Arduino R4
 
 | Project | Hardware | Applications |
 | --- | --- | --- |
-| [Pico2](Pico2/) | Raspberry Pi Pico 2, bare or behind a front end — the [PiLyzer AFE](Pico2/hardware/pilyzer-afe/), a one-op-amp [mini AFE](Pico2/hardware/mini-afe/), or a picoLABO [PL2407AFE](Pico2/hardware/pl2407afe/) | [macOS](Pico2/README.md) · [WebUSB](Pico2/Web/) |
+| [Pico2](Pico2/) | Raspberry Pi Pico 2, bare or behind a front end — the [PiLyzer AFE](Pico2/hardware/pilyzer-afe/), a one-op-amp [mini AFE](Pico2/hardware/mini-afe/), or a picoLABO [PL2407AFE](Pico2/hardware/pl2407afe/); an original Pico too, bare or on the PL2407AFE | [macOS](Pico2/README.md) · [WebUSB](Pico2/Web/) |
 | [ArLyzer](ArLyzer/) | Arduino Nano R4, UNO R4 Minima or UNO R4 WiFi — the same protocol as the Pico 2, up to eight analogue inputs and logic on D2–D9; the UNO R4 WiFi also over Wi-Fi | the same [macOS](Pico2/README.md) · [Web](Pico2/Web/) applications |
 | [PCBScope](PCBScope/) | PCBScope / DPScope SE | Native macOS HID application restored from the original project |
 
