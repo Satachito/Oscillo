@@ -32,7 +32,9 @@ computer — macOS, Windows and Linux alike, with nothing to install on any of
 them: WebUSB for a Pico 2 (firmware 1.6 and later), Web Serial for an ArLyzer.
 A Pico 2 W or an UNO R4 WiFi serves it itself over Wi-Fi, at
 `http://pilyzer.local` or `http://arlyzer.local`, so a phone or a tablet needs
-no USB at all. Demo mode also works without an instrument.
+no USB at all. Demo mode also works without an instrument: **Try demo** in
+PiLyzer Web, and from 3.3.10 **Start a demo** in the middle of the Mac app's
+empty screen, each one click.
 Captured samples remain in the browser; CSV export saves them locally.
 From 3.3.6, the copy on GitHub Pages counts page views, and which way an
 instrument was connected (USB, serial or the demo), with Google Analytics. The

@@ -30,6 +30,11 @@ and a Pico 2 on the PL2407AFE; see
 From 3.3.6, PiLyzer Web on GitHub Pages counts page views and which way an
 instrument was connected; the copy a Pico 2 W serves does not
 ([Web/README.md](Web/README.md)).
+From 3.3.10, the Mac app's demo starts on one click, and a running instrument
+no longer keeps the app busy: only the screen and its readings follow the
+records, where the control panel, the toolbar and the menus were redrawn with
+every one. The Oscilloscope screen takes about 40% of a processor core in
+place of all of one.
 
 The macOS download is ad-hoc signed, not Apple-notarized. Unzip it and move
 PiLyzer.app to Applications. macOS may require approving its first launch in
@@ -62,7 +67,8 @@ All commands below run from the `Pico2` directory.
 | Trigger | edge, with hysteresis, on any analogue channel or any logic input |
 
 There is a built-in signal generator, so the whole application works with
-nothing plugged in:
+nothing plugged in. Press **Start a demo** on the empty screen, or start it
+from the command line:
 
 ```bash
 swift run PiLyzer --demo
@@ -112,11 +118,15 @@ The firmware has its own build; see [firmware/pilyzer/README.md](firmware/pilyze
 
 ## Using it
 
-1. Pick the instrument (or **Demo signal**) in the toolbar and press
-   **Connect** (⌘K). The list follows the hardware as it is plugged and
-   unplugged. The application checks the firmware's identity, so nothing else
-   on the bus can be mistaken for an instrument.
+1. Pick the instrument in the toolbar and press **Connect** (⌘K). The list
+   follows the hardware as it is plugged and unplugged. The application checks
+   the firmware's identity, so nothing else on the bus can be mistaken for an
+   instrument.
 2. Press **Run** (⌘R) for continuous sweeps, or **Single** (⇧⌘S) for one.
+
+   With no instrument, press **Start a demo** on the empty screen, choose
+   **Demo signal** in the toolbar, or use Instrument → Start Demo (⌘D): the
+   demo connects and sweeps at once, on ±5 V at 1 V a division.
 3. **Export** (⌘E) writes what is on screen to CSV — samples, spectrum, logic
    transitions or decoded protocol, whichever screen is showing.
 
