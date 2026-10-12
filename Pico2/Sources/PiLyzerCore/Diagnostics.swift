@@ -461,6 +461,135 @@ public enum Diagnostics {
         }
     }
 
+    /// Measures how even the converter's codes are, by counting how often each
+    /// one comes up on a sweep (see `CodeDensity`).
+    ///
+    /// The sweep is the calibration square wave rounded off by a resistor and a
+    /// capacitor: 1 kΩ from the calibration output to an input and 10 nF from
+    /// that input to ground turn it into a curve that crosses nearly the whole
+    /// range twice a cycle. The conversions are taken one channel at a time at
+    /// the converter's fastest, where nothing is averaged, so each sample is
+    /// one raw code.
+    ///
+    /// It is swept at more than one frequency and the results are averaged.
+    /// The defaults are chosen not to line up with the sampling: at 10 kHz a
+    /// cycle is 4800/97 samples, so the same 4800 voltages are read over and
+    /// over, and on a quiet converter that shows up as codes that look twice
+    /// as wide and are not.
+    public static func codeDensity(frequencies: [Int] = [7_000, 11_000, 13_000],
+                                   conversions: Int = 4_915_200,
+                                   locationID: UInt32 = 0) -> String {
+        do {
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
+            let capabilities = instrument.capabilities
+            guard capabilities.hasCalibrationOutput else {
+                return "This instrument has no calibration output to sweep with."
+            }
+            let wiring = "put 1 kΩ between the calibration output and an input, and 10 nF "
+                + "from that input to ground"
+
+            let floor = capabilities.minimumSamplePeriod(channels: 1)
+            func record(channel: Int, samples: Int) throws -> (codes: [UInt16], plan: AcquisitionPlan)? {
+                let plan = try instrument.configureAnalog(AnalogConfiguration(
+                    channelMask: UInt8(1 << channel), triggerMode: .freeRun, samplePeriod: floor,
+                    recordSamples: samples, pretriggerSamples: 0, autoTimeout: 0.1))
+                try instrument.armAnalog()
+                guard let status = try waitForRecord({ try instrument.analogStatus() },
+                                                     timeout: plan.duration + 2),
+                      status.state == .complete else { return nil }
+                return (try instrument.readAnalogRecord(plan: plan)[0], plan)
+            }
+
+            // Whichever input the sweep is on is the one that moves most.
+            _ = try instrument.setCalibrationOutput(enabled: true, frequency: frequencies.first ?? 7_000)
+            Thread.sleep(forTimeInterval: 0.05)
+            var swings: [Int] = []
+            for channel in 0..<capabilities.analogChannels {
+                let codes = try record(channel: channel, samples: 2048)?.codes ?? []
+                swings.append(Int(codes.max() ?? 0) - Int(codes.min() ?? 0))
+            }
+            guard let channel = swings.indices.max(by: { swings[$0] < swings[$1] }),
+                  Double(swings[channel]) > capabilities.analogFullScale * 0.25 else {
+                return "codes         no channel is swinging — \(wiring)"
+            }
+
+            // The ends are left out: the sweep slows there, and a few codes
+            // take most of the conversions.
+            let shift = 16 - capabilities.analogBits
+            let count = 1 << capabilities.analogBits
+            let measured = (count * 150 / 4096)..<(count * 3950 / 4096)
+            let records = max(1, (conversions + capabilities.analogMaxRecord - 1) / capabilities.analogMaxRecord)
+
+            var runs: [CodeDensity] = []
+            var swept: [String] = []
+            var period = floor
+            var taken = 0
+            for commanded in frequencies {
+                let actual = try instrument.setCalibrationOutput(enabled: true, frequency: commanded)
+                Thread.sleep(forTimeInterval: 0.05)
+                var histogram = [Int](repeating: 0, count: count)
+                taken = 0
+                for _ in 0..<records {
+                    guard let (codes, plan) = try record(channel: channel,
+                                                         samples: capabilities.analogMaxRecord) else { continue }
+                    guard plan.decimation == 1 else {
+                        return "codes         FAILED: the instrument averaged \(plan.decimation) conversions "
+                            + "a sample, so these are not raw codes"
+                    }
+                    period = plan.samplePeriod
+                    for code in codes { histogram[Int(code) >> shift] += 1 }
+                    taken += codes.count
+                }
+                // A direct wire is a square wave: two codes and nothing between.
+                let middle = histogram[measured].sorted()[measured.count / 2]
+                guard middle >= 50, histogram[..<measured.lowerBound].contains(where: { $0 > 0 }),
+                      histogram[measured.upperBound...].contains(where: { $0 > 0 }) else {
+                    return "codes         CH\(channel + 1) does not sweep the range at "
+                        + "\(Format.frequency(Double(actual))) — \(wiring)"
+                }
+                runs.append(CodeDensity.of(histogram: histogram, codes: measured))
+                swept.append(Format.frequency(Double(actual)))
+            }
+            guard let density = CodeDensity.mean(runs) else { return "codes         FAILED: no sweep" }
+
+            func list(_ codes: [Int]) -> String {
+                let shown = codes.prefix(12).map { code in
+                    String(format: "%d ×%.2f", code, density.width(of: code) ?? 0)
+                }
+                return shown.joined(separator: "   ")
+                    + (codes.count > 12 ? "   and \(codes.count - 12) more" : "")
+            }
+            let wide = density.codes { $0 > 1.5 }
+            let rare = density.codes { $0 < 0.1 }
+            let narrow = density.codes { $0 < 0.5 }
+            let line = density.line
+
+            var lines = [String(format: "codes         CH%d, %d bit, codes %d to %d, %.1f M conversions a sweep at %@ a sample",
+                                channel + 1, capabilities.analogBits, measured.lowerBound,
+                                measured.upperBound - 1, Double(taken) / 1e6, Format.time(period))]
+            lines.append("              swept at " + swept.joined(separator: ", ")
+                + (CodeDensity.scatter(runs).map { String(format: ": sweeps agree to %.2f", $0) } ?? ""))
+            lines.append("              widths are against the median of the 40 codes either side")
+            lines.append("              wide          " + (wide.isEmpty ? "none over ×1.5" : list(wide)))
+            lines.append("              rare          " + (rare.isEmpty ? "none under ×0.1" : list(rare)))
+            lines.append("              narrow        \(narrow.count) codes under ×0.5")
+            if let eighth = density.typicalWidth(where: { $0 % 8 == 7 && $0 % 16 != 15 }) {
+                lines.append(String(format: "              ending 111    ×%.2f", eighth))
+            }
+            if let widest = density.widths.max() {
+                lines.append(String(format: "              widest        ×%.2f", widest))
+            }
+            lines.append(String(format: "              DNL           %.2f LSB rms", density.rmsDifferential))
+            lines.append(String(format: "              line          %+.1f to %+.1f LSB",
+                                line.lowerBound, line.upperBound))
+            return lines.joined(separator: "\n")
+        } catch {
+            return "codes         FAILED: "
+                + ((error as? LocalizedError)?.errorDescription ?? "\(error)")
+        }
+    }
+
     private static func waitForRecord(_ poll: () throws -> AcquisitionStatus,
                                       timeout: Double) throws -> AcquisitionStatus? {
         let deadline = Date().addingTimeInterval(timeout)

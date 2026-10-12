@@ -44,6 +44,15 @@ struct PiLyzerApp: App {
                                                                      : Array(listed)))
             exit(0)
         }
+        // `--codes [Hz …]`: how even the converter's codes are, on a sweep made
+        // of the calibration output, a resistor and a capacitor.
+        if let index = CommandLine.arguments.firstIndex(of: "--codes") {
+            let listed = CommandLine.arguments.dropFirst(index + 1).compactMap(Int.init)
+            FileHandle.standardError.write(Data("Taking about fifteen million conversions: a minute or two.\n".utf8))
+            print(listed.isEmpty ? Diagnostics.codeDensity(locationID: at)
+                                 : Diagnostics.codeDensity(frequencies: Array(listed), locationID: at))
+            exit(0)
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--testout") {
             let argument = index + 1 < CommandLine.arguments.count ? CommandLine.arguments[index + 1] : "1000"
             print(Diagnostics.setTestOutput(argument == "off" ? 0 : Int(argument) ?? 1000, locationID: at))

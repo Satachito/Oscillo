@@ -90,6 +90,7 @@ instrument does not appear in the list:
 swift run PiLyzer --list       # what is on the USB bus, and why it is not an instrument
 swift run PiLyzer --selftest   # walk the whole command set against a real board
 swift run PiLyzer --timing     # measure the time axis against the calibration output
+swift run PiLyzer --codes      # how even the converter's codes are, on a sweep through 1 kΩ and 10 nF
 swift run PiLyzer --testout 1000   # drive that output, or "off"
 swift run PiLyzer --signals 440    # sine and the three noises on the board's own pins, or "off"
 swift run PiLyzer --bootsel    # restart it in its bootloader to load new firmware

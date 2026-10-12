@@ -287,11 +287,12 @@ which the RP2350 fixed. Waveforms, frequencies and logic are as good as on a
 Pico 2; a voltage reading near those codes, and the ENOB the spectrum
 reports, are not.
 
-Measured on that same board, by counting how often each code comes up. The
-test square went through 1 kΩ into GPIO26 with 10 nF to ground, which turns it
-into a sweep over almost the whole range, and 4.9 million conversions were
-taken at the fastest rate with no averaging. Each code's count was set against
-the median of the forty either side of it:
+Measured on that same board, by counting how often each code comes up, which
+is what `swift run PiLyzer --codes` does. The test square went through 1 kΩ
+into GPIO26 with 10 nF to ground, which turns it into a sweep over almost the
+whole range, and 4.9 million conversions were taken at the fastest rate with
+no averaging. Each code's count was set against the median of the forty either
+side of it:
 
 | Codes | Width, against their neighbours |
 | --- | --- |
@@ -325,7 +326,8 @@ places a code is all but missing instead, and the reading skips a millivolt or
 two.
 
 Each of these is one board and its CH1, between codes 150 and 3950. The Pico
-2's figures are from sweeps at 7, 11 and 13 kHz. At 10 kHz the test square
+2's figures are from sweeps at 7, 11 and 13 kHz, which are the ones `--codes`
+makes unless it is given others. At 10 kHz the test square
 lines up with the sampling, the same few thousand voltages are read over and
 over, and a converter as quiet as the Pico 2's shows that as codes that look
 twice as wide and are not.
@@ -355,6 +357,7 @@ swift run PiLyzer --list       # is it on the bus, and is it an instrument?
 swift run PiLyzer --selftest   # walk the whole command set and report
 swift run PiLyzer --bootsel    # restart in the bootloader, ready for new firmware
 swift run PiLyzer --rangecheck # every channel on every range, reading the test square
+swift run PiLyzer --codes      # how even the converter's codes are (1 kΩ and 10 nF first)
 swift run PiLyzer --network    # a Pico 2 W's network: set or not, joined or not, its address
 ```
 
