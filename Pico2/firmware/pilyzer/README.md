@@ -305,9 +305,30 @@ The uneven codes are the ones just below 512, 1536, 2560 and 3584. Around
 0.41, 1.24, 2.06 and 2.89 V the input can move 8 mV without the reading
 changing, and each of the four puts a step of 8 to 10 LSB in the converter's
 line, which runs from 6 LSB under to 12 over. Three runs agreed to 0.1 LSB: at
-two sweep rates, and with all three channels switching. This is one board and
-its CH1, between codes 150 and 3950; a Pico 2 has not been measured the same
-way.
+two sweep rates, and with all three channels switching.
+
+A Pico 2 measured the same way, with the same resistor and capacitor:
+
+| | Original Pico | Pico 2 |
+| --- | --- | --- |
+| Codes more than 1.5 times as wide as their neighbours | four, 9 to 10 times | none; the widest is 1.4 |
+| Codes that never or almost never come up | 2047, and 2046 at 0.07 | 1535, and 2559 at 0.02 |
+| The code before each of those | as wide as any | 1534 at 0.13, 2558 at 0.24 |
+| Codes ending in binary 111 | 0.25 | 0.74 |
+| Codes under half as wide as their neighbours | 437 | 18 |
+| DNL, rms | 0.38 LSB | 0.09 LSB |
+| The converter's line | 6 LSB under to 12 over | 2 under to 4 over |
+
+So the RP2350 did fix the four wide codes: nowhere on a Pico 2 does the input
+move 8 mV unread. It is not flawless there, though. At two of the same four
+places a code is all but missing instead, and the reading skips a millivolt or
+two.
+
+Each of these is one board and its CH1, between codes 150 and 3950. The Pico
+2's figures are from sweeps at 7, 11 and 13 kHz. At 10 kHz the test square
+lines up with the sampling, the same few thousand voltages are read over and
+over, and a converter as quiet as the Pico 2's shows that as codes that look
+twice as wide and are not.
 
 ## Bringing a board up
 
