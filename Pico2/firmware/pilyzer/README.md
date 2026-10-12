@@ -287,6 +287,28 @@ which the RP2350 fixed. Waveforms, frequencies and logic are as good as on a
 Pico 2; a voltage reading near those codes, and the ENOB the spectrum
 reports, are not.
 
+Measured on that same board, by counting how often each code comes up. The
+test square went through 1 kΩ into GPIO26 with 10 nF to ground, which turns it
+into a sweep over almost the whole range, and 4.9 million conversions were
+taken at the fastest rate with no averaging. Each code's count was set against
+the median of the forty either side of it:
+
+| Codes | Width, against their neighbours |
+| --- | --- |
+| 511, 1535, 2559 and 3583 | 10.3, 9.0, 8.9 and 9.4 times as wide: about 8 mV each |
+| 2047 | never comes up |
+| 2046 | 0.07: almost never |
+| those ending in binary 111, one in eight | 0.25, and 0.43 where they end in 1111 |
+| the rest | even, to 0.10 LSB rms |
+
+The uneven codes are the ones just below 512, 1536, 2560 and 3584. Around
+0.41, 1.24, 2.06 and 2.89 V the input can move 8 mV without the reading
+changing, and each of the four puts a step of 8 to 10 LSB in the converter's
+line, which runs from 6 LSB under to 12 over. Three runs agreed to 0.1 LSB: at
+two sweep rates, and with all three channels switching. This is one board and
+its CH1, between codes 150 and 3950; a Pico 2 has not been measured the same
+way.
+
 ## Bringing a board up
 
 The acquisition boundary regressions also run on the host, without the Pico
