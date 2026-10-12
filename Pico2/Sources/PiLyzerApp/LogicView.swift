@@ -5,6 +5,7 @@ import SwiftUI
 /// them underneath.
 struct LogicView: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     private var frame: LogicFrame { model.logicFrame }
     private var visibleChannels: [Int] {
@@ -21,7 +22,7 @@ struct LogicView: View {
                 drawTimeGrid(&context, size: size)
                 drawChannels(&context, size: size)
                 drawTrigger(&context, size: size)
-                if frame.isEmpty {
+                if frame.isEmpty, model.isConnected {
                     context.draw(Text("Press Run").font(.system(size: 13))
                         .foregroundColor(Theme.readout),
                                  at: CGPoint(x: size.width / 2, y: size.height / 2))
@@ -111,6 +112,7 @@ struct LogicView: View {
 
 struct LogicActivityRow: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     var body: some View {
         MeasurementStrip {
@@ -142,6 +144,7 @@ struct LogicActivityRow: View {
 
 struct DecodedRow: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     var body: some View {
         MeasurementStrip {
@@ -165,6 +168,7 @@ struct DecodedRow: View {
 struct FlowingBytes: View {
     var items: [DecodedItem]
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     var body: some View {
         // In columns of one width, each wide enough for "0x72 'r'", so the
@@ -215,6 +219,7 @@ struct FlowingBytes: View {
 /// chart of where they have been.
 struct MeterView: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     var body: some View {
         Workspace(model: model) {

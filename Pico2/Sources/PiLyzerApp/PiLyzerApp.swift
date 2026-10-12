@@ -100,6 +100,9 @@ struct PiLyzerApp: App {
             CommandMenu("Instrument") {
                 Button(model.isConnected ? "Disconnect" : "Connect") { model.toggleConnection() }
                     .keyboardShortcut("k")
+                Button("Start Demo") { model.startDemo() }
+                    .keyboardShortcut("d")
+                    .disabled(model.isConnected)
                 Divider()
                 Button(model.isRunning ? "Stop" : "Run") { model.toggleRun() }
                     .keyboardShortcut("r")
@@ -146,9 +149,9 @@ struct PiLyzerApp: App {
         // Scope and Spectrum — so it changes nothing about the sweep.
         MenuBarExtra(isInserted: Binding(get: { menuBarChannel >= 0 },
                                          set: { if !$0 { menuBarChannel = -1 } })) {
-            MenuBarContent(model: model, channel: $menuBarChannel)
+            MenuBarContent(model: model, live: model.live, channel: $menuBarChannel)
         } label: {
-            Image(nsImage: MenuBarLabel.image(MenuBarLabel.volts(model.level(of: max(menuBarChannel, 0)))))
+            MenuBarReading(model: model, live: model.live, channel: max(menuBarChannel, 0))
         }
     }
 }
@@ -194,10 +197,23 @@ enum MenuBarLabel {
     }
 }
 
+/// The menu bar item itself: one channel's voltage, redrawn with every record.
+private struct MenuBarReading: View {
+    @ObservedObject var model: ScopeModel
+    /// The reading follows the records; the scene around it does not.
+    @ObservedObject var live: LiveReadings
+    var channel: Int
+
+    var body: some View {
+        Image(nsImage: MenuBarLabel.image(MenuBarLabel.volts(model.level(of: channel))))
+    }
+}
+
 /// The menu under the reading: every channel's level, which one to show, and
 /// the way back to the window.
 private struct MenuBarContent: View {
     @ObservedObject var model: ScopeModel
+    @ObservedObject var live: LiveReadings
     @Binding var channel: Int
     @Environment(\.openWindow) private var openWindow
 

@@ -396,6 +396,16 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         }
     }
 
+    /// The demo's signals are a few volts across, so its channels open on the
+    /// second range at 1 V a division, as the web application's do: on the
+    /// first, ±25 V, they would be a ripple along the middle of the screen.
+    public mutating func frameDemo(ranges count: Int) {
+        for index in channels.indices {
+            channels[index].rangeIndex = min(1, max(count, 1) - 1)
+            channels[index].voltsPerDivision = 1
+        }
+    }
+
     /// Keep saved calibration for hidden channels when connecting an older device.
     public mutating func ensureAnalogChannels(_ count: Int) {
         while channels.count < min(max(count, 0), 8) {

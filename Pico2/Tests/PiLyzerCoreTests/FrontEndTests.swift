@@ -165,4 +165,16 @@ struct FrontEndTests {
         settings.fitRanges(FrontEnd.bareBoard.count)
         #expect(settings.channels[1].rangeIndex == 0)
     }
+
+    @Test("The demo opens on the range and scale that show its signals")
+    func demoIsFramed() {
+        var settings = ScopeSettings()
+        settings.ensureAnalogChannels(3)
+        settings.channels[0].voltsPerDivision = 10
+        settings.frameDemo(ranges: FrontEnd.revA.count)
+        #expect(settings.channels.map(\.rangeIndex) == [1, 1, 1])
+        #expect(settings.channels.map(\.voltsPerDivision) == [1, 1, 1])
+        settings.frameDemo(ranges: FrontEnd.bareBoard.count)
+        #expect(settings.channels.map(\.rangeIndex) == [0, 0, 0])
+    }
 }

@@ -3,10 +3,39 @@ import Foundation
 import PiLyzerCore
 import SwiftUI
 
+/// What every record changes: the traces, the readings and the status line.
+/// It is published apart from the front panel's state, so that thirty records
+/// a second redraw the screen and the readouts that show them, and not the
+/// control panel, the toolbar and the menus as well — which between them kept
+/// the main thread busy the whole time an instrument was running.
+@MainActor
+final class LiveReadings: ObservableObject {
+    @Published fileprivate(set) var frame = ScopeFrame()
+    @Published fileprivate(set) var logicFrame = LogicFrame()
+    @Published fileprivate(set) var meter: MeterReading?
+    /// One entry per enabled channel, in channel order.
+    @Published fileprivate(set) var spectra: [ChannelSpectrum] = []
+    @Published fileprivate(set) var decoded: [DecodedItem] = []
+    @Published fileprivate(set) var statusText = "Not connected"
+}
+
 /// The front panel's state: what the user set, what came back, and the
 /// derived numbers the readouts need.
 @MainActor
 final class ScopeModel: ObservableObject {
+    /// A view that draws any of these observes `live` as well as the model.
+    let live = LiveReadings()
+    private(set) var frame: ScopeFrame { get { live.frame } set { live.frame = newValue } }
+    private(set) var logicFrame: LogicFrame { get { live.logicFrame } set { live.logicFrame = newValue } }
+    private(set) var meter: MeterReading? { get { live.meter } set { live.meter = newValue } }
+    private(set) var spectra: [ChannelSpectrum] { get { live.spectra } set { live.spectra = newValue } }
+    private(set) var decoded: [DecodedItem] { get { live.decoded } set { live.decoded = newValue } }
+    private(set) var statusText: String {
+        get { live.statusText }
+        // Said again with every record, and published only when it changes.
+        set { if live.statusText != newValue { live.statusText = newValue } }
+    }
+
     @Published var settings: ScopeSettings {
         didSet {
             guard settings != oldValue else { return }
@@ -18,14 +47,8 @@ final class ScopeModel: ObservableObject {
 
     @Published private(set) var connection: ConnectionState = .disconnected
     @Published private(set) var isRunning = false
-    @Published private(set) var statusText = "Not connected"
     @Published var errorText: String?
 
-    @Published private(set) var frame = ScopeFrame()
-    @Published private(set) var logicFrame = LogicFrame()
-    @Published private(set) var meter: MeterReading?
-    /// One entry per enabled channel, in channel order.
-    @Published private(set) var spectra: [ChannelSpectrum] = []
     @Published private(set) var plan = AcquisitionPlan.empty
     /// Why the trigger level is not the number that was typed, when it is not.
     @Published private(set) var triggerLevelNote: String?
@@ -37,7 +60,6 @@ final class ScopeModel: ObservableObject {
     @Published var decoderKind: DecoderKind = .none { didSet { rebuildDecoder() } }
     @Published var decoderConfiguration = DecoderConfiguration() { didSet { rebuildDecoder() } }
     @Published private(set) var decoder: LogicDecoder = .none
-    @Published private(set) var decoded: [DecodedItem] = []
     @Published var cursorsEnabled = false
     @Published var cursorA = 0.3
     @Published var cursorB = 0.7
@@ -48,7 +70,7 @@ final class ScopeModel: ObservableObject {
     private let engine = InstrumentEngine()
     private var spectrumHistory: [Int: [Spectrum]] = [:]
     private var deviceTimer: Timer?
-    /// Set by --autostart: sweep as soon as the instrument answers.
+    /// Set by --autostart and by the demo: sweep as soon as the instrument answers.
     private var startsOnConnect = false
 
     var instrument: ConnectedInstrument? { connection.instrument }
@@ -75,10 +97,12 @@ final class ScopeModel: ObservableObject {
         engine.onScopeFrame = { [weak self] frame in self?.apply(frame) }
         engine.onLogicFrame = { [weak self] frame in self?.apply(frame) }
         engine.onMeterReading = { [weak self] reading in self?.meter = reading }
-        engine.onRunningChange = { [weak self] running in self?.isRunning = running }
+        engine.onRunningChange = { [weak self] running in
+            if self?.isRunning != running { self?.isRunning = running }
+        }
         engine.onStatus = { [weak self] text in self?.statusText = text }
         engine.onError = { [weak self] text in self?.errorText = text }
-        engine.onPlan = { [weak self] plan in self?.plan = plan }
+        engine.onPlan = { [weak self] plan in if self?.plan != plan { self?.plan = plan } }
 
         refreshSources()
         deviceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -106,7 +130,36 @@ final class ScopeModel: ObservableObject {
         plan = .empty
         meter = nil
         Preferences.save(source: selectedSource)
+        // The demo has nothing to set up first, so it sweeps as soon as it is
+        // connected, as Try demo does in the browser application.
+        if selectedSource == .simulator { startsOnConnect = true }
         engine.connect(to: selectedSource, settings: settings)
+    }
+
+    /// The label the instrument menu shows for what is selected.
+    var selectedSourceLabel: String {
+        sources.first { $0.source == selectedSource }?.label ?? "Demo signal"
+    }
+
+    /// The instrument menu. Picking the demo starts it, even when it was
+    /// already the one selected: with no board attached it is the only entry,
+    /// and choosing it has to do something. A board is only chosen; Connect
+    /// opens it.
+    func choose(_ source: DeviceSource) {
+        guard !isConnected else { return }
+        selectedSource = source
+        if source == .simulator { connect() }
+    }
+
+    /// Connects the built-in generator and sweeps.
+    func startDemo() { choose(.simulator) }
+
+    /// Nothing is connected and nothing is on its way: the screen offers the demo.
+    var offersDemo: Bool {
+        switch connection {
+        case .disconnected, .failed: return true
+        case .connecting, .connected: return false
+        }
     }
 
     /// Applies the command line: `--demo` picks the built-in generator, `--usb`
@@ -272,6 +325,7 @@ final class ScopeModel: ObservableObject {
         case let .connected(instrument):
             settings.ensureAnalogChannels(instrument.capabilities.analogChannels)
             settings.fitRanges(instrument.ranges.count)
+            if selectedSource == .simulator { settings.frameDemo(ranges: instrument.ranges.count) }
             if !instrument.capabilities.hasTriggerLowPass { settings.trigger.lowPassHz = 0 }
             if !instrument.capabilities.hasLogic && settings.mode == .logic { settings.mode = .scope }
             networkStatus = nil

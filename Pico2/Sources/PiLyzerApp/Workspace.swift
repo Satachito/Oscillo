@@ -10,6 +10,7 @@ import SwiftUI
 /// set of margins, one card and one status line rather than four that drift.
 struct Workspace<Legend: View, Screen: View, Readings: View>: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
     @ViewBuilder var legend: () -> Legend
     @ViewBuilder var screen: () -> Screen
     @ViewBuilder var readings: () -> Readings
@@ -63,6 +64,7 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
 
             screen()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay { if model.offersDemo { EmptyState(model: model) } }
 
             HStack(spacing: 12) {
                 Text(timing)
@@ -118,12 +120,48 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
             if !model.isConnected, let hint = model.busHint {
                 Text(hint).foregroundStyle(Theme.clip)
             } else {
-                Text(model.isConnected ? "Connected over USB" : "No instrument connected")
+                Text(!model.isConnected ? "No instrument connected"
+                     : model.selectedSource == .simulator ? "Demo signal, generated on this Mac" : "Connected over USB")
             }
         }
         .font(.system(size: 10))
         .foregroundStyle(Theme.muted)
         .padding(.top, 14)
+    }
+}
+
+/// What the screen says before anything is connected, as the browser
+/// application's does: what to do, and a button that shows the instrument
+/// working without a board.
+struct EmptyState: View {
+    @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text("A closer look at your signal.")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Theme.screenInk)
+            Text("Connect your instrument, or explore three channels\nwith the built-in demo.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.readout)
+                .multilineTextAlignment(.center)
+            Button { model.startDemo() } label: {
+                Text("Start a demo →")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.screen)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 9)
+                    .background(Capsule().fill(Theme.live))
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 8)
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The empty grid is dimmed, so its lines do not run through the words.
+        .background(Theme.screen.opacity(0.82))
     }
 }
 

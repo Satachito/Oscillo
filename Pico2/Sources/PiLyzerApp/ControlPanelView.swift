@@ -55,7 +55,7 @@ struct ControlPanelView: View {
                     logicSection
                     decoderSection
                 case .meter:
-                    loggerSection
+                    LoggerSection(model: model)
                 }
                 if model.capabilities.hasCalibrationOutput { testOutputSection }
                 if model.capabilities.hasNetworkSetup && model.isConnected { NetworkSection(model: model) }
@@ -99,16 +99,6 @@ struct ControlPanelView: View {
         }
     }
 
-    private var loggerSection: some View {
-        Section("Logger", tag: model.meterSpanDescription) {
-            Choice("Every", selection: $model.settings.logIntervalSeconds) {
-                ForEach(ScopeSettings.logIntervals, id: \.self) { Text(Format.time($0)).tag($0) }
-            }
-            Text(model.loggerAdvice)
-                .font(.caption).foregroundStyle(.secondary)
-            Button("Clear log") { model.clear() }
-        }
-    }
 
     private var sourceTag: String {
         guard model.isConnected else { return "OFFLINE" }
@@ -719,6 +709,25 @@ private struct VoltsField: View {
 }
 
 /// A slider with its value spelled out beside the title.
+/// The logger's settings. A view of its own because its heading counts the
+/// points logged so far: it follows the readings, and the rest of the panel
+/// does not have to.
+private struct LoggerSection: View {
+    @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
+
+    var body: some View {
+        Section("Logger", tag: model.meterSpanDescription) {
+            Choice("Every", selection: $model.settings.logIntervalSeconds) {
+                ForEach(ScopeSettings.logIntervals, id: \.self) { Text(Format.time($0)).tag($0) }
+            }
+            Text(model.loggerAdvice)
+                .font(.caption).foregroundStyle(.secondary)
+            Button("Clear log") { model.clear() }
+        }
+    }
+}
+
 struct LabeledSlider: View {
     let title: String
     @Binding var value: Double

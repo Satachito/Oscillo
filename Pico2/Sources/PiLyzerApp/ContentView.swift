@@ -12,6 +12,7 @@ struct ContentView: View {
             ControlPanelView(model: model)
         }
         .background(Theme.page)
+        .environmentObject(model.live)
         .background(NoInitialFocus())
         .frame(minWidth: 1040, minHeight: 640)
         .toolbar { toolbar }
@@ -55,14 +56,25 @@ struct ContentView: View {
         // left and everything that acts on the instrument sits together on the
         // right: which instrument, whether it is connected, then what it does.
         ToolbarItemGroup {
-            Picker("", selection: $model.selectedSource) {
+            // A menu of buttons rather than a Picker: a Picker says nothing
+            // when the entry already selected is chosen again, and the demo
+            // starts on being chosen.
+            Menu {
                 ForEach(model.sources, id: \.source) { entry in
-                    Text(entry.label).tag(entry.source)
+                    Button { model.choose(entry.source) } label: {
+                        if entry.source == model.selectedSource {
+                            Label(entry.label, systemImage: "checkmark")
+                        } else {
+                            Text(entry.label)
+                        }
+                    }
                 }
+            } label: {
+                Text(model.selectedSourceLabel)
             }
-            .labelsHidden()
             .frame(minWidth: 190)
             .disabled(model.isConnected)
+            .help("Which instrument to connect. Demo signal starts at once.")
 
             Button(model.isConnected ? "Disconnect" : "Connect") { model.toggleConnection() }
                 .keyboardShortcut("k")

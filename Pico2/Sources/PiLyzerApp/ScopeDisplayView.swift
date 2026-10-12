@@ -5,6 +5,7 @@ import SwiftUI
 /// other.
 struct ScopeDisplayView: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     private let columns = ScopeSettings.horizontalDivisions
     private let rows = ScopeSettings.verticalDivisions
@@ -108,15 +109,23 @@ struct ScopeDisplayView: View {
     }
 
     private func y(_ volts: Double, channel: Int, height: CGFloat) -> CGFloat {
+        mapping(channel: channel, height: height)(volts)
+    }
+
+    /// Volts to a height on the screen for one channel. The channel's scale is
+    /// worked out here, once, and not again for every point of its trace.
+    private func mapping(channel: Int, height: CGFloat) -> (Double) -> CGFloat {
         let perDivision = voltsPerDivision(channel)
-        guard perDivision > 0 else { return height / 2 }
+        guard perDivision > 0 else { return { _ in height / 2 } }
         let position = channel < model.settings.channels.count
             ? model.settings.channels[channel].positionDivisions : 0
         // Measured from the middle of the range, not from zero: a front end
         // that cannot go below zero would otherwise draw everything in the top
         // half of the screen.
-        let divisions = (volts - centre(channel)) / perDivision + position
-        return height / 2 - CGFloat(divisions) * height / CGFloat(rows)
+        let centre = centre(channel), rows = CGFloat(rows)
+        return { volts in
+            height / 2 - CGFloat((volts - centre) / perDivision + position) * height / rows
+        }
     }
 
     /// Where each channel's front end holds its input with nothing on it.
@@ -205,13 +214,14 @@ struct ScopeDisplayView: View {
         for trace in frame.traces {
             let bands = envelope(trace.samples, width: max(width, 2))
             guard bands.count > 1 else { continue }
+            let y = mapping(channel: trace.index, height: size.height)
             var points: [CGPoint] = []
             points.reserveCapacity(bands.count * 2)
             for (index, band) in bands.enumerated() {
                 let x = size.width * CGFloat(index) / CGFloat(bands.count - 1)
-                points.append(CGPoint(x: x, y: y(band.high, channel: trace.index, height: size.height)))
+                points.append(CGPoint(x: x, y: y(band.high)))
                 if band.low != band.high {
-                    points.append(CGPoint(x: x, y: y(band.low, channel: trace.index, height: size.height)))
+                    points.append(CGPoint(x: x, y: y(band.low)))
                 }
             }
             context.strokeTrace(points, color: Theme.channelColor(trace.index))
@@ -330,9 +340,9 @@ struct ScopeDisplayView: View {
     }
 
     private func drawBanner(_ context: inout GraphicsContext, size: CGSize) {
-        guard model.frame.isEmpty else { return }
-        let message = model.isConnected ? "Press Run" : "Connect an instrument, or pick the demo signal"
-        context.draw(Text(message).font(.system(size: 13)).foregroundColor(Theme.readout),
+        // Before anything is connected the workspace says what to do.
+        guard model.frame.isEmpty, model.isConnected else { return }
+        context.draw(Text("Press Run").font(.system(size: 13)).foregroundColor(Theme.readout),
                      at: CGPoint(x: size.width / 2, y: size.height / 2))
     }
 }
@@ -340,6 +350,7 @@ struct ScopeDisplayView: View {
 /// The numbers under the screen, one card a channel.
 struct ReadoutRow: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     var body: some View {
         MeasurementStrip {

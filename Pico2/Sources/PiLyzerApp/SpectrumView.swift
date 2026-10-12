@@ -4,6 +4,7 @@ import SwiftUI
 /// The spectrum analyser screen.
 struct SpectrumView: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     private var settings: SpectrumSettings { model.settings.spectrum }
     /// Every channel comes from the same record, so any one of them sets the
@@ -18,7 +19,7 @@ struct SpectrumView: View {
                 drawGrid(&context, size: size)
                 drawSpectrum(&context, size: size)
                 if settings.showsPeakMarkers { drawPeaks(&context, size: size) }
-                if model.spectra.isEmpty {
+                if model.spectra.isEmpty, model.isConnected {
                     context.draw(Text("Press Run").font(.system(size: 13)).foregroundColor(Theme.readout),
                                  at: CGPoint(x: size.width / 2, y: size.height / 2))
                 }
@@ -179,6 +180,7 @@ struct SpectrumView: View {
 /// each channel, and the harmonics beside it when there is only one.
 struct QualityRow: View {
     @ObservedObject var model: ScopeModel
+    @EnvironmentObject private var live: LiveReadings
 
     var body: some View {
         MeasurementStrip {
