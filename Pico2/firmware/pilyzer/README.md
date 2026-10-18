@@ -359,6 +359,7 @@ swift run PiLyzer --bootsel    # restart in the bootloader, ready for new firmwa
 swift run PiLyzer --rangecheck # every channel on every range, reading the test square
 swift run PiLyzer --codes      # how even the converter's codes are (1 kΩ and 10 nF first)
 swift run PiLyzer --network    # a Pico 2 W's network: set or not, joined or not, its address
+swift run PiLyzer --noise      # every channel and range: mean, RMS and peak to peak, as volts and counts
 ```
 
 With more than one instrument plugged in, `--at 0x01100000` picks one by the

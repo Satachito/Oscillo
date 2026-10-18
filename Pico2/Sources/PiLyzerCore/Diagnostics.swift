@@ -217,6 +217,62 @@ public enum Diagnostics {
         }
     }
 
+    /// The noise on every channel and range, with whatever is on the inputs —
+    /// ground, for the instrument's own. It touches neither the calibration
+    /// output nor the signal generator, so their effect is measured by
+    /// switching them between runs. Each line is 2048 points at the fastest
+    /// rate one channel allows, the RMS and the peak to peak about the mean,
+    /// in volts at the input and in converter counts.
+    public static func noiseCheck(locationID: UInt32 = 0) -> String {
+        do {
+            let instrument = try openForDiagnostic(locationID)
+            defer { finish(instrument) }
+            let capabilities = instrument.capabilities
+            let ranges = capabilities.reportsInputRanges ? try instrument.inputRanges()
+                : FrontEnd.ranges(forBoard: instrument.identity.boardID)
+            let counts = capabilities.analogFullScale / Double(1 << (16 - capabilities.analogBits))
+            let period = capabilities.minimumSamplePeriod(channels: 1)
+            func column(_ text: String, _ width: Int) -> String {
+                text.padding(toLength: max(width, text.count), withPad: " ", startingAt: 0)
+            }
+            var lines = ["channel  range     mean       rms        peak to peak  counts rms / p-p"]
+            for channel in 0..<capabilities.analogChannels {
+                for (index, range) in ranges.enumerated() {
+                    if ranges.count > 1 { try instrument.setRange(channel: channel, range: index) }
+                    Thread.sleep(forTimeInterval: 0.02)
+                    let plan = try instrument.configureAnalog(AnalogConfiguration(
+                        channelMask: UInt8(1 << channel), triggerMode: .freeRun, samplePeriod: period,
+                        recordSamples: 2048, pretriggerSamples: 0, autoTimeout: 0.1))
+                    try instrument.armAnalog()
+                    guard let status = try waitForRecord({ try instrument.analogStatus() },
+                                                         timeout: plan.duration + 2),
+                          status.state == .complete,
+                          let codes = try instrument.readAnalogRecord(plan: plan).first,
+                          !codes.isEmpty else {
+                        lines.append("CH\(channel + 1)      \(range.name)  FAILED: no record")
+                        continue
+                    }
+                    let scale = VoltageScale(reference: capabilities.referenceVolts,
+                                             fullScale: capabilities.analogFullScale, range: range)
+                    let volts = codes.map { scale.volts($0) }
+                    let mean = volts.reduce(0, +) / Double(volts.count)
+                    let rms = (volts.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(volts.count)).squareRoot()
+                    let spread = (volts.max() ?? 0) - (volts.min() ?? 0)
+                    // Volts at the input back to converter counts, through the range's gain.
+                    let perCount = capabilities.referenceVolts / counts / range.gain
+                    lines.append(column("CH\(channel + 1)", 9) + column(range.name, 10)
+                                 + column(Format.voltage(mean), 11) + column(Format.voltage(rms), 11)
+                                 + column(Format.voltage(spread), 14)
+                                 + String(format: "%.1f / %.0f", rms / perCount, spread / perCount))
+                }
+                if ranges.count > 1 { try instrument.setRange(channel: channel, range: 0) }
+            }
+            return lines.joined(separator: "\n")
+        } catch {
+            return "noise check FAILED: \((error as? LocalizedError)?.errorDescription ?? "\(error)")"
+        }
+    }
+
     /// What a Pico 2 W or an UNO R4 WiFi says about its network: whether one
     /// is set, whether it has joined it, and where it is. Never the password,
     /// which the instrument does not give back.

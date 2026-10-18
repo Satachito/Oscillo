@@ -70,7 +70,7 @@ struct PiLyzerApp: App {
         }
         if let index = CommandLine.arguments.firstIndex(of: "--signals") {
             let argument = index + 1 < CommandLine.arguments.count ? CommandLine.arguments[index + 1] : "440"
-            print(Diagnostics.setSignals(argument == "off" ? 0 : Int(argument) ?? 440))
+            print(Diagnostics.setSignals(argument == "off" ? 0 : Int(argument) ?? 440, locationID: at))
             exit(0)
         }
         if let index = CommandLine.arguments.firstIndex(of: "--signalcheck") {
@@ -81,6 +81,10 @@ struct PiLyzerApp: App {
         if let index = CommandLine.arguments.firstIndex(of: "--rangecheck") {
             let argument = index + 1 < CommandLine.arguments.count ? CommandLine.arguments[index + 1] : "1000"
             print(Diagnostics.rangeCheck(frequency: Int(argument) ?? 1000, locationID: at))
+            exit(0)
+        }
+        if CommandLine.arguments.contains("--noise") {
+            print(Diagnostics.noiseCheck(locationID: at))
             exit(0)
         }
         if CommandLine.arguments.contains("--network") {
