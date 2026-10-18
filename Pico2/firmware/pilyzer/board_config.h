@@ -14,7 +14,7 @@
 #define PILYZER_BOARD_ID 0
 #endif
 
-#define PILYZER_FIRMWARE_VERSION 0x0113   // 1.19: builds for the original Pico (RP2040) as well
+#define PILYZER_FIRMWARE_VERSION 0x0114   // 1.20: the signal generator in integers, so an original Pico keeps answering with it on
 
 // What it calls itself, to the host and over USB.
 #if PICO_RP2040

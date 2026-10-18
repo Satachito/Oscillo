@@ -11,11 +11,15 @@ enum {
     SIGNAL_TOP = 255,     // 8-bit duty: an 8-bit carrier is 586 kHz at 150 MHz (488 at an RP2040's 125)
 };
 
+// Integers throughout, a sample: the original Pico has no floating point unit,
+// and its software floats took longer than the 20 µs a sample has, so the
+// timer starved USB and the board stopped answering. Noise values are in units
+// of 2^-15 of full scale.
 typedef struct {
     uint32_t phase, step;   // sine, in turns of a 32-bit accumulator
     uint32_t rng;           // white
-    float pink[3];          // the three poles that tilt white into pink
-    float brown;            // the leaky integral that tilts it further
+    int32_t pink[3];        // the three poles that tilt white into pink
+    int32_t brown;          // the leaky integral that tilts it further
 } signal_source_t;
 
 /// `seed` may be anything but zero; zero is replaced, since the generator
