@@ -119,10 +119,20 @@ export class SoundInstrument {
   static available() {
     return !!(globalThis.isSecureContext && globalThis.navigator?.mediaDevices?.getUserMedia && globalThis.AudioWorkletNode);
   }
-  static async connect() {
+  // The inputs the browser will name. Before the page has been allowed a
+  // sound input it lists them without names, so this is asked after connecting.
+  static async inputs() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter(d => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications')
+      .map((d, i) => ({ id: d.deviceId, name: d.label || `Input ${i + 1}` }));
+  }
+  // `deviceId` picks an input; without one, the system's default.
+  static async connect(deviceId) {
     // The browser's voice processing would clean up exactly what is being
     // measured, so all of it is asked off.
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 } } });
+    const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 } };
+    if (deviceId) audio.deviceId = { exact: deviceId };
+    const stream = await navigator.mediaDevices.getUserMedia({ audio });
     const track = stream.getAudioTracks()[0];
     const settings = track.getSettings();
     let context;
@@ -139,6 +149,7 @@ export class SoundInstrument {
       const silence = context.createGain(); silence.gain.value = 0;
       source.connect(tap); tap.connect(silence); silence.connect(context.destination);
       const instrument = new SoundInstrument(stream, context, track.label, channels, context.sampleRate);
+      instrument.deviceId = settings.deviceId || deviceId || '';
       tap.port.onmessage = event => instrument.buffer.push(event.data);
       // A computer with no working audio device leaves the context suspended
       // and resume() waiting for good, which would leave Connect waiting too.

@@ -111,6 +111,7 @@ function updateButtons() {
   $('connect').disabled = connecting || !(overNetwork || navigator.usb); $('demo').disabled = connecting;
   $('connect-serial').hidden = !!instrument || overNetwork || !navigator.serial; $('connect-serial').disabled = connecting;
   $('connect-sound').hidden = !!instrument || !SoundInstrument.available(); $('connect-sound').disabled = connecting;
+  $('sound-device').hidden = !instrument?.sound; $('sound-device').disabled = connecting;
   $('run-dot').classList.toggle('live', acquisition.running);
   $('connection-dot').classList.toggle('connected', !!instrument);
   $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : instrument.sound ? 'SOUND' : overNetwork ? 'WI-FI' : 'USB' : 'OFFLINE';
@@ -558,6 +559,39 @@ async function changed() {
     await acquisition.configure(settings);
   } catch (e) { showError(e.message); }
 }
+// The sound input last chosen, by the id the browser gives it. Ids are kept
+// per site and stay the same across visits, so it comes back next time; one
+// that has gone away falls back to the system's default.
+const SOUND_DEVICE_KEY = 'pilyzer.soundDevice';
+let soundDevice = (() => { try { return localStorage.getItem(SOUND_DEVICE_KEY) || ''; } catch { return ''; } })();
+async function connectSound() {
+  const wanted = soundDevice;
+  try { return await SoundInstrument.connect(wanted || undefined); }
+  catch (e) {
+    if (!wanted || !['OverconstrainedError', 'NotFoundError'].includes(e.name)) throw e;
+    return SoundInstrument.connect();
+  }
+}
+async function listSoundInputs() {
+  if (!instrument?.sound) return;
+  let inputs = [];
+  try { inputs = await SoundInstrument.inputs(); } catch { /* the menu just stays as it was */ }
+  if (!instrument?.sound) return;
+  if (!inputs.some(i => i.id === instrument.deviceId)) inputs.unshift({ id: instrument.deviceId, name: instrument.identity.name });
+  options('sound-device', inputs.map(i => [i.id, i.name]), instrument.deviceId);
+}
+// Another input: the one connected is let go and the new one opened, and the
+// sweep carries on if it was running.
+$('sound-device').onchange = async () => {
+  const id = $('sound-device').value, running = acquisition.running;
+  soundDevice = id;
+  try { localStorage.setItem(SOUND_DEVICE_KEY, id); } catch { /* remembered for this visit only */ }
+  try { await acquisition.stop(); await instrument?.close(); } catch { /* it is being replaced */ }
+  instrument = null; acquisition.attach(null); frame = null;
+  await connect('sound');
+  if (!running && instrument?.sound) await acquisition.stop();
+};
+navigator.mediaDevices?.addEventListener?.('devicechange', () => listSoundInputs());
 // `kind` is 'usb', 'serial', 'demo' or 'sound'. A page a board served has only
 // the board to connect to, whichever button it was.
 async function connect(kind = 'usb') {
@@ -565,7 +599,7 @@ async function connect(kind = 'usb') {
   const demo = kind === 'demo', sound = kind === 'sound';
   connecting = true; showError(); updateButtons();
   try {
-    instrument = demo ? new DemoInstrument() : sound ? await SoundInstrument.connect() : overNetwork ? await connectOverNetwork() : kind === 'serial' ? await Instrument.connectSerial() : await Instrument.connect(); acquisition.attach(instrument); frame = null;
+    instrument = demo ? new DemoInstrument() : sound ? await connectSound() : overNetwork ? await connectOverNetwork() : kind === 'serial' ? await Instrument.connectSerial() : await Instrument.connect(); acquisition.attach(instrument); frame = null;
     track(CONNECTIONS[demo || sound ? kind : overNetwork ? 'wifi' : kind]);
     if (demo) settings.channels.forEach(ch => { ch.range = 1; ch.scale = 1; });
     // A sound card reads ±1 at full scale; the channels open fitted to that,
@@ -573,6 +607,7 @@ async function connect(kind = 'usb') {
     if (sound) {
       settings.channels.forEach(ch => { ch.range = 0; ch.scale = 0; });
       for (const t of instrument.stream.getAudioTracks()) t.onended = () => lost('The sound input went away. Connect it again to continue.');
+      listSoundInputs();
     }
     settings.channels.forEach(ch => { if (ch.range >= frontEnd().length) ch.range = 0; });
     // The zero and the gain describe the wiring, so connecting does not clear

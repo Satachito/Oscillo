@@ -92,7 +92,9 @@ a driver association added by hand. macOS and Linux are unaffected either way.
   scale into volts against a known signal. The browser offers a page the
   microphone only over HTTPS or on this computer, so the copy a board serves at
   `http://pilyzer.local` has no Sound button. Echo cancellation, noise
-  suppression and automatic gain are asked off.
+  suppression and automatic gain are asked off. Once connected, the menu
+  beside Disconnect switches between the computer's inputs, and the one chosen
+  is remembered in this browser for next time.
 
 Demo waveforms are generated in the browser and are not measurements. The
 native application's software spectrum averaging and SPI/I²C decoders are not
