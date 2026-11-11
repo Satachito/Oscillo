@@ -302,7 +302,9 @@ function frequencyControls(channels, allowed) {
   const held = settings.spectrumSpan > nyquist * (1 + 1e-9);
   $('spectrum-held').hidden = !held;
   if (held) $('spectrum-held').textContent = `Drawn to ${fmt(nyquist, 'Hz')}: at this resolution, with ${channels} channel${channels === 1 ? '' : 's'} sharing the converter, the record does not reach ${fmt(settings.spectrumSpan, 'Hz')}.`;
-  $('spectrum-alias').textContent = `Nothing filters the input before the converter, so a signal above ${fmt(nyquist, 'Hz')} — half the sample rate — folds back into the span as a false peak.`;
+  $('spectrum-alias').textContent = instrument?.sound
+    ? `The sound card filters its input before converting it, so little above ${fmt(nyquist, 'Hz')} — half the sample rate — reaches the span; what does folds back as a false peak.`
+    : `Nothing filters the input before the converter, so a signal above ${fmt(nyquist, 'Hz')} — half the sample rate — folds back into the span as a false peak.`;
 }
 // A logarithmic slider gives the low end as much travel as the high end, as on
 // the Mac. Off has its own switch, so zero is never put through log10, and the
@@ -517,7 +519,7 @@ function renderFrame() {
     // go four to a row.
     $('meter-values').classList.toggle('dense', (frame.channels ?? frame.values).length > 4);
     $('meter-values').replaceChildren(...(frame.channels ?? frame.values.map((_, i) => i)).map(i => { const value = frame.values[i]; const el = document.createElement('div'); el.className = 'meter-value'; el.style.color = COLORS[i]; const label = document.createElement('small'); label.textContent = `CH${i + 1}`; el.append(label, document.createTextNode(fmt(value, 'V', 4))); return el; }));
-    const hint = document.createElement('div'); hint.className = 'measurement-placeholder'; hint.textContent = 'Meter readings are DC coupled. Ground the inputs before checking offsets.'; $('measurements').append(hint);
+    const hint = document.createElement('div'); hint.className = 'measurement-placeholder'; hint.textContent = instrument?.sound ? 'A sound input passes no direct current, so each reading is its RMS over the last tenth of a second.' : 'Meter readings are DC coupled. Ground the inputs before checking offsets.'; $('measurements').append(hint);
   } else if (frame?.kind === 'logic') {
     // A card an input, as on the Mac: its rate and duty, or which way it sits idle.
     const activity = logicActivity(frame.samples, frame.period, caps().logicChannels);

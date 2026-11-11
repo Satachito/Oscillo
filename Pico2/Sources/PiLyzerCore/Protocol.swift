@@ -195,6 +195,10 @@ public struct DeviceCapabilities: Equatable, Sendable {
     public var logicMaxPretrigger: Int
     public var referenceVolts: Double
     public var flags: UInt32
+    /// Every input is its own converter, sampled at once, so switching more
+    /// on does not slow any of them: a sound card. Not on the wire — a board's
+    /// converter always takes its channels in turn.
+    public var simultaneous = false
 
     public var hasSoftwareRanges: Bool { flags & 1 != 0 }
     public var hasCalibrationOutput: Bool { flags & 2 != 0 }
@@ -224,7 +228,7 @@ public struct DeviceCapabilities: Equatable, Sendable {
 
     /// Shortest interval between two samples of one channel.
     public func minimumSamplePeriod(channels: Int) -> Double {
-        minimumConversionPeriod * Double(max(channels, 1))
+        minimumConversionPeriod * (simultaneous ? 1 : Double(max(channels, 1)))
     }
 
     public static let unavailable = DeviceCapabilities(

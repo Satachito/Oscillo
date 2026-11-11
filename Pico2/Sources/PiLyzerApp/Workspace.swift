@@ -121,7 +121,8 @@ struct Workspace<Legend: View, Screen: View, Readings: View>: View {
                 Text(hint).foregroundStyle(Theme.clip)
             } else {
                 Text(!model.isConnected ? "No instrument connected"
-                     : model.selectedSource == .simulator ? "Demo signal, generated on this Mac" : "Connected over USB")
+                     : model.selectedSource == .simulator ? "Demo signal, generated on this Mac"
+                     : model.selectedSource == .sound ? "Sound input, read on this Mac" : "Connected over USB")
             }
         }
         .font(.system(size: 10))

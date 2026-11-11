@@ -85,6 +85,10 @@ test('the meter shows the RMS of each input', () => {
   assert.ok(Math.abs(levels[1] - .1 / Math.SQRT2) < .002, `CH2 ${levels[1]}`);
 });
 
+test('the meter reads zero before any audio has arrived', () => {
+  assert.deepEqual(soundLevels(new SoundBuffer(2), sound(), caps, SOUND_RANGES), [0, 0]);
+});
+
 test('a sound input is only offered where the browser will give one', () => {
   assert.equal(SoundInstrument.available(), false);   // Node has no microphone
 });

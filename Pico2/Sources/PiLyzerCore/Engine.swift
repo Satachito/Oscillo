@@ -5,10 +5,13 @@ public enum DeviceSource: Hashable, Codable, Sendable {
     /// An ArLyzer, by the path of its serial port.
     case serial(path: String)
     case simulator
+    /// The Mac's default sound input.
+    case sound
 
     public var label: String {
         switch self {
         case .simulator: return "Demo signal"
+        case .sound: return "Sound input"
         case let .usb(location): return String(format: "PiLyzer @ 0x%08X", location)
         case let .serial(path): return "ArLyzer @ \(path)"
         }
@@ -22,7 +25,8 @@ public struct ConnectedInstrument: Equatable, Sendable {
     public var ranges: [InputRange]
 
     public var summary: String {
-        "\(identity.name) · firmware \(identity.firmwareDescription)"
+        guard source == .sound else { return "\(identity.name) · firmware \(identity.firmwareDescription)" }
+        return "\(identity.name) · \(Format.frequency(Double(capabilities.analogClockHz))) · ±1 is full scale"
     }
 }
 
@@ -116,6 +120,7 @@ public final class InstrumentEngine {
         makeInstrument = { source in
             switch source {
             case .simulator: return SimulatedInstrument()
+            case .sound: return try SoundInstrument.open()
             case let .usb(location): return try USBInstrument(locationID: location)
             case let .serial(path): return try USBInstrument(serialPath: path)
             }
@@ -132,6 +137,7 @@ public final class InstrumentEngine {
     public static func availableSources() -> [(source: DeviceSource, label: String)] {
         USBTransport.attachedDevices().map { (.usb(locationID: $0.locationID), $0.label) }
             + SerialTransport.attachedPorts().map { (.serial(path: $0.path), $0.label) }
+            + (SoundInstrument.defaultInputName().map { [(.sound, "Sound input · \($0)")] } ?? [])
             + [(.simulator, "Demo signal")]
     }
 

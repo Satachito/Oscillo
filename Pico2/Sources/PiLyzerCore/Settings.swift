@@ -406,6 +406,12 @@ public struct ScopeSettings: Codable, Equatable, Sendable {
         }
     }
 
+    /// Every channel back on the scale that shows its whole range, as a sound
+    /// input opens: its ±1 would sit in a sliver of a board's last setting.
+    public mutating func fitScales() {
+        for index in channels.indices { channels[index].voltsPerDivision = 0 }
+    }
+
     /// Keep saved calibration for hidden channels when connecting an older device.
     public mutating func ensureAnalogChannels(_ count: Int) {
         while channels.count < min(max(count, 0), 8) {

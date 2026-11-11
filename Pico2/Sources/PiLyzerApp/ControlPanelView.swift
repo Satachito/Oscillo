@@ -102,7 +102,11 @@ struct ControlPanelView: View {
 
     private var sourceTag: String {
         guard model.isConnected else { return "OFFLINE" }
-        return model.selectedSource == .simulator ? "DEMO" : "USB"
+        switch model.selectedSource {
+        case .simulator: return "DEMO"
+        case .sound: return "SOUND"
+        default: return "USB"
+        }
     }
 
     private var horizontal: some View {
@@ -233,9 +237,13 @@ struct ControlPanelView: View {
                      + "the record does not reach \(Format.frequency(span)).")
                     .font(.caption).foregroundStyle(Theme.trigger)
             }
-            Text("Nothing filters the input before the converter, so a signal above "
-                 + "\(Format.frequency(nyquist)) — half the sample rate — folds back into the "
-                 + "span as a false peak.")
+            Text(model.selectedSource == .sound && model.isConnected
+                 ? "The sound card filters its input before converting it, so little above "
+                     + "\(Format.frequency(nyquist)) — half the sample rate — reaches the span; "
+                     + "what does folds back as a false peak."
+                 : "Nothing filters the input before the converter, so a signal above "
+                     + "\(Format.frequency(nyquist)) — half the sample rate — folds back into the "
+                     + "span as a false peak.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

@@ -86,7 +86,10 @@ export function soundColumns(buffer, settings, caps, plan, start, triggered) {
 // A sound card passes no direct current, so the mean the meter shows for a
 // board would read zero here, whatever was playing.
 export function soundLevels(buffer, settings, caps, frontEnd, seconds = .1) {
-  const frames = Math.max(1, Math.min(buffer.written - buffer.oldest, Math.round(seconds * caps.clock)));
+  // Straight after connecting nothing has arrived yet, and there is no frame
+  // before the first to read.
+  const frames = Math.min(buffer.written - buffer.oldest, Math.round(seconds * caps.clock));
+  if (frames <= 0) return Array.from({ length: caps.channels }, () => 0);
   return Array.from({ length: caps.channels }, (_, c) => {
     const scale = scaleFor(settings, caps, frontEnd, c);
     let sum = 0;

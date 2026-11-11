@@ -54,6 +54,16 @@ Pico 2 but with more inputs. It connects over USB serial — **Serial** in PiLyz
 Web, the instrument list in the macOS application — and the UNO R4 WiFi also
 serves PiLyzer Web itself at `http://arlyzer.local`.
 
+Both can also read the computer's own sound input — the microphone, or better
+the line input of an audio interface: **Sound** in PiLyzer Web, **Sound input**
+in the macOS application's instrument list. The oscilloscope, the spectrum and
+the meter work on it at the sound card's rate, every input sampled at once,
+and the trigger is found in software. ±1 is full scale and there is no direct
+current, so the meter shows each input's RMS; a channel's gain calibration
+turns full scale into volts against a known signal. macOS asks once whether
+PiLyzer may use the microphone, and the audio stays on the Mac: it is not
+recorded, stored or sent.
+
 All commands below run from the `Pico2` directory.
 
 ## What it is
@@ -78,6 +88,7 @@ from the command line:
 
 ```bash
 swift run PiLyzer --demo
+swift run PiLyzer --sound      # the Mac's sound input instead
 ```
 
 `--mode scope|spectrum|logic|meter` opens on one of the four screens, and

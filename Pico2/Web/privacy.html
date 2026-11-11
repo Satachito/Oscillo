@@ -50,6 +50,7 @@
     <ul>
       <li>The app collects no personal data, has no analytics or advertising, and makes no network connections of its own.</li>
       <li>It talks only to the instrument you connect: a Raspberry Pi Pico 2 over USB, or an Arduino running ArLyzer over its USB serial port.</li>
+      <li>If you choose <strong>Sound input</strong>, macOS asks whether PiLyzer may use the microphone. The audio is read on your Mac to draw and measure it, is not recorded or stored, and is never sent anywhere. You can withdraw the permission in System Settings → Privacy &amp; Security → Microphone.</li>
       <li>Your settings, such as channel calibration and the last instrument used, are kept on your Mac.</li>
       <li>Measurements stay on your Mac. A CSV file is written only when you export one, to the place you choose.</li>
       <li>When you set a Wi-Fi network for a Pico 2 W or an UNO R4 WiFi, the network name and password are sent over USB to that board and stored on it. They are not stored by the app or sent anywhere else, and the board never sends the password back.</li>
@@ -90,6 +91,7 @@
     <ul>
       <li>個人情報を収集せず、アクセス解析も広告もなく、アプリ自身がネットワークに接続することもありません。</li>
       <li>通信するのは、つないだ測定器だけです。Raspberry Pi Pico 2 とは USB で、ArLyzer を動かしている Arduino とは USB シリアルで通信します。</li>
+      <li><strong>Sound input</strong> を選ぶと、macOS が PiLyzer にマイクの使用を許可するか確認します。音声は波形の表示と測定のために Mac の中で読むだけで、録音・保存はせず、どこにも送りません。許可は「システム設定 → プライバシーとセキュリティ → マイク」で取り消せます。</li>
       <li>チャンネルの校正や最後に使った測定器などの設定は、お使いの Mac に保存されます。</li>
       <li>測ったデータは Mac の中にとどまります。CSV ファイルは、書き出しを選んだときに、選んだ場所にだけ保存されます。</li>
       <li>Pico 2 W や UNO R4 WiFi に Wi-Fi のネットワークを設定すると、ネットワーク名とパスワードは USB でそのボードに送られ、ボードに保存されます。アプリが保存したり、ほかに送ったりすることはなく、ボードがパスワードを返すこともありません。</li>

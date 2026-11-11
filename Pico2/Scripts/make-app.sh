@@ -38,6 +38,7 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
     <key>ITSAppUsesNonExemptEncryption</key><false/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSHumanReadableCopyright</key><string>© 2026 Satoru Ogura. MIT licensed.</string>
+    <key>NSMicrophoneUsageDescription</key><string>PiLyzer reads the sound input you choose to draw and measure it. The audio stays on this Mac: it is not recorded, stored or sent anywhere.</string>
 </dict>
 </plist>
 PLIST
