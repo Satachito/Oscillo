@@ -240,7 +240,7 @@ struct MeterView: View {
             .overlay(alignment: .top) { readings }
         } readings: {
             MeasurementStrip {
-                MeasurementPlaceholder(text: model.selectedSource == .sound && model.isConnected
+                MeasurementPlaceholder(text: model.selectedSource.isSound && model.isConnected
                     ? "A sound input passes no direct current, so each reading is its RMS over the last tenth of a second."
                     : "Meter readings are DC coupled. Ground the inputs before checking offsets.")
             }

@@ -132,7 +132,7 @@ final class ScopeModel: ObservableObject {
         Preferences.save(source: selectedSource)
         // The demo and a sound input have nothing to set up first, so they
         // sweep as soon as they are connected, as in the browser application.
-        if selectedSource == .simulator || selectedSource == .sound { startsOnConnect = true }
+        if selectedSource == .simulator || selectedSource.isSound { startsOnConnect = true }
         engine.connect(to: selectedSource, settings: settings)
     }
 
@@ -148,7 +148,7 @@ final class ScopeModel: ObservableObject {
     func choose(_ source: DeviceSource) {
         guard !isConnected else { return }
         selectedSource = source
-        if source == .simulator || source == .sound { connect() }
+        if source == .simulator || source.isSound { connect() }
     }
 
     /// Connects the built-in generator and sweeps.
@@ -170,7 +170,10 @@ final class ScopeModel: ObservableObject {
     /// toolbar.
     func applyLaunchArguments(_ arguments: [String]) {
         if arguments.contains("--demo") { selectedSource = .simulator }
-        if arguments.contains("--sound") { selectedSource = .sound }
+        if arguments.contains("--sound") {
+            refreshSources()
+            if let input = sources.first(where: { $0.source.isSound }) { selectedSource = input.source }
+        }
         if arguments.contains("--usb") {
             refreshSources()
             if let device = sources.first(where: { if case .usb = $0.source { return true }; return false }) {
@@ -328,7 +331,7 @@ final class ScopeModel: ObservableObject {
             settings.ensureAnalogChannels(instrument.capabilities.analogChannels)
             settings.fitRanges(instrument.ranges.count)
             if selectedSource == .simulator { settings.frameDemo(ranges: instrument.ranges.count) }
-            if selectedSource == .sound { settings.fitScales() }
+            if selectedSource.isSound { settings.fitScales() }
             if !instrument.capabilities.hasTriggerLowPass { settings.trigger.lowPassHz = 0 }
             if !instrument.capabilities.hasLogic && settings.mode == .logic { settings.mode = .scope }
             networkStatus = nil

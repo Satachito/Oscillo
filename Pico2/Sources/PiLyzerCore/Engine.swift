@@ -5,8 +5,8 @@ public enum DeviceSource: Hashable, Codable, Sendable {
     /// An ArLyzer, by the path of its serial port.
     case serial(path: String)
     case simulator
-    /// The Mac's default sound input.
-    case sound
+    /// One of the Mac's sound inputs, by its Core Audio UID.
+    case sound(uid: String)
 
     public var label: String {
         switch self {
@@ -18,6 +18,10 @@ public enum DeviceSource: Hashable, Codable, Sendable {
     }
 }
 
+extension DeviceSource {
+    public var isSound: Bool { if case .sound = self { return true } else { return false } }
+}
+
 public struct ConnectedInstrument: Equatable, Sendable {
     public var identity: DeviceIdentity
     public var capabilities: DeviceCapabilities
@@ -25,7 +29,7 @@ public struct ConnectedInstrument: Equatable, Sendable {
     public var ranges: [InputRange]
 
     public var summary: String {
-        guard source == .sound else { return "\(identity.name) · firmware \(identity.firmwareDescription)" }
+        guard source.isSound else { return "\(identity.name) · firmware \(identity.firmwareDescription)" }
         return "\(identity.name) · \(Format.frequency(Double(capabilities.analogClockHz))) · ±1 is full scale"
     }
 }
@@ -120,7 +124,7 @@ public final class InstrumentEngine {
         makeInstrument = { source in
             switch source {
             case .simulator: return SimulatedInstrument()
-            case .sound: return try SoundInstrument.open()
+            case let .sound(uid): return try SoundInstrument.open(uid: uid)
             case let .usb(location): return try USBInstrument(locationID: location)
             case let .serial(path): return try USBInstrument(serialPath: path)
             }
@@ -137,7 +141,7 @@ public final class InstrumentEngine {
     public static func availableSources() -> [(source: DeviceSource, label: String)] {
         USBTransport.attachedDevices().map { (.usb(locationID: $0.locationID), $0.label) }
             + SerialTransport.attachedPorts().map { (.serial(path: $0.path), $0.label) }
-            + (SoundInstrument.defaultInputName().map { [(.sound, "Sound input · \($0)")] } ?? [])
+            + SoundInstrument.inputs().map { (.sound(uid: $0.uid), "Sound input · \($0.name)") }
             + [(.simulator, "Demo signal")]
     }
 

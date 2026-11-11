@@ -55,8 +55,10 @@ Web, the instrument list in the macOS application — and the UNO R4 WiFi also
 serves PiLyzer Web itself at `http://arlyzer.local`.
 
 Both can also read the computer's own sound input — the microphone, or better
-the line input of an audio interface: **Sound** in PiLyzer Web, **Sound input**
-in the macOS application's instrument list. The oscilloscope, the spectrum and
+the line input of an audio interface: **Sound** in PiLyzer Web, with a menu
+beside Disconnect to switch between inputs, and in the macOS application's
+instrument list, where every input the Mac has is listed as **Sound input** with
+its name, the default first. The oscilloscope, the spectrum and
 the meter work on it at the sound card's rate, every input sampled at once,
 and the trigger is found in software. ±1 is full scale and there is no direct
 current, so the meter shows each input's RMS; a channel's gain calibration
@@ -88,7 +90,7 @@ from the command line:
 
 ```bash
 swift run PiLyzer --demo
-swift run PiLyzer --sound      # the Mac's sound input instead
+swift run PiLyzer --sound      # the Mac's default sound input instead
 ```
 
 `--mode scope|spectrum|logic|meter` opens on one of the four screens, and

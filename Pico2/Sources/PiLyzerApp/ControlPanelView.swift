@@ -237,7 +237,7 @@ struct ControlPanelView: View {
                      + "the record does not reach \(Format.frequency(span)).")
                     .font(.caption).foregroundStyle(Theme.trigger)
             }
-            Text(model.selectedSource == .sound && model.isConnected
+            Text(model.selectedSource.isSound && model.isConnected
                  ? "The sound card filters its input before converting it, so little above "
                      + "\(Format.frequency(nyquist)) — half the sample rate — reaches the span; "
                      + "what does folds back as a false peak."

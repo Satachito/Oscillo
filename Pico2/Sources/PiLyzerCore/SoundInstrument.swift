@@ -33,26 +33,25 @@ public final class SoundInstrument: Instrument {
     private var record: [UInt16] = []
     private var finished: AcquisitionStatus?
 
-    /// The default input's name, or nil when the Mac has none.
-    public static func defaultInputName() -> String? {
-        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice,
-                                                 mScope: kAudioObjectPropertyScopeGlobal,
-                                                 mElement: kAudioObjectPropertyElementMain)
-        var device = AudioDeviceID(0)
-        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
-        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil,
-                                         &size, &device) == noErr, device != 0 else { return nil }
-        address.mSelector = kAudioObjectPropertyName
-        var name: Unmanaged<CFString>?
-        size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &name) == noErr,
-              let name else { return "Sound input" }
-        return name.takeRetainedValue() as String
+    /// The Mac's sound inputs, the default one first: anything with an input
+    /// stream, from the built-in microphone to an audio interface.
+    public static func inputs() -> [(uid: String, name: String)] {
+        let fallback = defaultInputDevice()
+        let found = allDevices().compactMap { device -> (id: AudioDeviceID, uid: String, name: String)? in
+            guard hasInput(device), !isHidden(device),
+                  let uid = string(device, kAudioDevicePropertyDeviceUID) else { return nil }
+            let name = string(device, kAudioObjectPropertyName) ?? "Sound input"
+            // Core Audio makes these for itself, the engine's own included;
+            // they are not inputs anybody plugged in.
+            guard !name.hasPrefix("CADefaultDeviceAggregate") else { return nil }
+            return (device, uid, name)
+        }
+        return (found.filter { $0.id == fallback } + found.filter { $0.id != fallback }).map { ($0.uid, $0.name) }
     }
 
-    /// Opens the default input. The first time, macOS asks whether PiLyzer
-    /// may use the microphone, and this waits for the answer.
-    public static func open() throws -> SoundInstrument {
+    /// Opens the input with this UID. The first time, macOS asks whether
+    /// PiLyzer may use the microphone, and this waits for the answer.
+    public static func open(uid: String) throws -> SoundInstrument {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized: break
         case .notDetermined:
@@ -64,10 +63,18 @@ public final class SoundInstrument: Instrument {
         default:
             throw SoundError.notAllowed
         }
-        guard let name = defaultInputName() else { throw SoundError.noInput }
+        guard let device = allDevices().first(where: { hasInput($0) && string($0, kAudioDevicePropertyDeviceUID) == uid })
+        else { throw SoundError.noInput }
+        let name = string(device, kAudioObjectPropertyName) ?? "Sound input"
 
         let engine = AVAudioEngine()
         let input = engine.inputNode
+        // The engine's input follows the system's default unless told otherwise.
+        var chosen = device
+        guard let unit = input.audioUnit,
+              AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
+                                   &chosen, UInt32(MemoryLayout<AudioDeviceID>.size)) == noErr
+        else { throw SoundError.couldNotStart("the input could not be selected") }
         let format = input.inputFormat(forBus: 0)
         guard format.channelCount > 0, format.sampleRate > 0 else { throw SoundError.noInput }
         let channels = min(Int(format.channelCount), 8)
@@ -88,6 +95,54 @@ public final class SoundInstrument: Instrument {
             throw SoundError.couldNotStart(error.localizedDescription)
         }
         return instrument
+    }
+
+    // MARK: - Core Audio
+
+    private static func address(_ selector: AudioObjectPropertySelector,
+                                _ scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal) -> AudioObjectPropertyAddress {
+        AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
+    }
+
+    private static func allDevices() -> [AudioDeviceID] {
+        var where_ = address(kAudioHardwarePropertyDevices)
+        var size: UInt32 = 0
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        guard AudioObjectGetPropertyDataSize(system, &where_, 0, nil, &size) == noErr, size > 0 else { return [] }
+        var devices = [AudioDeviceID](repeating: 0, count: Int(size) / MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(system, &where_, 0, nil, &size, &devices) == noErr else { return [] }
+        return devices
+    }
+
+    private static func defaultInputDevice() -> AudioDeviceID? {
+        var where_ = address(kAudioHardwarePropertyDefaultInputDevice)
+        var device = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &where_, 0, nil,
+                                         &size, &device) == noErr, device != 0 else { return nil }
+        return device
+    }
+
+    private static func isHidden(_ device: AudioDeviceID) -> Bool {
+        var where_ = address(kAudioDevicePropertyIsHidden)
+        var hidden: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        return AudioObjectGetPropertyData(device, &where_, 0, nil, &size, &hidden) == noErr && hidden != 0
+    }
+
+    private static func hasInput(_ device: AudioDeviceID) -> Bool {
+        var where_ = address(kAudioDevicePropertyStreams, kAudioObjectPropertyScopeInput)
+        var size: UInt32 = 0
+        return AudioObjectGetPropertyDataSize(device, &where_, 0, nil, &size) == noErr && size > 0
+    }
+
+    private static func string(_ device: AudioDeviceID, _ selector: AudioObjectPropertySelector) -> String? {
+        var where_ = address(selector)
+        var value: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(device, &where_, 0, nil, &size, &value) == noErr,
+              let value else { return nil }
+        return value.takeRetainedValue() as String
     }
 
     /// For the tests: a buffer filled by hand rather than by the audio thread.
