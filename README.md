@@ -35,8 +35,15 @@ A Pico 2 W or an UNO R4 WiFi serves it itself over Wi-Fi, at
 no USB at all. Demo mode also works without an instrument: **Try demo** in
 PiLyzer Web, and from 3.3.10 **Start a demo** in the middle of the Mac app's
 empty screen, each one click.
+With no board at all, both applications can also read the computer's own sound
+input — the microphone, or better the line input of an audio interface — as an
+oscilloscope, spectrum analyser and meter at the sound card's rate: **Sound**
+in PiLyzer Web, **Sound input** in the Mac app's instrument list, each with the
+inputs to choose from. ±1 is full scale and there is no direct current, and the
+audio is not recorded, stored or sent ([Pico2](Pico2/README.md)).
 Captured samples remain in the browser; CSV export saves them locally.
 From 3.3.6, the copy on GitHub Pages counts page views, and which way an
-instrument was connected (USB, serial or the demo), with Google Analytics. The
+instrument was connected (USB, serial, the demo or the sound input), with
+Google Analytics. The
 copy a board serves, and one run locally, load nothing of the kind, and no
 samples, readings or device details are sent.
