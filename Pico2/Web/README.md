@@ -6,7 +6,7 @@ A static browser application for the Pico 2 PiLyzer instrument. USB packets use
 exactly the same [protocol](../docs/protocol.md) as the macOS application. No
 server, account, external font or runtime dependency is involved. The copy on
 GitHub Pages counts page views with Google Analytics, and which way an
-instrument was connected (USB, serial or demo); the copy a Pico 2 W or an
+instrument was connected (USB, serial, demo or sound input); the copy a Pico 2 W or an
 UNO R4 WiFi serves, and one run locally, load nothing of the kind. Samples,
 readings and device details are never sent anywhere: they stay in browser
 memory until exported locally as CSV.
@@ -83,6 +83,16 @@ a driver association added by hand. macOS and Linux are unaffected either way.
   cross it, and the panel says so. One that cannot fire on the channel it
   watches starts at that channel's bias when an instrument answers.
 - Independent 3-channel demo; no instrument required.
+- **Sound** reads the computer's own sound input — the microphone, or better
+  the line input of an audio interface — as an instrument: the oscilloscope,
+  the spectrum and the meter, at the sound card's rate (44.1 to 192 kHz), every
+  input sampled at once. The browser asks first, and the audio is read in this
+  page and goes nowhere else. ±1 is full scale and there is no direct current,
+  so the meter shows each input's RMS; a channel's gain calibration turns full
+  scale into volts against a known signal. The browser offers a page the
+  microphone only over HTTPS or on this computer, so the copy a board serves at
+  `http://pilyzer.local` has no Sound button. Echo cancellation, noise
+  suppression and automatic gain are asked off.
 
 Demo waveforms are generated in the browser and are not measurements. The
 native application's software spectrum averaging and SPI/I²C decoders are not

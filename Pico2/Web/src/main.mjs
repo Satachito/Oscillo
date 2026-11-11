@@ -1,10 +1,11 @@
 import { Instrument } from './instrument.mjs';
 import { connect as connectOverNetwork, available as servedByInstrument } from './net.mjs';
 import { Acquisition, DemoInstrument, makeSettings } from './acquisition.mjs';
-import { OP as WIRE, encodeNetworkConfig, networkStatus as readNetworkStatus, networkProblem, ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, logicRates, shownLogicRate } from './protocol.mjs';
+import { OP as WIRE, minimumPeriod, encodeNetworkConfig, networkStatus as readNetworkStatus, networkProblem, ARLYZER_PINS, logicNames, activeChannels, demoCaps, ranges, scaleFor, usableTriggerLevel, triggerWindow, biasVolts, midRailVolts, referenceBias, SIGNAL_BASE_PIN, CALIBRATION_PIN, SCALE_STEPS, fitScale, resolutionFor, spectrumSpans, spectrumRecord, setSpectrumSpan, setSpectrumResolution, logicRates, shownLogicRate } from './protocol.mjs';
 import { channelLevel, watchText, fmt, csv, decodeLogic, logicActivity, spectrumCsv, lowestMeasurable, WINDOWS, SPECTRUM_SCALES } from './signal.mjs';
 import { COLORS, CURSOR_COLOR, Plot } from './plot.mjs';
 import { CONNECTIONS, track } from './analytics.mjs';
+import { SoundInstrument } from './sound.mjs';
 const $ = id => document.getElementById(id);
 // The page's own logic rates, as index.html lists them; a board is offered
 // those it reaches (logicRates).
@@ -77,7 +78,7 @@ const acquisition = new Acquisition(value => { frame = value; renderFrame(); }, 
 function caps() { return instrument?.caps || demoCaps; }
 const logicName = i => logicNames(instrument?.identity?.board)[i];
 // The pin an analogue channel is read on, for the channel card's note.
-function inputPin(i) { return ARLYZER_PINS[instrument?.identity?.board]?.[i] ?? `GPIO ${26 + i}`; }
+function inputPin(i) { return instrument?.sound ? (instrument.caps.channels === 2 ? ['LEFT', 'RIGHT'][i] : `INPUT ${i + 1}`) : ARLYZER_PINS[instrument?.identity?.board]?.[i] ?? `GPIO ${26 + i}`; }
 // The instrument's own range list. Offline there is no instrument to ask, so
 // the panel previews the front end this application was built alongside.
 function frontEnd() { return instrument?.ranges ?? ranges(1); }
@@ -109,10 +110,13 @@ function updateButtons() {
   $('connect').hidden = !!instrument; $('demo').hidden = !!instrument; $('disconnect').hidden = !instrument;
   $('connect').disabled = connecting || !(overNetwork || navigator.usb); $('demo').disabled = connecting;
   $('connect-serial').hidden = !!instrument || overNetwork || !navigator.serial; $('connect-serial').disabled = connecting;
+  $('connect-sound').hidden = !!instrument || !SoundInstrument.available(); $('connect-sound').disabled = connecting;
   $('run-dot').classList.toggle('live', acquisition.running);
   $('connection-dot').classList.toggle('connected', !!instrument);
-  $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : overNetwork ? 'WI-FI' : 'USB' : 'OFFLINE';
-  $('device-name').textContent = instrument ? `${instrument.identity.name} · firmware ${instrument.identity.firmware}` : 'No instrument connected';
+  $('source-badge').textContent = instrument ? instrument.demo ? 'DEMO' : instrument.sound ? 'SOUND' : overNetwork ? 'WI-FI' : 'USB' : 'OFFLINE';
+  $('device-name').textContent = !instrument ? 'No instrument connected'
+    : instrument.sound ? `${instrument.identity.name} · ${fmt(instrument.rate, 'Hz')} · ±1 is full scale`
+    : `${instrument.identity.name} · firmware ${instrument.identity.firmware}`;
   $('empty-state').hidden = !!frame; $('export').disabled = !frame;
   $('empty-demo').disabled = connecting || acquisition.running || nothingOn;
   $('empty-demo').textContent = instrument ? 'Single capture' : 'Start a demo →';
@@ -290,7 +294,7 @@ function frequencyControls(channels, allowed) {
   if (settings.spectrumSpan && !spans.includes(settings.spectrumSpan)) spans.push(settings.spectrumSpan);
   const times = allowed.filter(t => !settings.spectrumSpan || reaches(settings.spectrumSpan, resolutionFor(t)));
   if (!times.includes(settings.timebase)) times.push(settings.timebase);
-  const floor = c.minCycles / c.clock * Math.max(channels, 1), duration = settings.timebase * 10;
+  const floor = minimumPeriod(c, channels), duration = settings.timebase * 10;
   const period = Math.max(duration / Math.min(settings.record, c.maxRecord), floor), nyquist = 1 / period / 2;
   options('spectrum-span', [[0, `Full · ${fmt(nyquist, 'Hz')}`], ...spans.sort((a, b) => a - b).map(s => [s, fmt(s, 'Hz')])], settings.spectrumSpan);
   options('spectrum-resolution', times.sort((a, b) => b - a).map(t => [t, fmt(resolutionFor(t), 'Hz')]), settings.timebase);
@@ -321,7 +325,7 @@ function synchronize() {
   const active = activeChannels(settings, caps());
   if (!active.includes(settings.source)) settings.source = active[0] ?? 0;
   settleTriggerLevel();
-  const minimum = caps().minCycles / caps().clock * Math.max(active.length, 1) * 5;
+  const minimum = minimumPeriod(caps(), active.length) * 5;
   const allowed = timebases.filter(v => v >= minimum);
   if (!allowed.includes(settings.timebase)) settings.timebase = allowed.find(v => v >= settings.timebase) || allowed.at(-1);
   options('timebase', allowed.map(v => [v, fmt(v, 's')]), settings.timebase);
@@ -338,7 +342,7 @@ function synchronize() {
   $('level').step = 'any'; $('level').value = settings.level;
   showSliderReadouts();
   $('active-count').textContent = `${active.length} channel${active.length === 1 ? '' : 's'} enabled`;
-  $('max-rate').replaceChildren(document.createTextNode(fmt(caps().clock / caps().minCycles / Math.max(active.length, 1), 'Sa/s') + ' '), Object.assign(document.createElement('small'), { textContent: '/ channel max' }));
+  $('max-rate').replaceChildren(document.createTextNode(fmt(1 / minimumPeriod(caps(), active.length), 'Sa/s') + ' '), Object.assign(document.createElement('small'), { textContent: '/ channel max' }));
   const spectrumMode = settings.mode === 'spectrum';
   $('horizontal-controls').hidden = logic || meter || spectrumMode; $('frequency-controls').hidden = !spectrumMode;
   $('record').value = settings.record;
@@ -552,13 +556,22 @@ async function changed() {
     await acquisition.configure(settings);
   } catch (e) { showError(e.message); }
 }
-async function connect(demo, serial = false) {
+// `kind` is 'usb', 'serial', 'demo' or 'sound'. A page a board served has only
+// the board to connect to, whichever button it was.
+async function connect(kind = 'usb') {
   if (instrument || connecting) return;
+  const demo = kind === 'demo', sound = kind === 'sound';
   connecting = true; showError(); updateButtons();
   try {
-    instrument = demo ? new DemoInstrument() : overNetwork ? await connectOverNetwork() : serial ? await Instrument.connectSerial() : await Instrument.connect(); acquisition.attach(instrument); frame = null;
-    track(CONNECTIONS[demo ? 'demo' : overNetwork ? 'wifi' : serial ? 'serial' : 'usb']);
+    instrument = demo ? new DemoInstrument() : sound ? await SoundInstrument.connect() : overNetwork ? await connectOverNetwork() : kind === 'serial' ? await Instrument.connectSerial() : await Instrument.connect(); acquisition.attach(instrument); frame = null;
+    track(CONNECTIONS[demo || sound ? kind : overNetwork ? 'wifi' : kind]);
     if (demo) settings.channels.forEach(ch => { ch.range = 1; ch.scale = 1; });
+    // A sound card reads ±1 at full scale; the channels open fitted to that,
+    // and a microphone or cable pulled out ends the connection.
+    if (sound) {
+      settings.channels.forEach(ch => { ch.range = 0; ch.scale = 0; });
+      for (const t of instrument.stream.getAudioTracks()) t.onended = () => lost('The sound input went away. Connect it again to continue.');
+    }
     settings.channels.forEach(ch => { if (ch.range >= frontEnd().length) ch.range = 0; });
     // The zero and the gain describe the wiring, so connecting does not clear
     // them, and a trigger level that works is not moved either.
@@ -567,9 +580,13 @@ async function connect(demo, serial = false) {
     if (!(caps().flags & 8)) settings.lpf = 0;
     synchronize();
     refreshNetwork(true);
-    if (demo) acquisition.start(settings);
+    if (demo || sound) acquisition.start(settings);
     else { await instrument.abort(); $('status').textContent = 'Connected · press Run'; }
-  } catch (e) { if (e.name !== 'NotFoundError') showError(e.message); instrument = null; acquisition.attach(null); }
+  } catch (e) {
+    if (e.name === 'NotAllowedError') showError('The browser was not allowed the sound input. Allow it for this page in the address bar, then try again.');
+    else if (e.name !== 'NotFoundError') showError(e.message);
+    instrument = null; acquisition.attach(null);
+  }
   finally { connecting = false; updateButtons(); }
 }
 // A Pico 2 W's or an UNO R4 WiFi's network: what it is on now, and a new one
@@ -616,8 +633,9 @@ async function saveNetwork(config) {
 }
 $('network-save').onclick = () => saveNetwork({ ssid: $('network-ssid').value.trim(), password: $('network-password').value, hostname: $('network-name').value.trim().toLowerCase() });
 $('network-forget').onclick = () => { $('network-ssid').value = ''; saveNetwork({ ssid: '', password: '', hostname: '' }); };
-$('connect').onclick = () => connect(false); $('demo').onclick = () => connect(true); $('connect-serial').onclick = () => connect(false, true);
-$('empty-demo').onclick = () => instrument ? acquisition.start(settings, true) : connect(true);
+$('connect').onclick = () => connect('usb'); $('demo').onclick = () => connect('demo'); $('connect-serial').onclick = () => connect('serial');
+$('connect-sound').onclick = () => connect('sound');
+$('empty-demo').onclick = () => instrument ? acquisition.start(settings, true) : connect('demo');
 $('disconnect').onclick = async () => {
   try { await acquisition.stop(); await instrument?.close(); } catch (e) { showError(e.message); }
   finally { instrument = null; acquisition.attach(null); frame = null; synchronize(); $('status').textContent = 'Disconnected'; }
@@ -715,15 +733,16 @@ for (let i = 0; i < 8; i++) {
   label.append(input, document.createTextNode(`D${i}`)); $('logic-lines').append(label);
   for (const select of document.querySelectorAll('[data-logic-line]')) select.add(option(i, `D${i}`));
 }
+function lost(message) {
+  const gone = instrument;
+  acquisition.running = false; acquisition.token++; instrument = null; acquisition.attach(null); showError(message); updateButtons();
+  if (gone?.sound) gone.close();
+}
 if (navigator.serial) navigator.serial.addEventListener('disconnect', event => {
-  if (instrument && !instrument.demo && event.target === instrument.transport.port) {
-    acquisition.running = false; acquisition.token++; instrument = null; acquisition.attach(null); showError('The instrument was unplugged. Reconnect it to continue.'); updateButtons();
-  }
+  if (instrument?.transport && event.target === instrument.transport.port) lost('The instrument was unplugged. Reconnect it to continue.');
 });
 if (navigator.usb) navigator.usb.addEventListener('disconnect', event => {
-  if (instrument && !instrument.demo && event.device === instrument.transport.device) {
-    acquisition.running = false; acquisition.token++; instrument = null; acquisition.attach(null); showError('The instrument was unplugged. Reconnect USB to continue.'); updateButtons();
-  }
+  if (instrument?.transport && event.device === instrument.transport.device) lost('The instrument was unplugged. Reconnect USB to continue.');
 });
 window.addEventListener('pagehide', () => { acquisition.token++; if (instrument && !instrument.demo) instrument.close().catch(() => {}); });
 // If this page was served by an instrument, `rpc` answers beside it and there

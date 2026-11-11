@@ -61,6 +61,10 @@ export function status(bytes) {
   const v = size(bytes, 16, 'acquisition status');
   return { state: bytes[0], triggered: bytes[1] === 1, count: v.getUint32(4, true), triggerIndex: v.getUint32(8, true) };
 }
+// The shortest interval one channel can be sampled at with `channels` of them
+// switched on. A board's converter takes the channels in turn, so each one
+// more slows them all; a sound card's inputs are converted all at once.
+export const minimumPeriod = (caps, channels) => caps.minCycles / caps.clock * (caps.simultaneous ? 1 : Math.max(channels, 1));
 export const activeChannels = (settings, caps) => settings.channels.flatMap((c, i) => c.enabled && i < caps.channels ? [i] : []);
 // One InputRange as the device reports it — see ../../docs/protocol.md. Gain
 // arrives in millionths of a volt per volt and offset in microvolts.
@@ -163,7 +167,7 @@ export function analogRequest(settings, caps, frontEnd) {
   const active = activeChannels(settings, caps);
   if (!active.length) throw new Error('Enable at least one channel.');
   const mask = active.reduce((m, c) => m | (1 << c), 0);
-  const floor = caps.minCycles / caps.clock * active.length;
+  const floor = minimumPeriod(caps, active.length);
   const duration = settings.timebase * 10;
   let count = Math.min(settings.record, caps.maxRecord), period = duration / count;
   if (period < floor) {
@@ -215,7 +219,7 @@ export const demoCaps = Object.freeze({ channels: 3, bits: 12, logicChannels: 8,
 // a record to, so the resolution chosen is the bin width got.
 export const RECORD_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384];
 export const resolutionFor = timebase => 1 / (timebase * 10);
-const fastestRate = (caps, channels) => caps.clock / caps.minCycles / Math.max(channels, 1);
+const fastestRate = (caps, channels) => 1 / minimumPeriod(caps, channels);
 // Spans in a 1–2–5 sequence, up to half the fastest rate these channels share.
 export function spectrumSpans(caps, channels) {
   const top = fastestRate(caps, channels) / 2, spans = [];

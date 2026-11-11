@@ -96,7 +96,7 @@ export class Acquisition {
       if (instrument.caps.flags & 2) await instrument.setTest(settings.testEnabled, settings.testFrequency);
       if (instrument.caps.flags & 32) await instrument.setSignals(settings.signalsEnabled, settings.signalSineHz);
       let prepared;
-      if (!instrument.demo && settings.mode !== 'meter') {
+      if (!instrument.demo && !instrument.sound && settings.mode !== 'meter') {
         prepared = settings.mode === 'logic'
           ? plan(await instrument.command(OP.logicConfigure, logicRequest(settings, instrument.caps)))
           : plan(await instrument.command(OP.analogConfigure, analogRequest(settings, instrument.caps, instrument.ranges).payload));
@@ -118,7 +118,8 @@ export class Acquisition {
   async capture(instrument, settings, actual, token) {
     if (settings.mode === 'meter') {
       let values;
-      if (instrument.demo) values = Array.from({ length: instrument.caps.channels }, (_, c) => tone(c, performance.now() / 1000) * (settings.channels[c].gain?.[settings.channels[c].range] ?? 1) * settings.channels[c].probe);
+      if (instrument.sound) values = instrument.levels(settings);
+      else if (instrument.demo) values = Array.from({ length: instrument.caps.channels }, (_, c) => tone(c, performance.now() / 1000) * (settings.channels[c].gain?.[settings.channels[c].range] ?? 1) * settings.channels[c].probe);
       else {
         const bytes = await instrument.command(OP.sample, new Uint8Array([64, 0]));
         if (bytes.length !== instrument.caps.channels * 2) throw new Error('Incomplete meter reading');
@@ -161,7 +162,9 @@ export class Acquisition {
     const sweeps = Math.min(Math.max(Math.round(settings.averaging) || 1, 1), 100);
     let sum = null, clipped = null, last = null, triggered = true;
     for (let n = 0; n < sweeps; n++) {
-      const raw = instrument.demo ? demoAnalog(instrument, settings) : await this.sweep(instrument, settings, actual, token);
+      const raw = instrument.demo ? demoAnalog(instrument, settings)
+        : instrument.sound ? await instrument.sweep(settings, () => token === this.token)
+        : await this.sweep(instrument, settings, actual, token);
       if (!raw || token !== this.token) return null;
       last = raw; triggered = triggered && raw.triggered;
       sum ??= raw.columns.map(column => new Float64Array(column.length));
